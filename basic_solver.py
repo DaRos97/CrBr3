@@ -3,18 +3,17 @@ from scipy.interpolate import RectBivariateSpline as RBS
 import matplotlib.pyplot as plt
 import functions as fs
 
+#Parameters of Moire lattice
 theta = 0.1
 A_M = 10 #related to theta somehow
-grid = 50
-#
+grid = 30
 #
 b_ = np.zeros((3,2))    #three arrays in x-y plane
 b_[0] = 2*np.pi/A_M*np.array([1,1/np.sqrt(3)])
 b_[1] = 2*np.pi/A_M*np.array([0,2/np.sqrt(3)])
 b_[2] = b_[0]-b_[1]
 G_M = np.linalg.norm(b_[0])
-#
-#
+#Moirè potential Phi
 Phi = np.zeros((grid,grid))
 latt = np.zeros((grid,grid,2))
 for i in range(grid):
@@ -34,7 +33,7 @@ big_J[xpts:2*xpts,:xpts] = J; big_J[xpts:2*xpts,xpts:2*xpts] = J; big_J[xpts:2*x
 big_J[2*xpts:3*xpts,:xpts] = J; big_J[2*xpts:3*xpts,xpts:2*xpts] = J; big_J[2*xpts:3*xpts,2*xpts:3*xpts] = J; big_J[2*xpts:3*xpts,3*xpts:] = J;
 big_J[3*xpts:,:xpts] = J; big_J[3*xpts:,xpts:2*xpts] = J; big_J[3*xpts:,2*xpts:3*xpts] = J; big_J[3*xpts:,3*xpts:] = J;
 fun_J = RBS(XX,YY,big_J)
-if 0:   #plot interpolated moire interlayer function
+if 0:#input("Plot interlayer potential?(y/N)")=='y':   #plot interpolated moire interlayer function
     fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(20,20))
     ax1.set_aspect('equal')
     ax2.set_aspect('equal')
@@ -63,12 +62,12 @@ if 0:   #plot interpolated moire interlayer function
     exit()
 
 rho = 1
-d = 0.01
-Jp = 0.1
+d = 0.
+Jp = 0.
 phi_s,phi_a = fs.compute_magnetization(rho,d,Jp,Phi,G_M)
 
 if 1:   #plot
-    fac = 2
+    fac = 2     #plot 1 spin every "fac" of grid
     fs.plot_magnetization(phi_s,phi_a,fun_J,fac)
 
 exit()

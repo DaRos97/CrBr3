@@ -71,102 +71,141 @@ def R_z(t):
     R[1,1] = np.cos(t)
     return R
 
-def grad_phi(phi):
-    grid = phi.shape[0]
-    dx = 1/A_M
-    dy = 1/A_M
-    der_x = np.zeros((grid,grid))
-    for j in range(grid):
-        for i in range(grid-1):
-            der_x[i,j] = (phi[i+1,j]-phi[i,j])/dx
-        der_x[-1,j] = (phi[0,j]-phi[-1,j])/dx
-    der_y = np.zeros((grid,grid))
-    for i in range(grid):
-        for j in range(grid-1):
-            der_x[i,j] = (phi[i,j+1]-phi[i,j])/dy
-        der_x[i,-1] = (phi[i,0]-phi[i,-1])/dy
-    return (der_x,der_y)
-
 def der_2(phi):
     #Compute d^2(phi)/dx^2 + d^2(phi)/dy^2
-    dx = dy = 1/phi.shape[0]      ##### dy=?????
-    return (np.roll(phi,2,axis=0)-2*np.roll(phi,1,axis=0)+phi)/dx**2 + (np.roll(phi,-2,axis=1)-2*np.roll(phi,-1,axis=1)+phi)/dy**2
+    dx = 1/phi.shape[0]
+    dy = 1/phi.shape[1]      ##### dy=?????
+    return ( (np.roll(phi,2,axis=0)-2*np.roll(phi,1,axis=0)+np.roll(phi,0,axis=0))/dx**2 + 
+             (np.roll(phi,-2,axis=1)-2*np.roll(phi,-1,axis=1)+np.roll(phi,0,axis=1))/dy**2
+             )
     
 def grad_H(phi_s,phi_a,tt,args):
-    Phi,alpha,beta,grid = args
-    d_phi = np.ones((grid,grid))
+    Phi,alpha,beta,G_M = args
     if tt=='s':
-        return -beta*np.multiply(np.sin(phi_s),np.cos(phi_a)) + der_2(phi_s)
+        return beta*np.sin(phi_s)*np.cos(phi_a) - der_2(phi_s)
     elif tt=='a':
-        return -np.multiply(beta*np.cos(phi_s)+alpha*Phi,np.sin(phi_a)) + der_2(phi_a)
-
-def energy(phi_s,phi_a,args):
-    Phi,alpha,beta,grid = args
-    grad_phi_s = grad_phi(phi_s)
-    grad_s_2 = np.zeros((grid,grid))
-    grad_phi_a = grad_phi(phi_a)
-    grad_a_2 = np.zeros((grid,grid))
-    cos_s = np.zeros((grid,grid))
-    cos_a = np.zeros((grid,grid))
-    energy = np.zeros((grid,grid))
-    for i in range(grid):
-        for j in range(grid):
-            grad_s_2 = np.sqrt(grad_phi_s[0][i,j]**2+grad_phi_s[1][i,j]**2)
-            grad_a_2 = np.sqrt(grad_phi_a[0][i,j]**2+grad_phi_a[1][i,j]**2)
-            cos_s = np.cos(phi_s[i,j])
-            cos_a = np.cos(phi_a[i,j])
-            energy[i,j] = 1/2*(grad_s_2+grad_a_2) - (alpha*Phi[i,j]+beta*cos_s)*cos_a
-
-    H = energy.sum()/grid**2
-    return H
+        return (beta*np.cos(phi_s)+alpha*Phi)*np.sin(phi_a) - der_2(phi_a)
 
 def initial_point(args):
-    Phi,alpha,beta,grid = args
-    delta = beta/alpha**2
-    phi0 = np.arccos(-2/3*delta)
-    const = 0.1
-    temp = np.linspace(0,1,grid)
-    X,Y = np.meshgrid(temp,temp)
-    phi_s = np.ones((grid,grid))*np.pi      #ansatz for alpha,beta<<1
-    phi_a = phi0 - alpha*np.sin(phi0)*(Phi-const)
+    Phi,alpha,beta,G_M = args
+    grid = Phi.shape[0]
+    initial_ansatz = ['twisted','constant']
+    sol=initial_ansatz[1]
+    if sol=='twisted':      #ansatz for alpha,beta<<1
+        delta = beta/alpha**2
+        print("Using collinear solution as starting point, with delta= ",delta)
+        if abs(delta)>3/2:
+            print("delta too large for this approximation")
+            exit()
+        phi0 = np.arccos(-2/3*delta)
+        const = 1/2-np.tan(phi0)**(-2)
+        temp = np.linspace(0,1,grid)
+        phi_s = np.ones((grid,grid))*np.pi
+        phi_a = phi0 - alpha*np.sin(phi0)*(Phi-const)
+    elif sol=='constant':
+        ss = np.pi
+        aa = np.pi*0.5
+        print("Using constant solution as starting point, with values phi_s= ",ss,", phi_a= ",aa)
+        phi_s = np.ones((grid,grid))*ss
+        phi_a = np.ones((grid,grid))*aa
     return phi_s, phi_a
 
-def exit_loop_condition(p_s,p_new_s,p_a,p_new_a):
-    difference = (np.absolute(p_s-p_new_s) + np.absolute(p_a-p_new_a)).sum()
-    print("Difference: "+"{:.4f}".format(difference))
-    res = True if difference<1e-3 else False        #exit loop->True
-    return res
+def exit_loop_condition(d_0,d_1):
+    if d_1<1e-3 or abs(d_0-d_1)<1e-3:
+        return True
+    else:
+        return False
+
+def compute_energy2(phi_i,*args):
+    Phi,alpha,beta,G_M = args
+    grid = Phi.shape[0]
+    return compute_energy(np.reshape(phi_i[:grid**2],(grid,grid)),np.reshape(phi_i[grid**2:],(grid,grid)),args)
+
+def compute_energy(phi_s,phi_a,args):
+    Phi,alpha,beta,G_M = args
+    grid = phi_s.shape[0]
+    dx = 1/grid
+    dy = 1/grid
+    grad_2s = np.absolute((np.roll(phi_s,1,axis=0)-phi_s)/dx)**2 + np.absolute((np.roll(phi_s,-1,axis=1)-phi_s)/dy)**2
+    grad_2a = np.absolute((np.roll(phi_a,1,axis=0)-phi_a)/dx)**2 + np.absolute((np.roll(phi_a,-1,axis=1)-phi_a)/dy)**2
+    energy = 1/2*(grad_2s+grad_2a)-np.cos(phi_a)*(alpha*Phi+beta*np.cos(phi_s))
+    H = energy.sum()/grid**2
+    return H
+def grad_e(phi_s,phi_a,tt,args):
+    dd = 0.01
+    dphi = np.ones(phi_s.shape)*dd
+    if tt == 's':
+        Ep = compute_energy(phi_s+dphi,phi_a,args)
+    if tt == 'a':
+        Ep = compute_energy(phi_s,phi_a+dphi,args)
+    return (Ep-compute_energy(phi_s,phi_a,args))/dd
+
+
 
 def compute_magnetization(rho,d,Jp,Phi,G_M):
     alpha = 2*Jp/rho/G_M**2
     beta = 2*d/rho/G_M**2
+    alpha = 1
+    beta = 0.
     print("Parameters: alpha="+"{:.4f}".format(alpha)+", beta="+"{:.4f}".format(beta))
     #Start by defining the energy as a function of phi_s and phi_a
     #Define initial value of phi_s and phi_a
-    grid = Phi.shape[0]
-    phi_s = np.zeros((grid,grid))
-    phi_a = np.zeros((grid,grid))
-    learn_rate = 0.01        #to fix for finding a global minimum
-    args = (Phi,alpha,beta,grid)
-    phi_new_s,phi_new_a = initial_point(args)
+    learn_rate = 0.5        #to fix for finding a global minimum
+    args = (Phi,alpha,beta,G_M)
+    phi_s,phi_a = initial_point(args)
+    diff_0 = 1e9
+    diff_1 = 1e8
     if 1:   #minimization
+        grid = Phi.shape[0]
+        phi_i = np.zeros(2*grid**2)
+        phi_i[:grid**2] = np.reshape(phi_s,(grid**2))
+        phi_i[grid**2:] = np.reshape(phi_a,(grid**2))
+        from scipy.optimize import minimize
+        res = minimize(compute_energy2, 
+                x0 = phi_i,
+                args = args
+                )
+        phi_s = np.reshape(res.x[:grid**2],(grid,grid))
+        phi_a = np.reshape(res.x[grid**2:],(grid,grid))
+        print("Finished...? ",res.nit," iterations")
+        print("Energy: ",res.fun)
+    elif 0:
+        phi_new_s = phi_s
+        phi_new_a = phi_a
+        print("Starting minimization")
         step = 1
         while True:
-            if exit_loop_condition(phi_s,phi_new_s,phi_a,phi_new_a):
+            print("Step ",step)
+            dHs = grad_H(phi_s,phi_a,'s',args)
+            dHa = grad_H(phi_s,phi_a,'a',args)
+            dEs = grad_e(phi_s,phi_a,'s',args)
+            dEa = grad_e(phi_s,phi_a,'a',args)
+            #
+            phi_new_s = phi_s + learn_rate*dEs
+            phi_new_a = phi_a + learn_rate*dEa
+            #
+            E = compute_energy(phi_new_s,phi_new_a,args)
+            diff_0 = diff_1
+            diff_1 = (np.absolute(phi_s-phi_new_s) + np.absolute(phi_a-phi_new_a)).sum()
+            if exit_loop_condition(diff_0,diff_1):
+                print("Minimization criterion reached!")
+#                print("phi_s: ",phi_s)
+#                print("phi_a: ",phi_a)
+                print("energy = ",E)
                 break
             else:
+                print("Difference: ",diff_1)
+                print("energy = ",E)
                 phi_s = phi_new_s
                 phi_a = phi_new_a
             #
-            phi_new_s = phi_s + learn_rate*grad_H(phi_s,phi_a,'s',args)
-            phi_new_a = phi_a + learn_rate*grad_H(phi_s,phi_a,'a',args)
-            print("Step ",step)
-            input()
+            if 0:
+                input("Going to next step")
             step += 1
 
     else:
-        phi_s = phi_new_s
-        phi_a = phi_new_a
+        phi_new_s = phi_s
+        phi_new_a = phi_a
     return phi_s,phi_a
 
 def plot_magnetization(phi_s,phi_a,fun_J,fac):
@@ -202,7 +241,24 @@ def plot_magnetization(phi_s,phi_a,fun_J,fac):
             ax2.arrow(x - l/2*np.cos(phi2),y - l/2*np.sin(phi2),l*np.cos(phi2), l*np.sin(phi2),head_width=hw,head_length=hl,color='k')
     plt.show()
 
+####################################################################################################################
 
+
+def grad_phi(phi):
+    grid = phi.shape[0]
+    dx = 1/A_M
+    dy = 1/A_M
+    der_x = np.zeros((grid,grid))
+    for j in range(grid):
+        for i in range(grid-1):
+            der_x[i,j] = (phi[i+1,j]-phi[i,j])/dx
+        der_x[-1,j] = (phi[0,j]-phi[-1,j])/dx
+    der_y = np.zeros((grid,grid))
+    for i in range(grid):
+        for j in range(grid-1):
+            der_x[i,j] = (phi[i,j+1]-phi[i,j])/dy
+        der_x[i,-1] = (phi[i,0]-phi[i,-1])/dy
+    return (der_x,der_y)
 
 
 
