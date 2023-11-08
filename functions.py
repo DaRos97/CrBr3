@@ -83,145 +83,239 @@ def R_z(t):
 ###########################################################################################
 ###########################################################################################
 
-pts_array = 20
-values = np.zeros((pts_array,pts_array,2))
-g_array = np.linspace(0,1,20,endpoint=False)
-for i in range(pts_array):
-    for j in range(pts_array):
-        values[i,j,0] = g_array[i]/(1-g_array[i])
-        values[i,j,1] = g_array[j]/(1-g_array[j])
+def compute_grid_pd(pts_array):
+    """Computes the grid of alpha/beta points to consider in order to build up the phase diagram.
+    The phase diagram is computed in scale of a/(1+a), so we consider pts_array values 'g' between 
+    0 and 1 and compute alpha/beta as alpha(beta)=1/(1-g).
+
+    Parameters
+    ----------
+    pts_array : int
+        The number of elements to consider in each direction, alpha and beta.
+
+    Returns
+    -------
+    np.ndarray
+        a matrix of values of size (pts_array,pts_array,2).
+    """
+    values = np.zeros((pts_array,pts_array,2))
+    g_array = np.linspace(0,1,20,endpoint=False)
+    for i in range(pts_array):
+        for j in range(pts_array):
+            values[i,j,0] = g_array[i]/(1-g_array[i])
+            values[i,j,1] = g_array[j]/(1-g_array[j])
+    return values
 
 
-def initial_point(args,fs,fa,ans):
-    Phi,alpha,beta,A_M = args
-    grid = Phi.shape[0]
-    initial_ansatz = ['twisted','constant']
+def initial_point(Phi,alpha,beta,grid,fs,fa,ans):
+    """Computes the initial point for the minimization. The possibilities are for now
+    either twisted-s -> ans=0, or constant -> ans=1
+
+    Parameters
+    ----------
+    Phi : np.ndarray
+        Interlayer coupling of size (grid,grid)
+    alpha: float
+        Parameter alpha.
+    beta: float
+        Parameter beta.
+    grid : int
+        The number of points in each direction.
+    fs : float
+        Random number between 0 and 1 to set inisial condition for symmetric phase.
+    fa : float
+        Random number between 0 and 1 to set inisial condition for a-symmetric phase.
+    ans : int
+        Index to chose the ansatz of the initial point.
+
+    Returns
+    -------
+    tuple
+        Symmetric and antisymmetric phases at each position (grid,grid) of the Moirè unit cell.
+    """
+    initial_ansatz = ['twisted-s','constant']
     sol = initial_ansatz[ans]
-    if sol=='twisted':      #ansatz for alpha,beta<<1
+    if sol=='twisted-s':      #ansatz for alpha,beta<<1
         delta = beta/alpha**2
-        print("Using collinear solution as starting point, with delta= ",delta)
         if abs(delta)>3/2:
-            print("delta too large for this approximation")
-            exit()
+            print("delta ",str(delta)," too large for twisted-s, switching to constant initial condition")
+            return initial_point(Phi,alpha,beta,grid,fs,fa,1)
         phi0 = np.arccos(2/3*delta)
         const = 1/2-np.tan(phi0)**(-2)
         phi_s = np.ones((grid,grid))*np.pi
         phi_a = phi0 - alpha*np.sin(phi0)*(Phi-const)
-        #plot_phis(phi_s,phi_a)
     elif sol=='constant':
-        ss = np.pi*fs
-        aa = np.pi*fa
-        phi_s = np.ones((grid,grid))*np.pi*fs
-        phi_a = np.ones((grid,grid))*np.pi*fa
+        phi_s = np.ones((grid,grid))*2*np.pi*fs
+        phi_a = np.ones((grid,grid))*2*np.pi*fa
     return phi_s, phi_a
 
-def exit_loop_condition(e_0,e_1):
-    if abs(e_0-e_1)<1e-10:
-        return True
-    else:
-        return False
+def compute_energy(phi_s,phi_a,Phi,alpha,beta,grid,A_M):
+    """Computes the energy of the system.
 
-def compute_energy2(phi_i,*args):
-    Phi,alpha,beta,G_M = args
-    grid = Phi.shape[0]
-    phi_s = np.reshape(phi_i[:grid**2],(grid,grid))
-    phi_a = np.reshape(phi_i[grid**2:],(grid,grid))
-    #
-    Gs_fac = abs(np.cos(np.sum(phi_i[:grid**2])/grid**2))*0.1
-    Ga_fac = abs(np.cos(np.sum(phi_i[grid**2:])/grid**2))*0.1
-    return compute_energy(np.reshape(phi_i[:grid**2],(grid,grid)),np.reshape(phi_i[grid**2:],(grid,grid)),args) + Gs_fac + Ga_fac
+    Parameters
+    ----------
+    phi_s: np.ndarray
+        Symmetric phases.
+    phi_a: np.ndarray
+        A-symmetric phases.
+    Phi : np.ndarray
+        Interlayer coupling of size (grid,grid)
+    alpha: float
+        Parameter alpha.
+    beta: float
+        Parameter beta.
+    grid : int
+        The number of points in each direction.
+    A_M : float
+        The Moire lattice length.
 
-def compute_energy(phi_s,phi_a,args):
-    Phi,alpha,beta,A_M = args
-    grid = phi_s.shape[0]
-    dx = A_M/grid
-    dy = A_M/grid
+    Returns
+    -------
+    float
+        Energy density summed over all sites.
+    """
+    dx = dy = A_M/grid
     grad_2s = np.absolute((np.roll(phi_s,-1,axis=0)-phi_s)/dx)**2 + np.absolute((np.roll(phi_s,-1,axis=1)-phi_s)/dy)**2
     grad_2a = np.absolute((np.roll(phi_a,-1,axis=0)-phi_a)/dx)**2 + np.absolute((np.roll(phi_a,-1,axis=1)-phi_a)/dy)**2
     kin_part = 1/2*(grad_2s+grad_2a)
     energy = kin_part - np.cos(phi_a)*(alpha*Phi+beta*np.cos(phi_s))
-    H = energy.sum()#/grid**2
+    H = energy.sum()/grid**2
     return H
 
-def der_2(phi,A_M):
-    #Compute d^2(phi)/dx^2 + d^2(phi)/dy^2
-    grid = phi.shape[0]
-    dx = A_M/grid
-    dy = A_M/grid
+def laplacian(phi,grid,A_M):
+    """Computes the discrete Laplacian of 'phi'.
+
+    Parameters
+    ----------
+    phi: np.ndarray
+        Field to derivate
+    grid : int
+        The number of points in each direction.
+    A_M : float
+        The Moire lattice length.
+
+    Returns
+    -------
+    np.ndarray
+        Laplacian of 'phi' on the (grid,grid) space.
+    """
+    dx = dy = A_M/grid
     Dx = np.roll(phi,2,axis=0)-2*np.roll(phi,1,axis=0)+np.roll(phi,0,axis=0)
     Dy = np.roll(phi,-2,axis=1)-2*np.roll(phi,-1,axis=1)+np.roll(phi,0,axis=1)
     res = (Dx/dx**2 + Dy/dy**2)
     return res 
     
-def grad_H(phi_s,phi_a,tt,args):
-    Phi,alpha,beta,A_M = args
-    if tt=='s':
-        return beta*np.sin(phi_s)*np.cos(phi_a) - der_2(phi_s,A_M)
-    elif tt=='a':
-        return (beta*np.cos(phi_s)+alpha*Phi)*np.sin(phi_a) - der_2(phi_a,A_M)
+def grad_H(phi_s,phi_a,tt,Phi,alpha,beta,grid,A_M):
+    """Computes evolution step dH/d phi.
 
-def compute_magnetization(args):
-    Phi,alpha,beta,A_M = args
-    grid = Phi.shape[0]
-    print("Parameters: alpha="+"{:.4f}".format(alpha)+", beta="+"{:.4f}".format(beta),'\n')
-    #Initial condition pars
+    Parameters
+    ----------
+    phi_s: np.ndarray
+        Symmetric phases.
+    phi_a: np.ndarray
+        A-symmetric phases.
+    tt : char
+        Determines which derivative to compute.
+    Phi : np.ndarray
+        Interlayer coupling of size (grid,grid)
+    alpha: float
+        Parameter alpha.
+    beta: float
+        Parameter beta.
+    grid : int
+        The number of points in each direction.
+    A_M : float
+        The Moire lattice length.
+
+    Returns
+    -------
+    np.ndarray
+        Gradient of Hamiltonian on the (grid,grid) space.
+    """
+    if tt=='s':
+        return beta*np.sin(phi_s)*np.cos(phi_a) - laplacian(phi_s,grid,A_M)
+    elif tt=='a':
+        return (beta*np.cos(phi_s)+alpha*Phi)*np.sin(phi_a) - laplacian(phi_a,grid,A_M)
+
+def compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization):
+    """Computes the magnetization pattern by performing a gradient descent from random 
+    initial points.
+
+    Parameters
+    ----------
+    Phi : np.ndarray
+        Interlayer coupling of size (grid,grid)
+    alpha: float
+        Parameter alpha.
+    beta: float
+        Parameter beta.
+    grid : int
+        The number of points in each direction.
+    A_M : float
+        The Moire lattice length.
+    args_minimization : dic
+        'rand_m' -> int, number of random initial seeds,
+        'maxiter' -> int, max number of update evaluations.
+        'disp' -> bool, diplay messages.
+
+    Returns
+    -------
+    tuple
+        Symmetric and antisymmetric phases at each position (grid,grid) of the Moirè unit cell.
+    """
+    if args_minimization['disp']:
+        print("Parameters: alpha="+"{:.4f}".format(alpha)+", beta="+"{:.4f}".format(beta),'\n')
+    #Initial condition parameterss
     ans = 1         #0->twisted-s, 1->const
     min_E = 0
     min_phi_s = np.zeros((grid,grid))
     min_phi_a = np.zeros((grid,grid))
-    for sss in range(100):
-        fs = random.random()*2
-        fa = random.random()*2
-        if sss==0:
+    for sss in range(args_minimization['rand_m']):
+        fs = random.random()
+        fa = random.random()
+        if sss==0:      #take pi/2,pi/2 as first guess
             fs = 0.5
             fa = 0.5
         #Define initial value of phi_s and phi_a
-        phi_s,phi_a = initial_point(args,fs,fa,ans)
-        E_0 = compute_energy(phi_s,phi_a,args)
-#        print("Starting minimization")
-#        print("starting energy: ",E_0)
-        step = 1
-        lr_0 = -1           #standard learn rate
+        phi_s,phi_a = initial_point(Phi,alpha,beta,grid,fs,fa,ans)
+        E_0 = compute_energy(phi_s,phi_a,Phi,alpha,beta,grid,A_M)
+        if args_minimization['disp']:
+            print("Starting minimization step ",str(sss))
+            print("starting energy: ",E_0)
+        step = 1        #initial step
+        lr_0 = -1       #standard learn rate
         learn_rate = lr_0
         while True:
-#            print("Step ",step)
-            dHs = grad_H(phi_s,phi_a,'s',args)
-            dHa = grad_H(phi_s,phi_a,'a',args)
+            dHs = grad_H(phi_s,phi_a,'s',Phi,alpha,beta,grid,A_M)
+            dHa = grad_H(phi_s,phi_a,'a',Phi,alpha,beta,grid,A_M)
             #
             phi_new_s = phi_s + learn_rate*dHs
             phi_new_a = phi_a + learn_rate*dHa
             #
-            E_1 = compute_energy(phi_new_s,phi_new_a,args)
-#            print("energy = ",E_1/grid**2)
+            E_1 = compute_energy(phi_new_s,phi_new_a,Phi,alpha,beta,grid,A_M)
             phi_s = phi_new_s
             phi_a = phi_new_a
-            if exit_loop_condition(E_0,E_1):
-#                    print("Minimization criterion reached!")
-#                    print("Phi_s av= ",np.sum(phi_s)/grid**2)
-#                    print("Phi_a av= ",np.sum(phi_a)/grid**2)
-                final_E = E_1/grid**2
-                print("Initial guess of step ",str(sss),": ",fs*np.pi,fa*np.pi," with energy ",final_E)
-                if final_E<min_E:
-#                    print("MIN!")
-                    min_E = E_1/grid**2
+            conv_s = True if np.max(np.absolute(dHs)) < 1e-3 else False
+            conv_a = True if np.max(np.absolute(dHa)) < 1e-3 else False
+            if abs(E_0-E_1)<1e-10:
+                final_E = E_1
+                if args_minimization['disp']:
+                    print("Initial guess: ",fs*np.pi,fa*np.pi," with final energy ",final_E,'\n')
+                if final_E<min_E and conv_s and conv_a:
+                    min_E = E_1
                     min_phi_s = phi_s
                     min_phi_a = phi_a
                 break
-            if E_1>E_0:
+            if E_1>E_0:     #going higher in energy -> go back and increase less the solution
                 phi_s -= learn_rate*dHs
                 phi_a -= learn_rate*dHa
                 learn_rate *= 0.5
-#                print("Exiting with energy ",compute_energy(phi_s,phi_a,args))
-#                break
             else:
                 E_0 = E_1
                 learn_rate = lr_0
-                if 0:
-                    plot_phis(phi_s,phi_a)
             #
-            if step > 1e6:
-                print("END OF STEPS")
-                if sss == 0:
+            if step > args_minimization['maxiter']:
+                if sss == 0:    #If this happens for the first minimization step, save a clearly fake one for later comparison
                     min_E = 1e8
                     min_phi_s = np.ones((grid,grid))*20
                     min_phi_a = np.ones((grid,grid))*20
@@ -229,54 +323,70 @@ def compute_magnetization(args):
             step += 1
             #
     return min_phi_s, min_phi_a
-    #
-    #
-    if 0:   #minimization
-        phi_i = np.zeros(2*grid**2)
-        phi_i[:grid**2] = np.reshape(phi_s,(grid**2))
-        phi_i[grid**2:] = np.reshape(phi_a,(grid**2))
-        from scipy.optimize import minimize
-        res = minimize(compute_energy2, 
-                x0 = phi_i,
-                args = args,
-                method = 'Nelder-Mead',
-                options = {'disp': True,
-                        'adaptive': True,
-                        'maxiter': 1e8,
-                    },
-                )
-        phi_s = np.reshape(res.x[:grid**2],(grid,grid))
-        phi_a = np.reshape(res.x[grid**2:],(grid,grid))
-        print("Finished...? ",res.nit," iterations")
-        print("Energy: ",compute_energy(phi_s,phi_a,args))
-        print("Phi_s av= ",np.sum(phi_s)/grid**2)
-        print("Phi_a av= ",np.sum(phi_a)/grid**2)
-    return phi_s,phi_a
 
-def plot_phis(phi_s,phi_a):
+def test_minimum(phi_s,phi_a,Phi,alpha,beta,grid,A_M):
+    s = grad_H(phi_s,phi_a,'s',Phi,alpha,beta,grid,A_M)
+    a = grad_H(phi_s,phi_a,'s',Phi,alpha,beta,grid,A_M)
+    plot_phis(s,a,grid)
+
+def plot_phis(phi_1,phi_2,grid):
+    """Plot the phases phi_1 and phi_2 in a 3D graph
+
+    Parameters
+    ----------
+    phi_1 : np.ndarray
+        Phases defined on (grid,grid) space.
+    phi_2 : np.ndarray
+        Phases defined on (grid,grid) space.
+    grid : int
+        The number of points in each direction
+
+    """
     import matplotlib.pyplot as plt 
     from matplotlib import cm
-    grid = phi_a.shape[0]
+    #
     fig, (ax1,ax2) = plt.subplots(1,2,subplot_kw={"projection": "3d"},figsize=(20,10))
     X,Y = np.meshgrid(np.linspace(0,1,grid,endpoint=False),np.linspace(0,1,grid,endpoint=False))
-    surf = ax1.plot_surface(X, Y, phi_s, cmap=cm.coolwarm,
+    surf = ax1.plot_surface(X, Y, phi_1, cmap=cm.coolwarm,
                linewidth=0, antialiased=False)
     fig.colorbar(surf, shrink=0.5, aspect=5)
-    surf = ax2.plot_surface(X, Y, phi_a, cmap=cm.coolwarm,
+    surf = ax2.plot_surface(X, Y, phi_2, cmap=cm.coolwarm,
                linewidth=0, antialiased=False)
     fig.colorbar(surf, shrink=0.5, aspect=5)
     plt.show()
 
-def plot_magnetization(phi_s,phi_a,fun_J,fac):
+def plot_magnetization(phi_s,phi_a,Phi,grid):
+    """Plots the magnetization values in the Moirè unit cell, with a background given by the
+    interlayer potential. The two images correspond to the 2 layers. Magnetization is in x-z
+    plane while the layers are in x-y plane.
+
+    Parameters
+    ----------
+    phi_s : np.ndarray
+        Symmetric phases defined on (grid,grid) space.
+    phi_a : np.ndarray
+        A-symmetric phases defined on (grid,grid) space.
+    Phi : np.ndarray
+        Interlayer coupling of size (grid,grid).
+    grid : int
+        The number of points in each direction
+
+    """
     import matplotlib.pyplot as plt 
-    from matplotlib import cm
-    grid = phi_s.shape[0]
+    from scipy.interpolate import RectBivariateSpline as RBS
+    #Interpolate Phi
+    XX = np.linspace(-2,2,4*grid,endpoint=False)
+    big_J = np.zeros((4*grid,4*grid))
+    big_J[:grid,:grid] = Phi; big_J[:grid,grid:2*grid] = Phi; big_J[:grid,2*grid:3*grid] = Phi; big_J[:grid,3*grid:] = Phi;
+    big_J[grid:2*grid,:grid] = Phi; big_J[grid:2*grid,grid:2*grid] = Phi; big_J[grid:2*grid,2*grid:3*grid] = Phi; big_J[grid:2*grid,3*grid:] = Phi;
+    big_J[2*grid:3*grid,:grid] = Phi; big_J[2*grid:3*grid,grid:2*grid] = Phi; big_J[2*grid:3*grid,2*grid:3*grid] = Phi; big_J[2*grid:3*grid,3*grid:] = Phi;
+    big_J[3*grid:,:grid] = Phi; big_J[3*grid:,grid:2*grid] = Phi; big_J[3*grid:,2*grid:3*grid] = Phi; big_J[3*grid:,3*grid:] = Phi;
+    fun_J = RBS(XX,XX,big_J)
     phi_1 = (phi_s+phi_a)/2
     phi_2 = (phi_s-phi_a)/2
-
-    #Plot magnetization patterns
-    #Two different plots
+    #Plot magnetization patterns -> two different plots
     fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(20,20))
+    #Box the Moirè unit cell
     ax1.hlines(0,0,1,linestyles='dashed',color='r')
     ax1.hlines(1,0,1,linestyles='dashed',color='r')
     ax1.vlines(0,0,1,linestyles='dashed',color='r')
@@ -285,13 +395,16 @@ def plot_magnetization(phi_s,phi_a,fun_J,fac):
     ax2.hlines(1,0,1,linestyles='dashed',color='r')
     ax2.vlines(0,0,1,linestyles='dashed',color='r')
     ax2.vlines(1,0,1,linestyles='dashed',color='r')
+    #Plot the background -> interlayer coupling
     long_X = np.linspace(-0.2,1.2,200)
     X,Y = np.meshgrid(long_X,long_X)
     l = 0.02       #length of arrow
-    hw = 0.01
-    hl = 0.01
+    hw = 0.01       #arrow head width
+    hl = 0.01       #arrow head length
     ax1.contourf(X,Y,fun_J(long_X,long_X),levels=20)
     ax2.contourf(X,Y,fun_J(long_X,long_X),levels=20)
+    #Plot the arrows
+    fac = grid//30     #plot 1 spin every "fac" of grid
     for i in range(grid//fac):
         x = (i*fac+fac//2)/grid
         for j in range(grid//fac):
@@ -303,28 +416,97 @@ def plot_magnetization(phi_s,phi_a,fun_J,fac):
     plt.show()
 
 ####################################################################################################################
+def compute_interlayer(grid,A_M):
+    """Computes the interlayer coupling as defined in Hejazi et al. 10.1073/pnas.2000347117
 
+    Parameters
+    ----------
+    grid : int
+        The number of points in each direction
+    A_M : float
+        The Moire lattice length
 
-def grad_phi(phi):
-    grid = phi.shape[0]
-    dx = 1/A_M
-    dy = 1/A_M
-    der_x = np.zeros((grid,grid))
-    for j in range(grid):
-        for i in range(grid-1):
-            der_x[i,j] = (phi[i+1,j]-phi[i,j])/dx
-        der_x[-1,j] = (phi[0,j]-phi[-1,j])/dx
-    der_y = np.zeros((grid,grid))
+    Returns
+    -------
+    np.ndarray
+        Interlayer coupling of shape (grid,grid).
+    """
+    #Reciprocal Moire vectors
+    b_ = np.zeros((3,2))    #three arrays in x-y plane
+    b_[0] = b1/A_M
+    b_[1] = b2/A_M
+    b_[2] = b_[0]-b_[1]
+    G_M = np.linalg.norm(b_[0])
+    #Moirè potential Phi
+    Phi = np.zeros((grid,grid))
+    latt = np.zeros((grid,grid,2))
     for i in range(grid):
-        for j in range(grid-1):
-            der_x[i,j] = (phi[i,j+1]-phi[i,j])/dy
-        der_x[i,-1] = (phi[i,0]-phi[i,-1])/dy
-    return (der_x,der_y)
+        for j in range(grid):
+            latt[i,j] = (i/grid*a1 + j/grid*a2)*A_M
+            for a in range(3):
+                Phi[i,j] += np.cos(np.dot(b_[a],latt[i,j]))
+    return Phi
 
+def name_Phi(grid,A_M,cluster=False):
+    """Computes the filename of the interlayer coupling.
 
+    Parameters
+    ----------
+    grid : int
+        The number of points in each direction
+    A_M : float
+        The Moire lattice length
+    cluster: bool, optional
+        Wether we are in the cluster or not (default is False).
 
+    Returns
+    -------
+    string
+        The name of the .npy file containing the interlayer coupling.
+        The directory name is NOT included.
+    """
+    return name_dir(cluster) + 'Phi_'+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy'
 
+def name_phi_as(alpha,beta,grid,A_M,cluster=False):
+    """Computes the filenames of the symmetric and antisymmetric phases.
 
+    Parameters
+    ----------
+    alpha: float
+        Parameter alpha.
+    beta: float
+        Parameter beta.
+    grid : int
+        The number of points in each direction
+    A_M : float
+        The Moire lattice length
+    cluster: bool, optional
+        Wether we are in the cluster or not (default is False).
+
+    Returns
+    -------
+    2-tuple
+        Tuple of 2 elements containing the names of the .npy files.
+        The directory name is NOT included.
+    """
+    return (name_dir(cluster)+'phi_s_'+"{:.4f}".format(alpha)+'_'+"{:.4f}".format(beta)+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy',
+            name_dir(cluster)+'phi_a_'+"{:.4f}".format(alpha)+'_'+"{:.4f}".format(beta)+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy')
+
+def name_dir(cluster=False):
+    """Computes the directory name where to save the results.
+
+    Parameters
+    ----------
+    cluster: bool, optional
+        Wether we are in the cluster or not (default is False).
+
+    Returns
+    -------
+    string
+        The directory name.
+    """
+    dirname = '/home/users/r/rossid/CrBr3/results/' if cluster else '/home/dario/Desktop/git/CrBr3/results/'
+    return dirname
 
 
 
