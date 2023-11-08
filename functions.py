@@ -270,6 +270,8 @@ def compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization):
     min_E = 0
     min_phi_s = np.zeros((grid,grid))
     min_phi_a = np.zeros((grid,grid))
+    #Raw
+    dH_min = 1e8
     for sss in range(args_minimization['rand_m']):
         fs = random.random()
         fa = random.random()
@@ -281,7 +283,6 @@ def compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization):
         E_0 = compute_energy(phi_s,phi_a,Phi,alpha,beta,grid,A_M)
         if args_minimization['disp']:
             print("Starting minimization step ",str(sss))
-            print("starting energy: ",E_0)
         step = 1        #initial step
         lr_0 = -1       #standard learn rate
         learn_rate = lr_0
@@ -295,13 +296,17 @@ def compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization):
             E_1 = compute_energy(phi_new_s,phi_new_a,Phi,alpha,beta,grid,A_M)
             phi_s = phi_new_s
             phi_a = phi_new_a
-            conv_s = True if np.max(np.absolute(dHs)) < 1e-3 else False
-            conv_a = True if np.max(np.absolute(dHa)) < 1e-3 else False
+            #Check if dHs and dHa are very small
+            par_temp = 1e-2
+            dH_diffs = np.sum(np.absolute(dHs))/grid**2 
+            dH_diffa = np.sum(np.absolute(dHa))/grid**2
+            conv_s = True if dH_diffs < par_temp else False
+            conv_a = True if dH_diffa < par_temp else False
             if abs(E_0-E_1)<1e-10:
-                final_E = E_1
                 if args_minimization['disp']:
-                    print("Initial guess: ",fs*np.pi,fa*np.pi," with final energy ",final_E,'\n')
-                if final_E<min_E and conv_s and conv_a:
+                    print("Initial guess: ",fs*np.pi,fa*np.pi," with final energy ",E_1,'\n')
+                if E_1<min_E:# and conv_s and conv_a:
+                    dH_min = dH_diffs+dH_diffa
                     min_E = E_1
                     min_phi_s = phi_s
                     min_phi_a = phi_a
@@ -309,7 +314,7 @@ def compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization):
             if E_1>E_0:     #going higher in energy -> go back and increase less the solution
                 phi_s -= learn_rate*dHs
                 phi_a -= learn_rate*dHa
-                learn_rate *= 0.5
+                learn_rate *= random.random()
             else:
                 E_0 = E_1
                 learn_rate = lr_0
@@ -326,7 +331,7 @@ def compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization):
 
 def test_minimum(phi_s,phi_a,Phi,alpha,beta,grid,A_M):
     s = grad_H(phi_s,phi_a,'s',Phi,alpha,beta,grid,A_M)
-    a = grad_H(phi_s,phi_a,'s',Phi,alpha,beta,grid,A_M)
+    a = grad_H(phi_s,phi_a,'a',Phi,alpha,beta,grid,A_M)
     plot_phis(s,a,grid)
 
 def plot_phis(phi_1,phi_2,grid):
@@ -467,7 +472,7 @@ def name_Phi(grid,A_M,cluster=False):
     """
     return name_dir(cluster) + 'Phi_'+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy'
 
-def name_phi_as(alpha,beta,grid,A_M,cluster=False):
+def name_phi_sa(alpha,beta,grid,A_M,cluster=False):
     """Computes the filenames of the symmetric and antisymmetric phases.
 
     Parameters
