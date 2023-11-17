@@ -1,111 +1,120 @@
 import numpy as np
 import random
+from scipy.interpolate import RectBivariateSpline as RBS
 
 #Triangular lattice
 a1 = np.array([1,0])
 a2 = np.array([-1/2,np.sqrt(3)/2])
 b1 = np.array([1,1/np.sqrt(3)])*2*np.pi
 b2 = np.array([0,2/np.sqrt(3)])*2*np.pi
-#Square lattice
-#a1 = np.array([1,0]) 
-#a2 = np.array([0,1]) 
-#b1 = np.array([1,0])*2*np.pi
-#b2 = np.array([0,1])*2*np.pi
 
-def find_closest(lattice,site,UC_):
-    #Finds the closest lattice site to the coordinates "site". The lattice is stored in "lattice" 
-    #and the search can be constrained to the unit cell "UC_", if given.
-
-    #Lattice has shape nx,ny,2->unit cell index,2->x and y.
-    X,Y,W,Z = lattice.shape
-    #
-    dist_A = np.sqrt((lattice[:,:,0,0]-site[0])**2+(lattice[:,:,0,1]-site[1])**2)
-    dist_B = np.sqrt((lattice[:,:,1,0]-site[0])**2+(lattice[:,:,1,1]-site[1])**2)
-    min_A = np.min(np.ravel(dist_A))
-    min_B = np.min(np.ravel(dist_B))
-    if UC_=='nan':
-        if min_A < min_B:
-            UC = 0
-            arg = np.argmin(np.reshape(dist_A,(X*Y)))
-        else:
-            UC = 1
-            arg = np.argmin(np.reshape(dist_B,(X*Y)))
-    elif UC_==0:
-        arg = np.argmin(np.reshape(dist_A,(X*Y)))
-        UC = UC_
-    elif UC_==1:
-        arg = np.argmin(np.reshape(dist_B,(X*Y)))
-        UC = UC_
-    #Smallest y-difference in A and B sublattice
-    argx = arg//Y
-    argy = arg%Y
-    if argx == X-1 or argy == Y-1 or argx == 0 or argy == 0:
-        print("Reached end of lattice, probably not good")
-        exit()
-    return argx,argy,UC
-
-def compute_lattices(A_1,A_2,theta):
-    A_M = moire_length(A_1,A_2,theta)
-    n_x = 3
-    n_y = 3
-    xxx = int(2*n_x*A_M)
-    yyy = int(2*n_y*A_M)
-    l1 = np.zeros((xxx,yyy,2,2))
-    l2 = np.zeros((xxx,yyy,2,2))
-    a1_1 = np.matmul(R_z(theta/2),a1)*A_1
-    a2_1 = np.matmul(R_z(theta/2),a2)*A_1
-    offset_sublattice_1 = np.matmul(R_z(theta/2),np.array([0,A_1/np.sqrt(3)]))
-    a1_2 = np.matmul(R_z(-theta/2),a1)*A_2
-    a2_2 = np.matmul(R_z(-theta/2),a2)*A_2
-    offset_sublattice_2 = np.matmul(R_z(-theta/2),np.array([0,A_2/np.sqrt(3)]))
-    for i in range(xxx):
-        for j in range(yyy):
-            l1[i,j,0] = (i-n_x*A_M)*a1_1+(j-n_y*A_M)*a2_1
-            l1[i,j,1] = l1[i,j,0] + offset_sublattice_1
-            l2[i,j,0] = (i-n_x*A_M)*a1_2+(j-n_y*A_M)*a2_2
-            l2[i,j,1] = l2[i,j,0] + offset_sublattice_2
-    return l1,l2,xxx,yyy
-
-def moire_length(A_1,A_2,theta):
-    if A_1 == 1 and A_2 == 1 and theta == 0:
-        return 1
-    return 1/np.sqrt(1/A_1**2+1/A_2**2-2*np.cos(theta)/(A_1*A_2))
-
-def R_z(t):
-    R = np.zeros((2,2))
-    R[0,0] = np.cos(t)
-    R[0,1] = -np.sin(t)
-    R[1,0] = np.sin(t)
-    R[1,1] = np.cos(t)
-    return R
-
-###########################################################################################
-###########################################################################################
-###########################################################################################
-
-def compute_grid_pd(pts_array):
-    """Computes the grid of alpha/beta points to consider in order to build up the phase diagram.
-    The phase diagram is computed in scale of a/(1+a), so we consider pts_array values 'g' between 
-    0 and 1 and compute alpha/beta as alpha(beta)=1/(1-g).
+def compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization):
+    """Computes the magnetization pattern by performing a gradient descent from random 
+    initial points.
 
     Parameters
     ----------
-    pts_array : int
-        The number of elements to consider in each direction, alpha and beta.
+    Phi : np.ndarray
+        Interlayer coupling of size (grid,grid)
+    alpha: float
+        Parameter alpha.
+    beta: float
+        Parameter beta.
+    grid : int
+        The number of points in each direction.
+    A_M : float
+        The Moire lattice length.
+    args_minimization : dic
+        'rand_m' -> int, number of random initial seeds,
+        'maxiter' -> int, max number of update evaluations.
+        'disp' -> bool, diplay messages.
 
     Returns
     -------
-    np.ndarray
-        a matrix of values of size (pts_array,pts_array,2).
+    tuple
+        Symmetric and antisymmetric phases at each position (grid,grid) of the Moirè unit cell.
     """
-    values = np.zeros((pts_array,pts_array,2))
-    g_array = np.linspace(0,1,20,endpoint=False)
-    for i in range(pts_array):
-        for j in range(pts_array):
-            values[i,j,0] = g_array[i]/(1-g_array[i])
-            values[i,j,1] = g_array[j]/(1-g_array[j])
-    return values
-
+    if args_minimization['disp']:
+        print("Parameters: alpha="+"{:.4f}".format(alpha)+", beta="+"{:.4f}".format(beta),'\n')
+    #Variables for storing best solution
+    min_E = 1e8
+    min_phi_s = np.zeros((grid,grid))
+    min_phi_a = np.zeros((grid,grid))
+    for sss in range(args_minimization['rand_m']):
+        E = []  #list of energies for the while loop
+        diff_H = [1e20]  #list of dH for the while loop
+#        input('Start step '+str(sss)+' press any')
+        if args_minimization['disp']:
+            print("Starting minimization step ",str(sss))
+        #Initial condition 
+        fs = random.random()
+        fa = random.random()
+        ans = 0 if sss==0 else 1            #Use twisted-s ansatz for first evaluation
+        #Compute first state and energy
+        phi_s,phi_a = initial_point(Phi,alpha,beta,grid,fs,fa,ans)
+        d_phi = (compute_derivatives(phi_s,grid,A_M,1),compute_derivatives(phi_a,grid,A_M,1))
+        E.append(compute_energy(phi_s,phi_a,Phi,alpha,beta,grid,A_M,d_phi))
+        #Initiate learning rate and minimization loop
+        step = 1        #initial step
+        lr_0 = -1       #standard learn rate
+        while True:
+            learn_rate = -0.1#lr_0#*random.random()
+            #Energy gradients
+            dHs = grad_H(phi_s,phi_a,'s',Phi,alpha,beta,grid,A_M,compute_derivatives(phi_s,grid,A_M,2))
+            dHa = grad_H(phi_s,phi_a,'a',Phi,alpha,beta,grid,A_M,compute_derivatives(phi_a,grid,A_M,2))
+#            plot_phis(phi_a,dHa,grid,'p_a,dHa')
+            #Update phi
+            phi_s += learn_rate*dHs
+            phi_a += learn_rate*dHa
+            #New energy
+            d_phi = (compute_derivatives(phi_s,grid,A_M,1),compute_derivatives(phi_a,grid,A_M,1))
+            E.insert(0,compute_energy(phi_s,phi_a,Phi,alpha,beta,grid,A_M,d_phi))
+            #Check if dHs and dHa are very small
+            dH_min_t = np.sum(np.absolute(dHs)+np.absolute(dHa))
+            diff_H.insert(0,dH_min_t)
+            #
+#            if args_minimization['disp']:
+#                print("energy step ",step," is ",E[1]," ,dH at ",diff_H[0])
+            #Exit checks
+            if check_energies(E):   #stable energy
+                if E[0]<min_E:   #Lower energy update
+                    min_E = E[0]
+                    min_phi_s = phi_s
+                    min_phi_a = phi_a
+                break
+            #Higher energy scenario
+            if 0:#E[0] > E[1]:
+                phi_s -= learn_rate*dHs
+                phi_a -= learn_rate*dHa
+                lr_0 *= 0.5
+                if abs(lr_0) < 2**(-5):
+                    print("www")
+                    if E[0]<min_E:   #Lower energy update
+                        min_E = E[0]
+                        min_phi_s = phi_s
+                        min_phi_a = phi_a
+                    break
+            else:
+                lr_0 = -1
+            if E[0] > 1e2:
+                print("bullshit")
+                break
+            #Max number of steps scenario
+            if step > args_minimization['maxiter']:
+                if sss == 0:    #If this happens for the first minimization step, save a clearly fake one for later comparison
+                    min_E = 1e8
+                    min_phi_s = np.ones((grid,grid))*20
+                    min_phi_a = np.ones((grid,grid))*20
+                break
+            step += 1
+            #
+        if args_minimization['disp']:
+            print("Minimum energy at ",E[0]," ,dH at ",diff_H[0])
+            #test_minimum(phi_s,phi_a,Phi,alpha,beta,grid,A_M)
+            d_phi = (compute_derivatives(phi_s,grid,A_M,1),compute_derivatives(phi_a,grid,A_M,1))
+            plot_phis(np.absolute(d_phi[1][0])**2,np.absolute(d_phi[1][0]),grid,'d_pi_x**2, d_phi_x')
+            plot_magnetization(phi_s,phi_a,Phi,grid)
+    return min_phi_s, min_phi_a
 
 def initial_point(Phi,alpha,beta,grid,fs,fa,ans):
     """Computes the initial point for the minimization. The possibilities are for now
@@ -138,8 +147,8 @@ def initial_point(Phi,alpha,beta,grid,fs,fa,ans):
     if sol=='twisted-s':      #ansatz for alpha,beta<<1
         delta = beta/alpha**2
         if abs(delta)>3/2:
-            print("delta ",str(delta)," too large for twisted-s, switching to constant initial condition")
-            return initial_point(Phi,alpha,beta,grid,fs,fa,1)
+            print("delta ",str(delta)," too large for twisted-s, switching to constant initial condition at pi,pi")
+            return initial_point(Phi,alpha,beta,grid,0.5,0.5,1)
         phi0 = np.arccos(2/3*delta)
         const = 1/2-np.tan(phi0)**(-2)
         phi_s = np.ones((grid,grid))*np.pi
@@ -149,7 +158,7 @@ def initial_point(Phi,alpha,beta,grid,fs,fa,ans):
         phi_a = np.ones((grid,grid))*2*np.pi*fa
     return phi_s, phi_a
 
-def compute_energy(phi_s,phi_a,Phi,alpha,beta,grid,A_M):
+def compute_energy(phi_s,phi_a,Phi,alpha,beta,grid,A_M,d_phi):
     """Computes the energy of the system.
 
     Parameters
@@ -175,8 +184,9 @@ def compute_energy(phi_s,phi_a,Phi,alpha,beta,grid,A_M):
         Energy density summed over all sites.
     """
     dx = dy = A_M/grid
-    grad_2s = np.absolute((np.roll(phi_s,-1,axis=0)-phi_s)/dx)**2 + np.absolute((np.roll(phi_s,-1,axis=1)-phi_s)/dy)**2
-    grad_2a = np.absolute((np.roll(phi_a,-1,axis=0)-phi_a)/dx)**2 + np.absolute((np.roll(phi_a,-1,axis=1)-phi_a)/dy)**2
+    #Old derivative squared
+    grad_2s = np.absolute(d_phi[0][0])**2 + np.absolute(d_phi[0][1])**2
+    grad_2a = np.absolute(d_phi[1][0])**2 + np.absolute(d_phi[1][1])**2
     kin_part = 1/2*(grad_2s+grad_2a)
     energy = kin_part - np.cos(phi_a)*(alpha*Phi+beta*np.cos(phi_s))
     H = energy.sum()/grid**2
@@ -200,12 +210,12 @@ def laplacian(phi,grid,A_M):
         Laplacian of 'phi' on the (grid,grid) space.
     """
     dx = dy = A_M/grid
-    Dx = np.roll(phi,2,axis=0)-2*np.roll(phi,1,axis=0)+np.roll(phi,0,axis=0)
+    Dx = np.roll(phi,-2,axis=0)-2*np.roll(phi,-1,axis=0)+np.roll(phi,0,axis=0)
     Dy = np.roll(phi,-2,axis=1)-2*np.roll(phi,-1,axis=1)+np.roll(phi,0,axis=1)
     res = (Dx/dx**2 + Dy/dy**2)
     return res 
     
-def grad_H(phi_s,phi_a,tt,Phi,alpha,beta,grid,A_M):
+def grad_H(phi_s,phi_a,tt,Phi,alpha,beta,grid,A_M,d2_phi):
     """Computes evolution step dH/d phi.
 
     Parameters
@@ -232,109 +242,65 @@ def grad_H(phi_s,phi_a,tt,Phi,alpha,beta,grid,A_M):
     np.ndarray
         Gradient of Hamiltonian on the (grid,grid) space.
     """
+    res = -d2_phi[0]-d2_phi[1]
     if tt=='s':
-        return beta*np.sin(phi_s)*np.cos(phi_a) - laplacian(phi_s,grid,A_M)
+        return res + beta*np.sin(phi_s)*np.cos(phi_a)
     elif tt=='a':
-        return (beta*np.cos(phi_s)+alpha*Phi)*np.sin(phi_a) - laplacian(phi_a,grid,A_M)
+        return res + (beta*np.cos(phi_s)+alpha*Phi)*np.sin(phi_a)
 
-def compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization):
-    """Computes the magnetization pattern by performing a gradient descent from random 
-    initial points.
+def extend(phi):
+    grid = phi.shape[0]
+    L = np.zeros((3*grid,3*grid))
+    for i in range(3):
+        for j in range(3):
+            L[i*grid:(i+1)*grid,j*grid:(j+1)*grid] = phi
+    return L
 
-    Parameters
-    ----------
-    Phi : np.ndarray
-        Interlayer coupling of size (grid,grid)
-    alpha: float
-        Parameter alpha.
-    beta: float
-        Parameter beta.
-    grid : int
-        The number of points in each direction.
-    A_M : float
-        The Moire lattice length.
-    args_minimization : dic
-        'rand_m' -> int, number of random initial seeds,
-        'maxiter' -> int, max number of update evaluations.
-        'disp' -> bool, diplay messages.
+def smooth(phi,grid,A_M):
+    #Extend of factor 3
+    xx_ext = np.linspace(-A_M,2*A_M,3*grid,endpoint=False)
+    phi_ext = extend(phi)
+    #Interpolate on less points
+    pts = 3*grid // 101        #21 points per axis per unit cell
+    init = 0
+    xx_less = xx_ext[init::pts]
+    fun = RBS(xx_less,xx_less,phi_ext[init::pts,init::pts],kx=5,ky=5)
+    #Compute on original grid
+    xx = np.linspace(0,A_M,grid,endpoint=False)
+    phi_new = fun(xx,xx)
+    return phi_new, fun
 
-    Returns
-    -------
-    tuple
-        Symmetric and antisymmetric phases at each position (grid,grid) of the Moirè unit cell.
+def compute_derivatives(phi,grid,A_M,n):
+    xx = np.linspace(0,A_M,grid,endpoint=False)
+    #Interpolate phase
+    fun = smooth(phi,grid,A_M)[1]
+    #derivatives
+    dn_phi_x = smooth(fun.partial_derivative(n,0)(xx,xx),grid,A_M)[0]
+    dn_phi_y = smooth(fun.partial_derivative(0,n)(xx,xx),grid,A_M)[0]
+    dn_phi = (dn_phi_x,dn_phi_y)
+    return dn_phi
+
+def check_energies(list_E):
+    """ Checks wether the last nn energies in the list_E are within lim distance to each other
+    
     """
-    if args_minimization['disp']:
-        print("Parameters: alpha="+"{:.4f}".format(alpha)+", beta="+"{:.4f}".format(beta),'\n')
-    #Initial condition parameterss
-    ans = 1         #0->twisted-s, 1->const
-    min_E = 0
-    min_phi_s = np.zeros((grid,grid))
-    min_phi_a = np.zeros((grid,grid))
-    #Raw
-    dH_min = 1e8
-    for sss in range(args_minimization['rand_m']):
-        fs = random.random()
-        fa = random.random()
-        if sss==0:      #take pi/2,pi/2 as first guess
-            fs = 0.5
-            fa = 0.5
-        #Define initial value of phi_s and phi_a
-        phi_s,phi_a = initial_point(Phi,alpha,beta,grid,fs,fa,ans)
-        E_0 = compute_energy(phi_s,phi_a,Phi,alpha,beta,grid,A_M)
-        if args_minimization['disp']:
-            print("Starting minimization step ",str(sss))
-        step = 1        #initial step
-        lr_0 = -1       #standard learn rate
-        learn_rate = lr_0
-        while True:
-            dHs = grad_H(phi_s,phi_a,'s',Phi,alpha,beta,grid,A_M)
-            dHa = grad_H(phi_s,phi_a,'a',Phi,alpha,beta,grid,A_M)
-            #
-            phi_new_s = phi_s + learn_rate*dHs
-            phi_new_a = phi_a + learn_rate*dHa
-            #
-            E_1 = compute_energy(phi_new_s,phi_new_a,Phi,alpha,beta,grid,A_M)
-            phi_s = phi_new_s
-            phi_a = phi_new_a
-            #Check if dHs and dHa are very small
-            par_temp = 1e-2
-            dH_diffs = np.sum(np.absolute(dHs))/grid**2 
-            dH_diffa = np.sum(np.absolute(dHa))/grid**2
-            conv_s = True if dH_diffs < par_temp else False
-            conv_a = True if dH_diffa < par_temp else False
-            if abs(E_0-E_1)<1e-10:
-                if args_minimization['disp']:
-                    print("Initial guess: ",fs*np.pi,fa*np.pi," with final energy ",E_1,'\n')
-                if E_1<min_E:# and conv_s and conv_a:
-                    dH_min = dH_diffs+dH_diffa
-                    min_E = E_1
-                    min_phi_s = phi_s
-                    min_phi_a = phi_a
-                break
-            if E_1>E_0:     #going higher in energy -> go back and increase less the solution
-                phi_s -= learn_rate*dHs
-                phi_a -= learn_rate*dHa
-                learn_rate *= random.random()
-            else:
-                E_0 = E_1
-                learn_rate = lr_0
-            #
-            if step > args_minimization['maxiter']:
-                if sss == 0:    #If this happens for the first minimization step, save a clearly fake one for later comparison
-                    min_E = 1e8
-                    min_phi_s = np.ones((grid,grid))*20
-                    min_phi_a = np.ones((grid,grid))*20
-                break
-            step += 1
-            #
-    return min_phi_s, min_phi_a
+    nn = 5
+    lim = 1e-8
+    n_check = nn if len(list_E)>nn else len(list_E)-1
+    for i in range(n_check):
+        if abs(list_E[i]-list_E[i+1]) > lim:
+            return False
+    return True
 
 def test_minimum(phi_s,phi_a,Phi,alpha,beta,grid,A_M):
-    s = grad_H(phi_s,phi_a,'s',Phi,alpha,beta,grid,A_M)
-    a = grad_H(phi_s,phi_a,'a',Phi,alpha,beta,grid,A_M)
-    plot_phis(s,a,grid)
+    plot_phis(phi_s,phi_a,grid,'final phi_s, phi_a')
+    plot_phis(compute_derivatives(phi_s,grid,A_M,1)[0],compute_derivatives(phi_a,grid,A_M,1)[0],grid,'dp_s,dp_a')
+    plot_phis(beta*np.sin(phi_s)*np.cos(phi_a),(beta*np.cos(phi_s)+alpha*Phi)*np.sin(phi_a),grid,'interaction s and a')
+    s = grad_H(phi_s,phi_a,'s',Phi,alpha,beta,grid,A_M,compute_derivatives(phi_s,grid,A_M,2))
+    a = grad_H(phi_s,phi_a,'a',Phi,alpha,beta,grid,A_M,compute_derivatives(phi_a,grid,A_M,2))
+    plot_phis(s,a,grid,'dHs and dHa final')
 
-def plot_phis(phi_1,phi_2,grid):
+def plot_phis(phi_1,phi_2,grid,txt_title='mah'):
     """Plot the phases phi_1 and phi_2 in a 3D graph
 
     Parameters
@@ -351,6 +317,7 @@ def plot_phis(phi_1,phi_2,grid):
     from matplotlib import cm
     #
     fig, (ax1,ax2) = plt.subplots(1,2,subplot_kw={"projection": "3d"},figsize=(20,10))
+    plt.suptitle(txt_title)
     X,Y = np.meshgrid(np.linspace(0,1,grid,endpoint=False),np.linspace(0,1,grid,endpoint=False))
     surf = ax1.plot_surface(X, Y, phi_1, cmap=cm.coolwarm,
                linewidth=0, antialiased=False)
@@ -378,7 +345,6 @@ def plot_magnetization(phi_s,phi_a,Phi,grid):
 
     """
     import matplotlib.pyplot as plt 
-    from scipy.interpolate import RectBivariateSpline as RBS
     #Interpolate Phi
     XX = np.linspace(-2,2,4*grid,endpoint=False)
     big_J = np.zeros((4*grid,4*grid))
@@ -416,8 +382,8 @@ def plot_magnetization(phi_s,phi_a,Phi,grid):
             y = (j*fac+fac//2)/grid
             phi1 = phi_1[i*fac+fac//2,j*fac+fac//2]
             phi2 = phi_2[i*fac+fac//2,j*fac+fac//2]
-            ax1.arrow(x - l/2*np.cos(phi1),y - l/2*np.sin(phi1),l*np.cos(phi1), l*np.sin(phi1),head_width=hw,head_length=hl,color='k')
-            ax2.arrow(x - l/2*np.cos(phi2),y - l/2*np.sin(phi2),l*np.cos(phi2), l*np.sin(phi2),head_width=hw,head_length=hl,color='k')
+            ax1.arrow(x - l/2*np.sin(phi1),y - l/2*np.cos(phi1),l*np.sin(phi1), l*np.cos(phi1),head_width=hw,head_length=hl,color='k')
+            ax2.arrow(x - l/2*np.sin(phi2),y - l/2*np.cos(phi2),l*np.sin(phi2), l*np.cos(phi2),head_width=hw,head_length=hl,color='k')
     plt.show()
 
 ####################################################################################################################
@@ -494,8 +460,8 @@ def name_phi_sa(alpha,beta,grid,A_M,cluster=False):
         Tuple of 2 elements containing the names of the .npy files.
         The directory name is NOT included.
     """
-    return (name_dir(cluster)+'phi_s_'+"{:.4f}".format(alpha)+'_'+"{:.4f}".format(beta)+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy',
-            name_dir(cluster)+'phi_a_'+"{:.4f}".format(alpha)+'_'+"{:.4f}".format(beta)+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy')
+    return (name_dir(cluster)+'phi_s_'+"{:.4f}".format(alpha)+'_'+"{:.4f}".format(beta)+'_'+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy',
+            name_dir(cluster)+'phi_a_'+"{:.4f}".format(alpha)+'_'+"{:.4f}".format(beta)+'_'+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy')
 
 def name_dir(cluster=False):
     """Computes the directory name where to save the results.
@@ -513,10 +479,101 @@ def name_dir(cluster=False):
     dirname = '/home/users/r/rossid/CrBr3/results/' if cluster else '/home/dario/Desktop/git/CrBr3/results/'
     return dirname
 
+def compute_grid_pd(pts_array):
+    """Computes the grid of alpha/beta points to consider in order to build up the phase diagram.
+    The phase diagram is computed in scale of a/(1+a), so we consider pts_array values 'g' between 
+    0 and 1 and compute alpha/beta as alpha(beta)=1/(1-g).
+
+    Parameters
+    ----------
+    pts_array : int
+        The number of elements to consider in each direction, alpha and beta.
+
+    Returns
+    -------
+    np.ndarray
+        a matrix of values of size (pts_array,pts_array,2).
+    """
+    values = np.zeros((pts_array,pts_array,2))
+    g_array = np.linspace(0,1,20,endpoint=False)
+    for i in range(pts_array):
+        for j in range(pts_array):
+            values[i,j,0] = g_array[i]/(1-g_array[i])
+            values[i,j,1] = g_array[j]/(1-g_array[j])
+    return values
 
 
 
+##############################################################################
+##############################################################################
+##############################################################################
 
+def find_closest(lattice,site,UC_):
+    #Finds the closest lattice site to the coordinates "site". The lattice is stored in "lattice" 
+    #and the search can be constrained to the unit cell "UC_", if given.
+
+    #Lattice has shape nx,ny,2->unit cell index,2->x and y.
+    X,Y,W,Z = lattice.shape
+    #
+    dist_A = np.sqrt((lattice[:,:,0,0]-site[0])**2+(lattice[:,:,0,1]-site[1])**2)
+    dist_B = np.sqrt((lattice[:,:,1,0]-site[0])**2+(lattice[:,:,1,1]-site[1])**2)
+    min_A = np.min(np.ravel(dist_A))
+    min_B = np.min(np.ravel(dist_B))
+    if UC_=='nan':
+        if min_A < min_B:
+            UC = 0
+            arg = np.argmin(np.reshape(dist_A,(X*Y)))
+        else:
+            UC = 1
+            arg = np.argmin(np.reshape(dist_B,(X*Y)))
+    elif UC_==0:
+        arg = np.argmin(np.reshape(dist_A,(X*Y)))
+        UC = UC_
+    elif UC_==1:
+        arg = np.argmin(np.reshape(dist_B,(X*Y)))
+        UC = UC_
+    #Smallest y-difference in A and B sublattice
+    argx = arg//Y
+    argy = arg%Y
+    if argx == X-1 or argy == Y-1 or argx == 0 or argy == 0:
+        print("Reached end of lattice, probably not good")
+        exit()
+    return argx,argy,UC
+
+def compute_lattices(A_1,A_2,theta):
+    A_M = moire_length(A_1,A_2,theta)
+    n_x = 3
+    n_y = 3
+    xxx = int(2*n_x*A_M)
+    yyy = int(2*n_y*A_M)
+    l1 = np.zeros((xxx,yyy,2,2))
+    l2 = np.zeros((xxx,yyy,2,2))
+    a1_1 = np.matmul(R_z(theta/2),a1)*A_1
+    a2_1 = np.matmul(R_z(theta/2),a2)*A_1
+    offset_sublattice_1 = np.matmul(R_z(theta/2),np.array([0,A_1/np.sqrt(3)]))
+    a1_2 = np.matmul(R_z(-theta/2),a1)*A_2
+    a2_2 = np.matmul(R_z(-theta/2),a2)*A_2
+    offset_sublattice_2 = np.matmul(R_z(-theta/2),np.array([0,A_2/np.sqrt(3)]))
+    for i in range(xxx):
+        for j in range(yyy):
+            l1[i,j,0] = (i-n_x*A_M)*a1_1+(j-n_y*A_M)*a2_1
+            l1[i,j,1] = l1[i,j,0] + offset_sublattice_1
+            l2[i,j,0] = (i-n_x*A_M)*a1_2+(j-n_y*A_M)*a2_2
+            l2[i,j,1] = l2[i,j,0] + offset_sublattice_2
+    return l1,l2,xxx,yyy
+
+def moire_length(A_1,A_2,theta):
+    if A_1 == 1 and A_2 == 1 and theta == 0:
+        return 1
+    return 1/np.sqrt(1/A_1**2+1/A_2**2-2*np.cos(theta)/(A_1*A_2))
+
+def R_z(t):
+    R = np.zeros((2,2))
+    R[0,0] = np.cos(t)
+    R[0,1] = -np.sin(t)
+    R[1,0] = np.sin(t)
+    R[1,1] = np.cos(t)
+    return R
 
 
 
