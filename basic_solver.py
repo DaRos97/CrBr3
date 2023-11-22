@@ -4,15 +4,16 @@ import sys
 
 cluster = False
 #Parameters of Moire lattice
-pts_array = 30
+pts_array = 20
 A_M = 20 #related to theta somehow
 print("qm: ",4*np.pi/np.sqrt(3)/A_M)
 grid = 100
 values = fs.compute_grid_pd(pts_array)
 alpha,beta = np.reshape(values,(pts_array**2,2))[int(sys.argv[1])]
 print("alpha: ",alpha," beta: ",beta)
+print("alpha/1+alpha: ",alpha/(1+alpha)," beta/1+beta: ",beta/(1+beta))
 #Filenames
-filename_s,filename_a = fs.name_phi_sa(alpha,beta,grid,A_M,cluster)
+filename_phi = fs.name_phi(alpha,beta,grid,A_M,cluster)
 filename_Phi = fs.name_Phi(grid,A_M,cluster)
 
 try:    #Check if Phi already computed
@@ -24,29 +25,27 @@ except FileNotFoundError:
     np.save(filename_Phi,Phi)
 
 try:    #Check if already computed alpha and beta
-    phi_s = np.load(filename_s)
-    phi_a = np.load(filename_a)
+    phi = np.load(filename_phi)
 except FileNotFoundError:
     print("Computing magnetization...")
     args_minimization = {
-            'rand_m':100, 
+            'rand_m':1, 
             'maxiter':1e5, 
             'disp': not cluster,
             }
-    phi_s,phi_a = fs.compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization)
+    phi = fs.compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization)
     #
 if cluster:
-    np.save(filename_s,phi_s)
-    np.save(filename_a,phi_a)
+    np.save(filename_phi,phi)
 
-d_phi = (fs.compute_derivatives(phi_s,grid,A_M,1),fs.compute_derivatives(phi_a,grid,A_M,1))
-print("\nFinal energy: ",fs.compute_energy(phi_s,phi_a,Phi,alpha,beta,grid,A_M,d_phi))
+d_phi = (fs.compute_derivatives(phi[0],grid,A_M,1),fs.compute_derivatives(phi[1],grid,A_M,1))
+print("\nFinal energy: ",fs.compute_energy(phi[0],phi[1],Phi,alpha,beta,grid,A_M,d_phi))
 
 if not cluster:
     #Actual plot
-    fs.plot_phis(phi_s,phi_a,grid,'final phi_s and phi_a')
+    fs.plot_phis(phi[0],phi[1],grid,'final phi_s and phi_a')
 #    fs.test_minimum(phi_s,phi_a,Phi,alpha,beta,grid,A_M)
-    fs.plot_magnetization(phi_s,phi_a,Phi,grid)
+    fs.plot_magnetization(phi[0],phi[1],Phi,grid)
 
 
 

@@ -119,7 +119,10 @@ def compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization):
 #            plot_phis(np.absolute(d_phi[1][0])**2,np.absolute(d_phi[1][0]),grid,'d_pi_x**2, d_phi_x')
             plot_phis(phi_s,phi_a,grid,'phi_s and phi_a final')
             plot_magnetization(phi_s,phi_a,Phi,grid)
-    return min_phi_s, min_phi_a
+    result = np.zeros((2,*min_phi_s.shape))
+    result[0] = min_phi_s
+    result[1] = min_phi_a
+    return result
 
 def initial_point(Phi,alpha,beta,grid,fs,fa,ans):
     """Computes the initial point for the minimization. The possibilities are for now
@@ -150,7 +153,10 @@ def initial_point(Phi,alpha,beta,grid,fs,fa,ans):
     initial_ansatz = ['twisted-s','constant']
     sol = initial_ansatz[ans]
     if sol=='twisted-s':      #ansatz for alpha,beta<<1
-        delta = beta/alpha**2
+        if alpha > 0:
+            delta = beta/alpha**2
+        else:
+            delta = 10
         if abs(delta)>3/2:
             print("delta ",str(delta)," too large for twisted-s, switching to constant initial condition at pi,pi")
             return initial_point(Phi,alpha,beta,grid,0.5,0.5,1)
@@ -444,7 +450,7 @@ def name_Phi(grid,A_M,cluster=False):
     """
     return name_dir(cluster) + 'Phi_'+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy'
 
-def name_phi_sa(alpha,beta,grid,A_M,cluster=False):
+def name_phi(alpha,beta,grid,A_M,cluster=False):
     """Computes the filenames of the symmetric and antisymmetric phases.
 
     Parameters
@@ -466,8 +472,7 @@ def name_phi_sa(alpha,beta,grid,A_M,cluster=False):
         Tuple of 2 elements containing the names of the .npy files.
         The directory name is NOT included.
     """
-    return (name_dir(cluster)+'phi_s_'+"{:.4f}".format(alpha)+'_'+"{:.4f}".format(beta)+'_'+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy',
-            name_dir(cluster)+'phi_a_'+"{:.4f}".format(alpha)+'_'+"{:.4f}".format(beta)+'_'+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy')
+    return name_dir(cluster)+'phi_'+"{:.4f}".format(alpha)+'_'+"{:.4f}".format(beta)+'_'+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy'
 
 def name_dir(cluster=False):
     """Computes the directory name where to save the results.
