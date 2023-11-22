@@ -5,8 +5,9 @@ import sys
 cluster = False
 #Parameters of Moire lattice
 pts_array = 30
-A_M = 100 #related to theta somehow
-grid = 500
+A_M = 20 #related to theta somehow
+print("qm: ",4*np.pi/np.sqrt(3)/A_M)
+grid = 100
 values = fs.compute_grid_pd(pts_array)
 alpha,beta = np.reshape(values,(pts_array**2,2))[int(sys.argv[1])]
 print("alpha: ",alpha," beta: ",beta)
