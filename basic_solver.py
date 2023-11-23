@@ -4,10 +4,10 @@ import sys
 
 cluster = False
 #Parameters of Moire lattice
-pts_array = 20
+pts_array = 10
 A_M = 20 #related to theta somehow
 print("qm: ",4*np.pi/np.sqrt(3)/A_M)
-grid = 100
+grid = 200
 values = fs.compute_grid_pd(pts_array)
 alpha,beta = np.reshape(values,(pts_array**2,2))[int(sys.argv[1])]
 print("alpha: ",alpha," beta: ",beta)
@@ -26,10 +26,11 @@ except FileNotFoundError:
 
 try:    #Check if already computed alpha and beta
     phi = np.load(filename_phi)
-except FileNotFoundError:
+    a = sys.argv[2]
+except :
     print("Computing magnetization...")
     args_minimization = {
-            'rand_m':1, 
+            'rand_m':100, 
             'maxiter':1e5, 
             'disp': not cluster,
             }
@@ -43,7 +44,9 @@ print("\nFinal energy: ",fs.compute_energy(phi[0],phi[1],Phi,alpha,beta,grid,A_M
 
 if not cluster:
     #Actual plot
-    fs.plot_phis(phi[0],phi[1],grid,'final phi_s and phi_a')
+    #fs.plot_phis(phi[0],phi[1],grid,'final phi_s and phi_a')
+    fs.plot_phis(phi[0],np.cos(phi[0]),grid,'phi_s ans cos_phi_s')
+    fs.plot_phis(phi[1],np.cos(phi[1]),grid,'phi_a ans cos_phi_a')
 #    fs.test_minimum(phi_s,phi_a,Phi,alpha,beta,grid,A_M)
     fs.plot_magnetization(phi[0],phi[1],Phi,grid)
 
