@@ -49,8 +49,8 @@ def compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization):
         if args_minimization['disp']:
             print("Starting minimization step ",str(sss))
         #Initial condition 
-        fs = random.random()
-        fa = random.random()
+        fs = 0.5 if sss==1 else random.random()
+        fa = 0.5 if sss==1 else random.random()
         ans = 0 if sss==0 else 1            #Use twisted-s ansatz for first evaluation or constant phi_s/a=pi
         #Compute first state and energy
         phi_s,phi_a = initial_point(Phi,alpha,beta,grid,fs,fa,ans)
@@ -58,7 +58,7 @@ def compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization):
         E.append(compute_energy(phi_s,phi_a,Phi,alpha,beta,grid,A_M,d_phi))
         #Initiate learning rate and minimization loop
         step = 1        #initial step
-        lr_0 = -1e-2       #standard learn rate
+        lr_0 = -1e-1       #standard learn rate
         while True:
             learn_rate = lr_0*random.random()
             #Energy gradients
@@ -78,15 +78,17 @@ def compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization):
             if args_minimization['disp']:
                 print("energy step ",step," is ",E[1]," ,dH at ",diff_H[0])
             #Exit checks
-            if check_energies(E):   #stable energy
+            if check_energies(E) :
                 if E[0]<min_E:   #Lower energy update
                     min_E = E[0]
                     min_phi_s = np.copy(phi_s)
                     min_phi_a = np.copy(phi_a)
                 break
-            #Higher energy scenario
             if diff_H[0]>diff_H[1] or E[0]>E[1]:
-                #                plot_magnetization(phi_s,phi_a,Phi,grid)
+                phi_s -= learn_rate*dHs
+                phi_a -= learn_rate*dHa
+                del E[0]
+                del diff_H[0]
                 if E[0]<min_E:   #Lower energy update
                     min_E = E[0]
                     min_phi_s = np.copy(phi_s)
@@ -106,8 +108,9 @@ def compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization):
             #
         if args_minimization['disp']:
             print("Minimum energy at ",E[0]," ,dH at ",diff_H[0])
-            plot_phis(phi_s,phi_a,grid,'phi_s and phi_a final')
-            plot_magnetization(phi_s,phi_a,Phi,grid)
+            input()
+            plot_phis(min_phi_s,min_phi_a,grid,'phi_s and phi_a final')
+#            plot_magnetization(phi_s,phi_a,Phi,grid)
     result = np.zeros((2,*min_phi_s.shape))
     result[0] = min_phi_s
     result[1] = min_phi_a
