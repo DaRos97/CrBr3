@@ -8,9 +8,7 @@ a2 = np.array([-1/2,np.sqrt(3)/2])
 b1 = np.array([1,1/np.sqrt(3)])*2*np.pi
 b2 = np.array([0,2/np.sqrt(3)])*2*np.pi
 #
-pts_per_fit = 21
-
-def compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization):
+def compute_magnetization(Phi,alpha,beta,args_general,args_minimization):
     """Computes the magnetization pattern by performing a gradient descent from random 
     initial points.
 
@@ -39,6 +37,7 @@ def compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization):
     if args_minimization['disp']:
         print("Parameters: alpha="+"{:.4f}".format(alpha)+", beta="+"{:.4f}".format(beta),'\n')
     #Variables for storing best solution
+    pts_array,grid,pts_per_fit,learn_rate_0,A_M = args_general
     min_E = 1e8
     min_phi_s = np.zeros((grid,grid))
     min_phi_a = np.zeros((grid,grid))
@@ -49,28 +48,27 @@ def compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization):
         if args_minimization['disp']:
             print("Starting minimization step ",str(sss))
         #Initial condition 
-        fs = 0.5 if sss==1 else random.random()
+        fs = 0.5 if 1 else 0#sss==1 else random.random()
         fa = 0.5 if sss==1 else random.random()
         ans = 0 if sss==0 else 1            #Use twisted-s ansatz for first evaluation or constant phi_s/a=pi
         #Compute first state and energy
         phi_s,phi_a = initial_point(Phi,alpha,beta,grid,fs,fa,ans)
-        d_phi = (compute_derivatives(phi_s,grid,A_M,1),compute_derivatives(phi_a,grid,A_M,1))
-        E.append(compute_energy(phi_s,phi_a,Phi,alpha,beta,grid,A_M,d_phi))
+        d_phi = (compute_derivatives(phi_s,args_general,1),compute_derivatives(phi_a,args_general,1))
+        E.append(compute_energy(phi_s,phi_a,Phi,alpha,beta,args_general,d_phi))
         #Initiate learning rate and minimization loop
         step = 1        #initial step
-        lr_0 = -1e-1       #standard learn rate
         while True:
-            learn_rate = lr_0*random.random()
+            learn_rate = learn_rate_0*random.random()
             #Energy gradients
-            dHs = grad_H(phi_s,phi_a,'s',Phi,alpha,beta,grid,A_M,compute_derivatives(phi_s,grid,A_M,2))
-            dHa = grad_H(phi_s,phi_a,'a',Phi,alpha,beta,grid,A_M,compute_derivatives(phi_a,grid,A_M,2))
+            dHs = grad_H(phi_s,phi_a,'s',Phi,alpha,beta,args_general,compute_derivatives(phi_s,args_general,2))
+            dHa = grad_H(phi_s,phi_a,'a',Phi,alpha,beta,args_general,compute_derivatives(phi_a,args_general,2))
 #            plot_phis(phi_a,dHa,grid,'p_a,dHa')
             #Update phi
             phi_s += learn_rate*dHs
             phi_a += learn_rate*dHa
             #New energy
-            d_phi = (compute_derivatives(phi_s,grid,A_M,1),compute_derivatives(phi_a,grid,A_M,1))
-            E.insert(0,compute_energy(phi_s,phi_a,Phi,alpha,beta,grid,A_M,d_phi))
+            d_phi = (compute_derivatives(phi_s,args_general,1),compute_derivatives(phi_a,args_general,1))
+            E.insert(0,compute_energy(phi_s,phi_a,Phi,alpha,beta,args_general,d_phi))
             #Check if dHs and dHa are very small
             dH_min_t = np.sum(np.absolute(dHs)+np.absolute(dHa))
             diff_H.insert(0,dH_min_t)
@@ -109,7 +107,7 @@ def compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization):
         if args_minimization['disp']:
             print("Minimum energy at ",E[0]," ,dH at ",diff_H[0])
             input()
-            plot_phis(min_phi_s,min_phi_a,grid,'phi_s and phi_a final')
+#            plot_phis(min_phi_s,min_phi_a,grid,'phi_s and phi_a final')
 #            plot_magnetization(phi_s,phi_a,Phi,grid)
     result = np.zeros((2,*min_phi_s.shape))
     result[0] = min_phi_s
@@ -161,7 +159,7 @@ def initial_point(Phi,alpha,beta,grid,fs,fa,ans):
         phi_a = np.ones((grid,grid))*2*np.pi*fa
     return phi_s, phi_a
 
-def compute_energy(phi_s,phi_a,Phi,alpha,beta,grid,A_M,d_phi):
+def compute_energy(phi_s,phi_a,Phi,alpha,beta,args_general,d_phi):
     """Computes the energy of the system.
 
     Parameters
@@ -186,6 +184,7 @@ def compute_energy(phi_s,phi_a,Phi,alpha,beta,grid,A_M,d_phi):
     float
         Energy density summed over all sites.
     """
+    pts_array,grid,pts_per_fit,learn_rate_0,A_M = args_general
     dx = dy = A_M/grid
     #Old derivative squared
     grad_2s = np.absolute(d_phi[0][0])**2 + np.absolute(d_phi[0][1])**2
@@ -195,30 +194,7 @@ def compute_energy(phi_s,phi_a,Phi,alpha,beta,grid,A_M,d_phi):
     H = energy.sum()/grid**2
     return H
 
-def laplacian(phi,grid,A_M):
-    """Computes the discrete Laplacian of 'phi'.
-
-    Parameters
-    ----------
-    phi: np.ndarray
-        Field to derivate
-    grid : int
-        The number of points in each direction.
-    A_M : float
-        The Moire lattice length.
-
-    Returns
-    -------
-    np.ndarray
-        Laplacian of 'phi' on the (grid,grid) space.
-    """
-    dx = dy = A_M/grid
-    Dx = np.roll(phi,-2,axis=0)-2*np.roll(phi,-1,axis=0)+np.roll(phi,0,axis=0)
-    Dy = np.roll(phi,-2,axis=1)-2*np.roll(phi,-1,axis=1)+np.roll(phi,0,axis=1)
-    res = (Dx/dx**2 + Dy/dy**2)
-    return res 
-    
-def grad_H(phi_s,phi_a,tt,Phi,alpha,beta,grid,A_M,d2_phi):
+def grad_H(phi_s,phi_a,tt,Phi,alpha,beta,args_general,d2_phi):
     """Computes evolution step dH/d phi.
 
     Parameters
@@ -245,6 +221,7 @@ def grad_H(phi_s,phi_a,tt,Phi,alpha,beta,grid,A_M,d2_phi):
     np.ndarray
         Gradient of Hamiltonian on the (grid,grid) space.
     """
+    pts_array,grid,pts_per_fit,learn_rate_0,A_M = args_general
     res = -d2_phi[0]-d2_phi[1]
     if tt=='s':
         return res + beta*np.sin(phi_s)*np.cos(phi_a)
@@ -259,7 +236,8 @@ def extend(phi):
             L[i*grid:(i+1)*grid,j*grid:(j+1)*grid] = phi
     return L
 
-def smooth(phi,grid,A_M):
+def smooth(phi,args_general):
+    pts_array,grid,pts_per_fit,learn_rate_0,A_M = args_general
     #Extend of factor 3
     xx_ext = np.linspace(-A_M,2*A_M,3*grid,endpoint=False)
     phi_ext = extend(phi)
@@ -273,19 +251,21 @@ def smooth(phi,grid,A_M):
     phi_new = fun(xx,xx)
     return phi_new, fun
 
-def empty_fun(x,grid,A_M):
-    return x,smooth(x,grid,A_M)[1]
+def empty_fun(x,args_general):
+    pts_array,grid,pts_per_fit,learn_rate_0,A_M = args_general
+    return x,smooth(x,args_general)[1]
 
-def compute_derivatives(phi,grid,A_M,n):
+def compute_derivatives(phi,args_general,n):
+    pts_array,grid,pts_per_fit,learn_rate_0,A_M = args_general
     xx = np.linspace(0,A_M,grid,endpoint=False)
     qm = 4*np.pi/np.sqrt(3)/A_M
     #
     smooth_or_not = smooth if n == 2 else empty_fun
     #Interpolate phase
-    fun = smooth_or_not(phi,grid,A_M)[1]
+    fun = smooth_or_not(phi,args_general)[1]
     #derivatives
-    dn_phi_x = smooth_or_not(fun.partial_derivative(n,0)(xx,xx)/qm**n,grid,A_M)[0]
-    dn_phi_y = smooth_or_not(fun.partial_derivative(0,n)(xx,xx)/qm**n,grid,A_M)[0]
+    dn_phi_x = smooth_or_not(fun.partial_derivative(n,0)(xx,xx)/qm**n,args_general)[0]
+    dn_phi_y = smooth_or_not(fun.partial_derivative(0,n)(xx,xx)/qm**n,args_general)[0]
     dn_phi = (dn_phi_x,dn_phi_y)
     return dn_phi
 
@@ -300,14 +280,6 @@ def check_energies(list_E):
         if abs(list_E[i]-list_E[i+1]) > lim:
             return False
     return True
-
-def test_minimum(phi_s,phi_a,Phi,alpha,beta,grid,A_M):
-    plot_phis(phi_s,phi_a,grid,'final phi_s, phi_a')
-    plot_phis(compute_derivatives(phi_s,grid,A_M,1)[0],compute_derivatives(phi_a,grid,A_M,1)[0],grid,'dp_s,dp_a')
-    plot_phis(beta*np.sin(phi_s)*np.cos(phi_a),(beta*np.cos(phi_s)+alpha*Phi)*np.sin(phi_a),grid,'interaction s and a')
-    s = grad_H(phi_s,phi_a,'s',Phi,alpha,beta,grid,A_M,compute_derivatives(phi_s,grid,A_M,2))
-    a = grad_H(phi_s,phi_a,'a',Phi,alpha,beta,grid,A_M,compute_derivatives(phi_a,grid,A_M,2))
-    plot_phis(s,a,grid,'dHs and dHa final')
 
 def plot_phis(phi_1,phi_2,grid,txt_title='mah'):
     """Plot the phases phi_1 and phi_2 in a 3D graph
@@ -447,9 +419,9 @@ def name_Phi(grid,A_M,cluster=False):
         The name of the .npy file containing the interlayer coupling.
         The directory name is NOT included.
     """
-    return name_dir(cluster) + 'Phi_'+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy'
+    return name_dir_Phi(cluster) + 'Phi_'+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy'
 
-def name_phi(alpha,beta,grid,A_M,cluster=False):
+def name_phi(alpha,beta,args_general,cluster=False):
     """Computes the filenames of the symmetric and antisymmetric phases.
 
     Parameters
@@ -471,9 +443,9 @@ def name_phi(alpha,beta,grid,A_M,cluster=False):
         Tuple of 2 elements containing the names of the .npy files.
         The directory name is NOT included.
     """
-    return name_dir(cluster)+'phi_'+"{:.4f}".format(alpha)+'_'+"{:.4f}".format(beta)+'_'+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy'
+    return name_dir(args_general,cluster)+'phi_'+"{:.4f}".format(alpha)+'_'+"{:.4f}".format(beta)+'.npy'
 
-def name_dir(cluster=False):
+def name_dir(args_general,cluster=False):
     """Computes the directory name where to save the results.
 
     Parameters
@@ -486,7 +458,25 @@ def name_dir(cluster=False):
     string
         The directory name.
     """
+    pts_array,grid,pts_per_fit,learn_rate_0,A_M = args_general
+    name_particular = 'results_'+str(pts_array)+'_'+str(grid)+'_'+str(pts_per_fit)+'_'+"{:.4f}".format(learn_rate_0)+'_'+"{:.2f}".format(A_M)+'/'
     dirname = '/home/users/r/rossid/CrBr3/results/' if cluster else '/home/dario/Desktop/git/CrBr3/results/'
+    return dirname+name_particular
+
+def name_dir_Phi(cluster=False):
+    """Computes the directory name where to save the results.
+
+    Parameters
+    ----------
+    cluster: bool, optional
+        Wether we are in the cluster or not (default is False).
+
+    Returns
+    -------
+    string
+        The directory name.
+    """
+    dirname = '/home/users/r/rossid/CrBr3/Phi_values/' if cluster else '/home/dario/Desktop/git/CrBr3/Phi_values/'
     return dirname
 
 def compute_grid_pd(pts_array):

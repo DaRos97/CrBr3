@@ -1,19 +1,28 @@
 import numpy as np
 import functions as fs
-import sys
+import sys, os
+from pathlib import Path
 
 cluster = False
-#Parameters of Moire lattice
+#Parameters in name of solution
 pts_array = 10
-A_M = 20 #related to theta somehow
-print("qm: ",4*np.pi/np.sqrt(3)/A_M)
 grid = 200
+pts_per_fit = 31
+learn_rate_0 = 1e-2
+A_M = 20
+args_general = (pts_array,grid,pts_per_fit,learn_rate_0,A_M)
+if not Path(fs.name_dir(args_general,cluster)).is_dir():
+    os.system('mkdir '+fs.name_dir(args_general,cluster))
+if not Path(fs.name_dir_Phi(cluster)).is_dir():
+    os.system('mkdir '+fs.name_dir_Phi(cluster))
+#Parameters of Moire lattice
+print("qm: ",4*np.pi/np.sqrt(3)/A_M)
 values = fs.compute_grid_pd(pts_array)
 alpha,beta = np.reshape(values,(pts_array**2,2))[int(sys.argv[1])]
 print("alpha: ",alpha," beta: ",beta)
 print("alpha/1+alpha: ",alpha/(1+alpha)," beta/1+beta: ",beta/(1+beta))
 #Filenames
-filename_phi = fs.name_phi(alpha,beta,grid,A_M,cluster)
+filename_phi = fs.name_phi(alpha,beta,args_general,cluster)
 filename_Phi = fs.name_Phi(grid,A_M,cluster)
 
 try:    #Check if Phi already computed
@@ -34,13 +43,13 @@ except :
             'maxiter':1e5, 
             'disp': not cluster,
             }
-    phi = fs.compute_magnetization(Phi,alpha,beta,grid,A_M,args_minimization)
+    phi = fs.compute_magnetization(Phi,alpha,beta,args_general,args_minimization)
     #
 if cluster:
     np.save(filename_phi,phi)
 
-d_phi = (fs.compute_derivatives(phi[0],grid,A_M,1),fs.compute_derivatives(phi[1],grid,A_M,1))
-print("\nFinal energy: ",fs.compute_energy(phi[0],phi[1],Phi,alpha,beta,grid,A_M,d_phi))
+d_phi = (fs.compute_derivatives(phi[0],args_general,1),fs.compute_derivatives(phi[1],args_general,1))
+print("\nFinal energy: ",fs.compute_energy(phi[0],phi[1],Phi,alpha,beta,args_general,d_phi))
 
 if not cluster:
     #Actual plot
