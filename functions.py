@@ -41,9 +41,10 @@ def compute_magnetization(Phi,alpha,beta,args_minimization):
     min_phi_s = np.zeros((grid,grid))
     min_phi_a = np.zeros((grid,grid))
     for sss in range(args_minimization['rand_m']):
+        if min_E<1e8 and not args_minimization['disp']:
+            np.save(name_phi(alpha,beta,True))
         E = []  #list of energies for the while loop
         diff_H = [1e20]  #list of dH for the while loop
-#        input('Start step '+str(sss)+' press any')
         if args_minimization['disp']:
             print("Starting minimization step ",str(sss))
         #Initial condition 
@@ -61,7 +62,6 @@ def compute_magnetization(Phi,alpha,beta,args_minimization):
             #Energy gradients
             dHs = grad_H(phi_s,phi_a,'s',Phi,alpha,beta,compute_derivatives(phi_s,2))
             dHa = grad_H(phi_s,phi_a,'a',Phi,alpha,beta,compute_derivatives(phi_a,2))
-#            plot_phis(phi_a,dHa,'p_a,dHa')
             #Update phi
             phi_s += learn_rate*dHs
             phi_a += learn_rate*dHa
@@ -69,32 +69,27 @@ def compute_magnetization(Phi,alpha,beta,args_minimization):
             d_phi = (compute_derivatives(phi_s,1),compute_derivatives(phi_a,1))
             E.insert(0,compute_energy(phi_s,phi_a,Phi,alpha,beta,d_phi))
             #Check if dHs and dHa are very small
-            dH_min_t = np.sum(np.absolute(dHs)+np.absolute(dHa))
-            diff_H.insert(0,dH_min_t)
-            #
+            diff_H.insert(0,np.sum(np.absolute(dHs)+np.absolute(dHa)))
             if args_minimization['disp']:
                 print("energy step ",step," is ",E[1]," ,dH at ",diff_H[0])
-#                plot_phis(phi_s,phi_a)
-#                plot_phis(d_phi[1][0],d_phi[1][1])
-#                plot_phis(dHs,dHa)
             #Exit checks
-            if check_energies(E):
-                if E[0]<min_E:   #Lower energy update
+            if check_energies(E):   #stable energy
+                if E[0]<min_E:
                     min_E = E[0]
                     min_phi_s = np.copy(phi_s)
                     min_phi_a = np.copy(phi_a)
                 break
-            if diff_H[0]>diff_H[1] or E[0]>E[1]:
+            if diff_H[0]>diff_H[1] or E[0]>E[1]:    #worse solution
                 phi_s -= learn_rate*dHs
                 phi_a -= learn_rate*dHa
                 del E[0]
                 del diff_H[0]
-                if E[0]<min_E:   #Lower energy update
+                if E[0]<min_E:
                     min_E = E[0]
                     min_phi_s = np.copy(phi_s)
                     min_phi_a = np.copy(phi_a)
                 break
-            if E[0] > 1e10:
+            if E[0] > 1e10: #VERY bad situation
                 print("bullshit")
                 break
             #Max number of steps scenario
@@ -109,8 +104,6 @@ def compute_magnetization(Phi,alpha,beta,args_minimization):
         if args_minimization['disp']:
             print("Minimum energy at ",E[0]," ,dH at ",diff_H[0])
             input()
-            #plot_phis(min_phi_s,min_phi_a,'phi_s and phi_a final')
-#            plot_magnetization(phi_s,phi_a,Phi)
     result = np.zeros((2,*min_phi_s.shape))
     result[0] = min_phi_s
     result[1] = min_phi_a
@@ -241,7 +234,7 @@ def extend(phi):
             L[i*grid:(i+1)*grid,j*grid:(j+1)*grid] = phi
     return L
 
-def smooth(phi):
+def smooth(phi,rg=2):
     """Smooth out the periodic function phi.
 
     Parameters
@@ -257,7 +250,6 @@ def smooth(phi):
     """
     pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     if 1:
-        rg = 2
         smooth_phi = np.zeros((grid,grid))
         for i in range(-rg,rg+1):
             for j in range(-rg,rg+1):
@@ -266,6 +258,9 @@ def smooth(phi):
         xx = np.linspace(0,A_M,grid,endpoint=False)
         fun = RBS(xx,xx,smooth_phi)
         return smooth_phi, fun
+
+def other_smooth(phi,nnn=2):
+    pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     #Extend of factor 3
     xx_ext = np.linspace(-A_M,2*A_M,3*grid,endpoint=False)
     phi_ext = extend(phi)
@@ -312,20 +307,6 @@ def compute_derivatives(phi,n):
     """
     pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     qm = 4*np.pi/np.sqrt(3)/A_M
-    if 0:
-        diff = qm*A_M/grid
-        order = '2'
-        coeff = inputs.coeff_der[str(n)][order]
-        sm_phi,fun = smooth(phi) if n==2 else (phi,0)
-        dn_phi_x = np.zeros((grid,grid))
-        dn_phi_y = np.zeros((grid,grid))
-        for i in range(len(coeff)):
-            dn_phi_x += coeff[i]*np.roll(sm_phi,-i,axis=0)/diff**n
-            dn_phi_y += coeff[i]*np.roll(sm_phi,-i,axis=1)/diff**n
-#        xx = np.linspace(0,A_M,grid,endpoint=False)
-#        plot_phis(dn_phi_x,smooth(fun.partial_derivative(n,0)(xx,xx)/qm**n)[0],str(n))
-        dn_phi = (smooth(dn_phi_x)[0],smooth(dn_phi_y)[0]) if n==2 else (dn_phi_x,dn_phi_y)
-        return dn_phi
     xx = np.linspace(0,A_M,grid,endpoint=False)
     #
     smooth_or_not = smooth if n == 2 else empty_fun
@@ -335,6 +316,22 @@ def compute_derivatives(phi,n):
     dn_phi_x = smooth_or_not(fun.partial_derivative(n,0)(xx,xx)/qm**n)[0]
     dn_phi_y = smooth_or_not(fun.partial_derivative(0,n)(xx,xx)/qm**n)[0]
     dn_phi = (dn_phi_x,dn_phi_y)
+    return dn_phi
+
+def other_compute_derivatives(phi,n):
+    diff = qm*A_M/grid
+    order = '2'
+    coeff = inputs.coeff_der[str(n)][order]
+    sm_phi,fun = smooth(phi) if n==2 else (phi,0)
+    dn_phi_x = np.zeros((grid,grid))
+    dn_phi_y = np.zeros((grid,grid))
+    for i in range(len(coeff)):
+        dn_phi_x += coeff[i]*np.roll(sm_phi,-i,axis=0)/diff**n
+        dn_phi_y += coeff[i]*np.roll(sm_phi,-i,axis=1)/diff**n
+    if 0 and n ==2:
+        xx = np.linspace(0,A_M,grid,endpoint=False)
+        plot_phis(dn_phi_x,smooth(fun.partial_derivative(n,0)(xx,xx)/qm**n)[0],str(n))
+    dn_phi = (smooth(dn_phi_x)[0],smooth(dn_phi_y)[0]) if n==2 else (dn_phi_x,dn_phi_y)
     return dn_phi
 
 def check_energies(list_E):

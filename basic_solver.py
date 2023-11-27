@@ -40,9 +40,6 @@ except :
             'disp': not cluster,
             }
     phi = fs.compute_magnetization(Phi,alpha,beta,args_minimization)
-    #
-if cluster:
-    np.save(filename_phi,phi)
 
 d_phi = (fs.compute_derivatives(phi[0],1),fs.compute_derivatives(phi[1],1))
 print("\nFinal energy: ",fs.compute_energy(phi[0],phi[1],Phi,alpha,beta,d_phi))
