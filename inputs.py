@@ -5,7 +5,7 @@ pts_array = 10
 #Points in the moire unit cell
 grid = 200
 #Points to consider in the moire unit cell when smoothening
-pts_per_fit = 200
+pts_per_fit = 2
 #Learn rate step
 learn_rate_0 = -1e-2
 #Moire unit cell

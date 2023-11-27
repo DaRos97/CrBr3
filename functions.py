@@ -234,7 +234,7 @@ def extend(phi):
             L[i*grid:(i+1)*grid,j*grid:(j+1)*grid] = phi
     return L
 
-def smooth(phi,rg=2):
+def smooth(phi):
     """Smooth out the periodic function phi.
 
     Parameters
@@ -249,17 +249,17 @@ def smooth(phi,rg=2):
         fewer points (second returned argument) and finally computed on the original grid.
     """
     pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
-    if 1:
-        smooth_phi = np.zeros((grid,grid))
-        for i in range(-rg,rg+1):
-            for j in range(-rg,rg+1):
-                smooth_phi += np.roll(np.roll(phi,i,axis=0),j,axis=1)
-        smooth_phi /= (1+2*rg)**2
-        xx = np.linspace(0,A_M,grid,endpoint=False)
-        fun = RBS(xx,xx,smooth_phi)
-        return smooth_phi, fun
+    rg = pts_per_fit
+    smooth_phi = np.zeros((grid,grid))
+    for i in range(-rg,rg+1):
+        for j in range(-rg,rg+1):
+            smooth_phi += np.roll(np.roll(phi,i,axis=0),j,axis=1)
+    smooth_phi /= (1+2*rg)**2
+    xx = np.linspace(0,A_M,grid,endpoint=False)
+    fun = RBS(xx,xx,smooth_phi)
+    return smooth_phi, fun
 
-def other_smooth(phi,nnn=2):
+def other_smooth(phi):
     pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     #Extend of factor 3
     xx_ext = np.linspace(-A_M,2*A_M,3*grid,endpoint=False)
