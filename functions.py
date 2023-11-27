@@ -74,8 +74,11 @@ def compute_magnetization(Phi,alpha,beta,args_minimization):
             #
             if args_minimization['disp']:
                 print("energy step ",step," is ",E[1]," ,dH at ",diff_H[0])
+#                plot_phis(phi_s,phi_a)
+#                plot_phis(d_phi[1][0],d_phi[1][1])
+#                plot_phis(dHs,dHa)
             #Exit checks
-            if check_energies(E) :
+            if check_energies(E):
                 if E[0]<min_E:   #Lower energy update
                     min_E = E[0]
                     min_phi_s = np.copy(phi_s)
@@ -105,8 +108,8 @@ def compute_magnetization(Phi,alpha,beta,args_minimization):
             #
         if args_minimization['disp']:
             print("Minimum energy at ",E[0]," ,dH at ",diff_H[0])
-#            input()
-            plot_phis(min_phi_s,min_phi_a,'phi_s and phi_a final')
+            input()
+            #plot_phis(min_phi_s,min_phi_a,'phi_s and phi_a final')
 #            plot_magnetization(phi_s,phi_a,Phi)
     result = np.zeros((2,*min_phi_s.shape))
     result[0] = min_phi_s
@@ -253,6 +256,16 @@ def smooth(phi):
         fewer points (second returned argument) and finally computed on the original grid.
     """
     pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
+    if 1:
+        rg = 2
+        smooth_phi = np.zeros((grid,grid))
+        for i in range(-rg,rg+1):
+            for j in range(-rg,rg+1):
+                smooth_phi += np.roll(np.roll(phi,i,axis=0),j,axis=1)
+        smooth_phi /= (1+2*rg)**2
+        xx = np.linspace(0,A_M,grid,endpoint=False)
+        fun = RBS(xx,xx,smooth_phi)
+        return smooth_phi, fun
     #Extend of factor 3
     xx_ext = np.linspace(-A_M,2*A_M,3*grid,endpoint=False)
     phi_ext = extend(phi)
@@ -298,8 +311,22 @@ def compute_derivatives(phi,n):
         2-tuple containing the x and y derivatives of order 'n' of phi. Only the second derivatives are smoothen out.
     """
     pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
-    xx = np.linspace(0,A_M,grid,endpoint=False)
     qm = 4*np.pi/np.sqrt(3)/A_M
+    if 0:
+        diff = qm*A_M/grid
+        order = '2'
+        coeff = inputs.coeff_der[str(n)][order]
+        sm_phi,fun = smooth(phi) if n==2 else (phi,0)
+        dn_phi_x = np.zeros((grid,grid))
+        dn_phi_y = np.zeros((grid,grid))
+        for i in range(len(coeff)):
+            dn_phi_x += coeff[i]*np.roll(sm_phi,-i,axis=0)/diff**n
+            dn_phi_y += coeff[i]*np.roll(sm_phi,-i,axis=1)/diff**n
+#        xx = np.linspace(0,A_M,grid,endpoint=False)
+#        plot_phis(dn_phi_x,smooth(fun.partial_derivative(n,0)(xx,xx)/qm**n)[0],str(n))
+        dn_phi = (smooth(dn_phi_x)[0],smooth(dn_phi_y)[0]) if n==2 else (dn_phi_x,dn_phi_y)
+        return dn_phi
+    xx = np.linspace(0,A_M,grid,endpoint=False)
     #
     smooth_or_not = smooth if n == 2 else empty_fun
     #Interpolate phase
@@ -360,7 +387,7 @@ def plot_phis(phi_1,phi_2,txt_title='mah'):
     fig.colorbar(surf, shrink=0.5, aspect=5)
     plt.show()
 
-def plot_magnetization(phi_s,phi_a,Phi):
+def plot_magnetization(phi_s,phi_a,Phi,alpha,beta):
     """Plots the magnetization values in the Moirè unit cell, with a background given by the
     interlayer potential. The two images correspond to the 2 layers. Magnetization is in x-z
     plane while the layers are in x-y plane.
@@ -418,6 +445,7 @@ def plot_magnetization(phi_s,phi_a,Phi):
             phi2 = phi_2[i*fac+fac//2,j*fac+fac//2]
             ax1.arrow(x - l/2*np.sin(phi1),y - l/2*np.cos(phi1),l*np.sin(phi1), l*np.cos(phi1),head_width=hw,head_length=hl,color='k')
             ax2.arrow(x - l/2*np.sin(phi2),y - l/2*np.cos(phi2),l*np.sin(phi2), l*np.cos(phi2),head_width=hw,head_length=hl,color='k')
+    plt.suptitle("alpha/(1+alpha) = "+"{:.4f}".format(alpha/(1+alpha))+",  beta/(1+beta) = "+"{:.4f}".format(beta/(1+beta)))
     plt.show()
 
 ####################################################################################################################
@@ -438,12 +466,11 @@ def compute_interlayer():
     G_M = np.linalg.norm(b_[0])
     #Moirè potential Phi
     Phi = np.zeros((grid,grid))
-    latt = np.zeros((grid,grid,2))
     for i in range(grid):
         for j in range(grid):
-            latt[i,j] = (i/grid*a1 + j/grid*a2)*A_M
+            x = (i/grid*a1 + j/grid*a2)*A_M
             for a in range(3):
-                Phi[i,j] += np.cos(np.dot(b_[a],latt[i,j]))
+                Phi[i,j] += np.cos(np.dot(b_[a],x))
     return Phi
 
 def name_Phi(cluster=False):

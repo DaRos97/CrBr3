@@ -53,7 +53,7 @@ if not cluster:
     fs.plot_phis(phi[0],np.cos(phi[0]),'phi_s ans cos_phi_s')
     fs.plot_phis(phi[1],np.cos(phi[1]),'phi_a ans cos_phi_a')
 #    fs.test_minimum(phi_s,phi_a,Phi,alpha,beta,grid,A_M)
-    fs.plot_magnetization(phi[0],phi[1],Phi)
+    fs.plot_magnetization(phi[0],phi[1],Phi,alpha,beta)
 
 
 
