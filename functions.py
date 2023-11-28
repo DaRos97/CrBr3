@@ -33,11 +33,11 @@ def compute_magnetization(Phi,pars,args_minimization):
     tuple
         Symmetric and antisymmetric phases at each position (grid,grid) of the Moirè unit cell.
     """
-    alpha, beta, gamma = pars
+    gamma,alpha,beta = pars
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     #Variables for storing best solution
-    min_E = 1e8
-    result = np.zeros((2,*min_phi_s.shape))
+    min_E = 1e10
+    result = np.zeros((2,grid,grid))
     for sss in range(args_minimization['rand_m']):
         if min_E<1e8 and not args_minimization['disp']:
             np.save(name_phi(pars,True),result)
@@ -45,7 +45,7 @@ def compute_magnetization(Phi,pars,args_minimization):
         diff_H = [1e20]  #list of dH for the while loop
         if args_minimization['disp']:
             print("Starting minimization step ",str(sss))
-        #Initial condition 
+        #Initial condition  -> Improve 
         fs = 0.5 if sss==1 else random.random()
         fa = 0.5 if sss==1 else random.random()
         ans = 0 if sss==0 else 1            #Use twisted-s ansatz for first evaluation or constant phi_s/a=pi
@@ -128,7 +128,7 @@ def initial_point(Phi,pars,fs,fa,ans):
     tuple
         Symmetric and antisymmetric phases at each position (grid,grid) of the Moirè unit cell.
     """
-    alpha, beta, gamma = pars
+    gamma,alpha,beta = pars
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     initial_ansatz = ['twisted-s','constant']
     sol = initial_ansatz[ans]
@@ -170,7 +170,7 @@ def compute_energy(phi_s,phi_a,Phi,pars,d_phi):
     float
         Energy density summed over all sites.
     """
-    alpha, beta, gamma = pars
+    gamma,alpha,beta = pars
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     dx = dy = A_M/grid
     #Old derivative squared
@@ -204,7 +204,7 @@ def grad_H(phi_s,phi_a,tt,Phi,pars,d2_phi):
     np.ndarray
         Gradient of Hamiltonian on the (grid,grid) space.
     """
-    alpha, beta, gamma = pars
+    gamma,alpha,beta = pars
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     res = -d2_phi[0]-d2_phi[1]
     if tt=='s':
@@ -366,7 +366,7 @@ def plot_magnetization(phi_s,phi_a,Phi,pars):
         Interlayer coupling of size (grid,grid).
 
     """
-    alpha, beta, gamma = pars
+    gamma,alpha,beta = pars
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     import matplotlib.pyplot as plt 
     #Interpolate Phi
@@ -455,6 +455,22 @@ def compute_interlayer():
                 Phi[i,j] += np.cos(np.dot(b_[a],x))
     return Phi
 
+def name_dir_Phi(cluster=False):
+    """Computes the directory name where to save the interlayer potential.
+
+    Parameters
+    ----------
+    cluster: bool, optional
+        Wether we are in the cluster or not (default is False).
+
+    Returns
+    -------
+    string
+        The directory name.
+    """
+    dirname = '/home/users/r/rossid/CrBr3/Phi_values/' if cluster else '/home/dario/Desktop/git/CrBr3/Phi_values/'
+    return dirname
+
 def name_Phi(cluster=False):
     """Computes the filename of the interlayer coupling.
 
@@ -470,6 +486,24 @@ def name_Phi(cluster=False):
     """
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     return name_dir_Phi(cluster) + 'Phi_'+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy'
+
+def name_dir_phi(cluster=False):
+    """Computes the directory name where to save the results.
+
+    Parameters
+    ----------
+    cluster: bool, optional
+        Wether we are in the cluster or not (default is False).
+
+    Returns
+    -------
+    string
+        The directory name of the minimization result.
+    """
+    pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
+    name_particular = 'results_'+str(grid)+'_'+str(pts_per_fit)+'_'+"{:.4f}".format(learn_rate_0)+'_'+"{:.2f}".format(A_M)+'/'
+    dirname = '/home/users/r/rossid/CrBr3/results/' if cluster else '/home/dario/Desktop/git/CrBr3/results/'
+    return dirname+name_particular
 
 def name_phi(pars,cluster=False):
     """Computes the filename of the result of the minimization.
@@ -488,44 +522,10 @@ def name_phi(pars,cluster=False):
     string
         Filename of the .npy file.
     """
-    alpha, beta, gamma = pars
-    return name_dir(cluster)+'phi_'+"{:.4f}".format(alpha)+'_'+"{:.4f}".format(beta)+'_'+"{:.4f}".format(gamma)+'.npy'
+    gamma,alpha,beta = pars
+    return name_dir_phi(cluster)+'phi_'+"{:.4f}".format(alpha)+'_'+"{:.4f}".format(beta)+'_'+"{:.4f}".format(gamma)+'.npy'
 
-def name_dir(cluster=False):
-    """Computes the directory name where to save the results.
-
-    Parameters
-    ----------
-    cluster: bool, optional
-        Wether we are in the cluster or not (default is False).
-
-    Returns
-    -------
-    string
-        The directory name of the minimization result.
-    """
-    pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
-    name_particular = 'results_'+str(pts_array)+'_'+str(pts_gamma)+'_'+str(grid)+'_'+str(pts_per_fit)+'_'+"{:.4f}".format(learn_rate_0)+'_'+"{:.2f}".format(A_M)+'/'
-    dirname = '/home/users/r/rossid/CrBr3/results/' if cluster else '/home/dario/Desktop/git/CrBr3/results/'
-    return dirname+name_particular
-
-def name_dir_Phi(cluster=False):
-    """Computes the directory name where to save the interlayer potential.
-
-    Parameters
-    ----------
-    cluster: bool, optional
-        Wether we are in the cluster or not (default is False).
-
-    Returns
-    -------
-    string
-        The directory name.
-    """
-    dirname = '/home/users/r/rossid/CrBr3/Phi_values/' if cluster else '/home/dario/Desktop/git/CrBr3/Phi_values/'
-    return dirname
-
-def compute_parameters(n):
+def compute_parameters():
     """Computes the grid of alpha/beta points to consider in order to build up the phase diagram.
     The phase diagram is computed in scale of a/(1+a), so we consider pts_array values 'g' between 
     0 and 1 and compute alpha/beta as alpha(beta)=1/(1-g).
@@ -539,14 +539,14 @@ def compute_parameters(n):
     values = np.zeros((pts_array,pts_array,pts_gamma,3))
     ab_array = np.linspace(0,1,pts_array,endpoint=False)
     g_array = np.linspace(0,1,pts_gamma)
-    for i in range(pts_array):
+    for i in range(pts_gamma):
         for j in range(pts_array):
             for k in range(pts_array):
-                values[i,j,k,0] = ab_array[i]/(1-ab_array[i])
+                values[i,j,k,0] = g_array[i]
                 values[i,j,k,1] = ab_array[j]/(1-ab_array[j])
-                values[i,j,k,2] = g_array[k]
-    pars = np.reshape(values,(pts_array*pts_array*pts_gamma,3))[n]
-    return pars
+                values[i,j,k,2] = ab_array[k]/(1-ab_array[k])
+    pars_arr = np.reshape(values,(pts_array*pts_array*pts_gamma,3))
+    return pars_arr
 
 def check_directories(cluster):
     """Check if the directories where to store the results exist and if not creates them.
@@ -557,8 +557,8 @@ def check_directories(cluster):
         Wether we are in the cluster or not (default is False).
 
     """
-    if not Path(name_dir(cluster)).is_dir():
-        os.system('mkdir '+name_dir(cluster))
+    if not Path(name_dir_phi(cluster)).is_dir():
+        os.system('mkdir '+name_dir_phi(cluster))
     if not Path(name_dir_Phi(cluster)).is_dir():
         os.system('mkdir '+name_dir_Phi(cluster))
 

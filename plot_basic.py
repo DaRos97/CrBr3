@@ -8,23 +8,25 @@ import inputs
 
 #Parameters in name of solution
 args_general = inputs.args_general
-pts_array,grid,pts_per_fit,learn_rate_0,A_M = args_general
+pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = args_general
 
-values = fs.compute_grid_pd()
+values = fs.compute_parameters()
 cod_col = ['y','k','b','r','gray']
 Phi = np.load(fs.name_Phi())
 
 plt.figure(figsize=(15,10))
-for i in range(0,pts_array,1):
-    for j in range(0,pts_array,1):
-        alpha,beta = values[i,j]
-        filename_phi = fs.name_phi(alpha,beta)
+i = 0           #gamma index
+for j in range(pts_array):
+    for k in range(pts_array):
+        parameters = values[i*pts_array**2+j*pts_array+k]
+        gamma, alpha, beta = parameters
+        filename_phi = fs.name_phi(parameters)
         try:
             phi = np.load(filename_phi)
             phi_s = phi[0]
             phi_a = phi[1]
             d_phi = (fs.compute_derivatives(phi_s,1),fs.compute_derivatives(phi_a,1))
-            E = fs.compute_energy(phi_s,phi_a,Phi,alpha,beta,d_phi)
+            E = fs.compute_energy(phi_s,phi_a,Phi,parameters,d_phi)
             if E+beta > 1e-5:       #Solution collinear was not tried for some reason
                 col = 'orange'
             elif abs(E+beta) < 1e-3:   #Collinear solution -> const

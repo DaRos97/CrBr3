@@ -2,7 +2,6 @@ import numpy as np
 import functions as fs
 import inputs
 import sys, os
-from pathlib import Path
 
 cluster = False if os.getcwd()[6:11]=='dario' else True
 #Parameters in name of solution
@@ -12,10 +11,9 @@ pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = args_general
 fs.check_directories(cluster)
 #Parameters of Moire lattice
 print("qm: ",4*np.pi/np.sqrt(3)/A_M)
-parameters = fs.compute_parameters(int(sys.argv[1]))
-alpha,beta,gamma = parameters
+parameters = fs.compute_parameters()[int(sys.argv[1])]
+gamma,alpha,beta = parameters
 print("alpha: ",alpha," beta: ",beta," gamma: ",gamma)
-exit()
 print("alpha/1+alpha: ",alpha/(1+alpha)," beta/1+beta: ",beta/(1+beta))
 
 #Check if Phi already computed
@@ -27,7 +25,7 @@ except FileNotFoundError:
     Phi = fs.compute_interlayer()
     np.save(filename_Phi,Phi)
 
-#Check if phi already computed
+#Check if phi exists
 filename_phi = fs.name_phi(parameters,cluster)
 try:
     phi = np.load(filename_phi)
@@ -46,10 +44,6 @@ print("\nFinal energy: ",fs.compute_energy(phi[0],phi[1],Phi,parameters,d_phi))
 
 if not cluster:
     #Actual plot
-    #fs.plot_phis(phi[0],phi[1],grid,'final phi_s and phi_a')
-#    fs.plot_phis(phi[0],np.cos(phi[0]),'phi_s ans cos_phi_s')
-#    fs.plot_phis(phi[1],np.cos(phi[1]),'phi_a ans cos_phi_a')
-#    fs.test_minimum(phi_s,phi_a,Phi,alpha,beta,grid,A_M)
     fs.plot_magnetization(phi[0],phi[1],Phi,parameters)
 
 
