@@ -10,14 +10,13 @@ import inputs
 args_general = inputs.args_general
 pts_array,grid,pts_per_fit,learn_rate_0,A_M = args_general
 
-values = fs.compute_grid_pd(pts_array)
+values = fs.compute_grid_pd()
 cod_col = ['y','k','b','r','gray']
 Phi = np.load(fs.name_Phi())
 
 plt.figure(figsize=(15,10))
 for i in range(0,pts_array,1):
     for j in range(0,pts_array,1):
-#        continue
         alpha,beta = values[i,j]
         filename_phi = fs.name_phi(alpha,beta)
         try:

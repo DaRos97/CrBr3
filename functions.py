@@ -11,7 +11,7 @@ a2 = np.array([-1/2,np.sqrt(3)/2])
 b1 = np.array([1,1/np.sqrt(3)])*2*np.pi
 b2 = np.array([0,2/np.sqrt(3)])*2*np.pi
 #
-def compute_magnetization(Phi,alpha,beta,args_minimization):
+def compute_magnetization(Phi,pars,args_minimization):
     """Computes the magnetization pattern by performing a gradient descent from random 
     initial points.
 
@@ -33,15 +33,14 @@ def compute_magnetization(Phi,alpha,beta,args_minimization):
     tuple
         Symmetric and antisymmetric phases at each position (grid,grid) of the Moirè unit cell.
     """
-    pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
-    if args_minimization['disp']:
-        print("Parameters: alpha="+"{:.4f}".format(alpha)+", beta="+"{:.4f}".format(beta),'\n')
+    alpha, beta, gamma = pars
+    pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     #Variables for storing best solution
     min_E = 1e8
     result = np.zeros((2,*min_phi_s.shape))
     for sss in range(args_minimization['rand_m']):
         if min_E<1e8 and not args_minimization['disp']:
-            np.save(name_phi(alpha,beta,True),result)
+            np.save(name_phi(pars,True),result)
         E = []  #list of energies for the while loop
         diff_H = [1e20]  #list of dH for the while loop
         if args_minimization['disp']:
@@ -51,22 +50,22 @@ def compute_magnetization(Phi,alpha,beta,args_minimization):
         fa = 0.5 if sss==1 else random.random()
         ans = 0 if sss==0 else 1            #Use twisted-s ansatz for first evaluation or constant phi_s/a=pi
         #Compute first state and energy
-        phi_s,phi_a = initial_point(Phi,alpha,beta,fs,fa,ans)
+        phi_s,phi_a = initial_point(Phi,pars,fs,fa,ans)
         d_phi = (compute_derivatives(phi_s,1),compute_derivatives(phi_a,1))
-        E.append(compute_energy(phi_s,phi_a,Phi,alpha,beta,d_phi))
+        E.append(compute_energy(phi_s,phi_a,Phi,pars,d_phi))
         #Initiate learning rate and minimization loop
         step = 1        #initial step
         while True:
             learn_rate = learn_rate_0*random.random()
             #Energy gradients
-            dHs = grad_H(phi_s,phi_a,'s',Phi,alpha,beta,compute_derivatives(phi_s,2))
-            dHa = grad_H(phi_s,phi_a,'a',Phi,alpha,beta,compute_derivatives(phi_a,2))
+            dHs = grad_H(phi_s,phi_a,'s',Phi,pars,compute_derivatives(phi_s,2))
+            dHa = grad_H(phi_s,phi_a,'a',Phi,pars,compute_derivatives(phi_a,2))
             #Update phi
             phi_s += learn_rate*dHs
             phi_a += learn_rate*dHa
             #New energy
             d_phi = (compute_derivatives(phi_s,1),compute_derivatives(phi_a,1))
-            E.insert(0,compute_energy(phi_s,phi_a,Phi,alpha,beta,d_phi))
+            E.insert(0,compute_energy(phi_s,phi_a,Phi,pars,d_phi))
             #Check if dHs and dHa are very small
             diff_H.insert(0,np.sum(np.absolute(dHs)+np.absolute(dHa)))
             if args_minimization['disp']:
@@ -105,7 +104,7 @@ def compute_magnetization(Phi,alpha,beta,args_minimization):
             input()
     return result
 
-def initial_point(Phi,alpha,beta,fs,fa,ans):
+def initial_point(Phi,pars,fs,fa,ans):
     """Computes the initial point for the minimization. The possibilities are for now
     either twisted-s -> ans=0, or constant -> ans=1
 
@@ -129,7 +128,8 @@ def initial_point(Phi,alpha,beta,fs,fa,ans):
     tuple
         Symmetric and antisymmetric phases at each position (grid,grid) of the Moirè unit cell.
     """
-    pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
+    alpha, beta, gamma = pars
+    pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     initial_ansatz = ['twisted-s','constant']
     sol = initial_ansatz[ans]
     if sol=='twisted-s':      #ansatz for alpha,beta<<1
@@ -139,7 +139,7 @@ def initial_point(Phi,alpha,beta,fs,fa,ans):
             delta = 10
         if abs(delta)>3/2:
             print("delta ",str(delta)," too large for twisted-s, switching to constant initial condition at pi,pi")
-            return initial_point(Phi,alpha,beta,0.5,0.5,1)
+            return initial_point(Phi,pars,0.5,0.5,1)
         phi0 = np.arccos(2/3*delta)
         const = 1/2-np.tan(phi0)**(-2)
         phi_s = np.ones((grid,grid))*np.pi
@@ -149,7 +149,7 @@ def initial_point(Phi,alpha,beta,fs,fa,ans):
         phi_a = np.ones((grid,grid))*2*np.pi*fa
     return phi_s, phi_a
 
-def compute_energy(phi_s,phi_a,Phi,alpha,beta,d_phi):
+def compute_energy(phi_s,phi_a,Phi,pars,d_phi):
     """Computes the energy of the system.
 
     Parameters
@@ -170,7 +170,8 @@ def compute_energy(phi_s,phi_a,Phi,alpha,beta,d_phi):
     float
         Energy density summed over all sites.
     """
-    pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
+    alpha, beta, gamma = pars
+    pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     dx = dy = A_M/grid
     #Old derivative squared
     grad_2s = np.absolute(d_phi[0][0])**2 + np.absolute(d_phi[0][1])**2
@@ -180,7 +181,7 @@ def compute_energy(phi_s,phi_a,Phi,alpha,beta,d_phi):
     H = energy.sum()/grid**2
     return H
 
-def grad_H(phi_s,phi_a,tt,Phi,alpha,beta,d2_phi):
+def grad_H(phi_s,phi_a,tt,Phi,pars,d2_phi):
     """Computes evolution step dH/d phi.
 
     Parameters
@@ -203,7 +204,8 @@ def grad_H(phi_s,phi_a,tt,Phi,alpha,beta,d2_phi):
     np.ndarray
         Gradient of Hamiltonian on the (grid,grid) space.
     """
-    pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
+    alpha, beta, gamma = pars
+    pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     res = -d2_phi[0]-d2_phi[1]
     if tt=='s':
         return res + beta*np.sin(phi_s)*np.cos(phi_a)
@@ -224,7 +226,7 @@ def smooth(phi):
         Values of phi after being smoothen by first extending it on a larger domain and then interpolate it on
         fewer points (second returned argument) and finally computed on the original grid.
     """
-    pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
+    pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     rg = pts_per_fit
     smooth_phi = np.zeros((grid,grid))
     for i in range(-rg,rg+1):
@@ -248,7 +250,7 @@ def empty_fun(x):
     np.ndarray, function
         Retruns x and the function interpolating it.
     """
-    pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
+    pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     return x,smooth(x)[1]
 
 def compute_derivatives(phi,n):
@@ -266,7 +268,7 @@ def compute_derivatives(phi,n):
     tuple
         2-tuple containing the x and y derivatives of order 'n' of phi. Only the second derivatives are smoothen out.
     """
-    pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
+    pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     qm = 4*np.pi/np.sqrt(3)/A_M
     xx = np.linspace(0,A_M,grid,endpoint=False)
     #
@@ -314,7 +316,7 @@ def plot_phis(phi_1,phi_2,txt_title='mah'):
         Title of the plot.
 
     """
-    pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
+    pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     import matplotlib.pyplot as plt 
     from matplotlib import cm
     #
@@ -329,7 +331,27 @@ def plot_phis(phi_1,phi_2,txt_title='mah'):
     fig.colorbar(surf, shrink=0.5, aspect=5)
     plt.show()
 
-def plot_magnetization(phi_s,phi_a,Phi,alpha,beta):
+def extend(phi):
+    """Extend the domain of phi from 0,A_M to -A_M,2*A_M by copying it periodically.
+
+    Parameters
+    ----------
+    phi: np.ndarray
+        Function on a grid to extend.
+
+    Returns
+    -------
+    np.ndarray
+        Values of phi periodically repeated on larger domain.
+    """
+    grid = phi.shape[0]
+    L = np.zeros((3*grid,3*grid))
+    for i in range(3):
+        for j in range(3):
+            L[i*grid:(i+1)*grid,j*grid:(j+1)*grid] = phi
+    return L
+
+def plot_magnetization(phi_s,phi_a,Phi,pars):
     """Plots the magnetization values in the Moirè unit cell, with a background given by the
     interlayer potential. The two images correspond to the 2 layers. Magnetization is in x-z
     plane while the layers are in x-y plane.
@@ -344,50 +366,68 @@ def plot_magnetization(phi_s,phi_a,Phi,alpha,beta):
         Interlayer coupling of size (grid,grid).
 
     """
-    pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
+    alpha, beta, gamma = pars
+    pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     import matplotlib.pyplot as plt 
     #Interpolate Phi
-    XX = np.linspace(-2,2,4*grid,endpoint=False)
-    big_J = np.zeros((4*grid,4*grid))
-    big_J[:grid,:grid] = Phi; big_J[:grid,grid:2*grid] = Phi; big_J[:grid,2*grid:3*grid] = Phi; big_J[:grid,3*grid:] = Phi;
-    big_J[grid:2*grid,:grid] = Phi; big_J[grid:2*grid,grid:2*grid] = Phi; big_J[grid:2*grid,2*grid:3*grid] = Phi; big_J[grid:2*grid,3*grid:] = Phi;
-    big_J[2*grid:3*grid,:grid] = Phi; big_J[2*grid:3*grid,grid:2*grid] = Phi; big_J[2*grid:3*grid,2*grid:3*grid] = Phi; big_J[2*grid:3*grid,3*grid:] = Phi;
-    big_J[3*grid:,:grid] = Phi; big_J[3*grid:,grid:2*grid] = Phi; big_J[3*grid:,2*grid:3*grid] = Phi; big_J[3*grid:,3*grid:] = Phi;
-    fun_J = RBS(XX,XX,big_J)
+    XX = np.linspace(-1,2,3*grid,endpoint=False)
+    big_Phi = extend(Phi)
+    fun_Phi = RBS(XX,XX,big_Phi)
+    #Single layer phases
     phi_1 = (phi_s+phi_a)/2
     phi_2 = (phi_s-phi_a)/2
-    #Plot magnetization patterns -> two different plots
-    fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(20,20))
+    #Background -> interlayer coupling
+    long_X = np.linspace(-1,1,2*grid,endpoint=False)
+    long_Y = np.linspace(-1,1,2*grid,endpoint=False)
+    X,Y = np.meshgrid(long_X,long_Y)
+    X = X-Y/2
+    Y = Y/2*np.sqrt(3)
     #Box the Moirè unit cell
-    ax1.hlines(0,0,1,linestyles='dashed',color='r')
-    ax1.hlines(1,0,1,linestyles='dashed',color='r')
-    ax1.vlines(0,0,1,linestyles='dashed',color='r')
-    ax1.vlines(1,0,1,linestyles='dashed',color='r')
-    ax2.hlines(0,0,1,linestyles='dashed',color='r')
-    ax2.hlines(1,0,1,linestyles='dashed',color='r')
-    ax2.vlines(0,0,1,linestyles='dashed',color='r')
-    ax2.vlines(1,0,1,linestyles='dashed',color='r')
-    #Plot the background -> interlayer coupling
-    long_X = np.linspace(-0.2,1.2,200)
-    X,Y = np.meshgrid(long_X,long_X)
+    s3 = np.sqrt(3)
+    def line(x,y0,q):
+        return y0+q*x
+    xx14 = np.linspace(-1/2,0,100)
+    xx23 = np.linspace(0,1/2,100)
+    pars = [[(1/s3,1/s3),(-1/s3,-1/s3)],
+            [(1/s3,-1/s3),(-1/s3,1/s3)]]
+    #Plot the arrows
     l = 0.02       #length of arrow
     hw = 0.01       #arrow head width
     hl = 0.01       #arrow head length
-    surf = ax1.contourf(X,Y,fun_J(long_X,long_X),levels=20)
-    fig.colorbar(surf)
-    surf = ax2.contourf(X,Y,fun_J(long_X,long_X),levels=20)
-    fig.colorbar(surf)
-    #Plot the arrows
-    fac = grid//30     #plot 1 spin every "fac" of grid
-    for i in range(grid//fac):
-        x = (i*fac+fac//2)/grid
-        for j in range(grid//fac):
-            y = (j*fac+fac//2)/grid
-            phi1 = phi_1[i*fac+fac//2,j*fac+fac//2]
-            phi2 = phi_2[i*fac+fac//2,j*fac+fac//2]
-            ax1.arrow(x - l/2*np.sin(phi1),y - l/2*np.cos(phi1),l*np.sin(phi1), l*np.cos(phi1),head_width=hw,head_length=hl,color='k')
-            ax2.arrow(x - l/2*np.sin(phi2),y - l/2*np.cos(phi2),l*np.sin(phi2), l*np.cos(phi2),head_width=hw,head_length=hl,color='k')
-    plt.suptitle("alpha/(1+alpha) = "+"{:.4f}".format(alpha/(1+alpha))+",  beta/(1+beta) = "+"{:.4f}".format(beta/(1+beta)))
+    fac = grid//20     #plot 1 spin every "fac" of grid
+    def inside_UC(a,b):
+        if a > 1/2:
+            return inside_UC(a-1,b)
+        elif b>1/s3+a/s3:
+            return inside_UC(a+1/2,b-s3/2)
+        elif b>1/s3-a/s3:
+            return inside_UC(a-1/2,b-s3/2)
+        else:
+            return a,b
+    phi_ = [phi_1,phi_2]
+    #Plot magnetization patterns -> two different plots
+    fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(20,20))
+    for ind,ax in enumerate([ax1,ax2]):
+        ax.axis('off')
+        ax.set_aspect(1.)
+        surf = ax.contourf(X,Y,fun_Phi(long_X,long_Y),levels=20)
+        ax.vlines(1/2,-1/2/s3,1/2/s3,linestyles='dashed',color='r')
+        ax.vlines(-1/2,-1/2/s3,1/2/s3,linestyles='dashed',color='r')
+        for i,x in enumerate([xx14,xx23]):
+            for j in range(2):
+                ax.plot(x,line(x,*pars[i][j]),linestyle='dashed',color='r')
+        for i in range(grid//fac):
+            for j in range(grid//fac):
+                x_c = (i*fac)/grid
+                y_c = (j*fac)/grid
+                x = x_c-y_c/2
+                y = y_c/2*np.sqrt(3)
+                x,y = inside_UC(x,y)
+                phi = phi_[ind][i*fac,j*fac]
+                ax.arrow(x - l/2*np.sin(phi),y - l/2*np.cos(phi),l*np.sin(phi), l*np.cos(phi),head_width=hw,head_length=hl,color='k')
+        ax.set_xlim(-0.6,0.6)
+        ax.set_ylim(-0.65,0.65)
+    plt.suptitle("alpha/(1+alpha) = "+"{:.4f}".format(alpha/(1+alpha))+",  beta/(1+beta) = "+"{:.4f}".format(beta/(1+beta))+", gamma = "+"{:.4f}".format(gamma))
     plt.show()
 
 ####################################################################################################################
@@ -399,7 +439,7 @@ def compute_interlayer():
     np.ndarray
         Interlayer coupling.
     """
-    pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
+    pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     #Reciprocal Moire vectors
     b_ = np.zeros((3,2))    #three arrays in x-y plane
     b_[0] = b1/A_M
@@ -428,10 +468,10 @@ def name_Phi(cluster=False):
     string
         The name of the .npy file containing the interlayer coupling.
     """
-    pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
+    pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     return name_dir_Phi(cluster) + 'Phi_'+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy'
 
-def name_phi(alpha,beta,cluster=False):
+def name_phi(pars,cluster=False):
     """Computes the filename of the result of the minimization.
 
     Parameters
@@ -448,7 +488,8 @@ def name_phi(alpha,beta,cluster=False):
     string
         Filename of the .npy file.
     """
-    return name_dir(cluster)+'phi_'+"{:.4f}".format(alpha)+'_'+"{:.4f}".format(beta)+'.npy'
+    alpha, beta, gamma = pars
+    return name_dir(cluster)+'phi_'+"{:.4f}".format(alpha)+'_'+"{:.4f}".format(beta)+'_'+"{:.4f}".format(gamma)+'.npy'
 
 def name_dir(cluster=False):
     """Computes the directory name where to save the results.
@@ -463,8 +504,8 @@ def name_dir(cluster=False):
     string
         The directory name of the minimization result.
     """
-    pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
-    name_particular = 'results_'+str(pts_array)+'_'+str(grid)+'_'+str(pts_per_fit)+'_'+"{:.4f}".format(learn_rate_0)+'_'+"{:.2f}".format(A_M)+'/'
+    pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
+    name_particular = 'results_'+str(pts_array)+'_'+str(pts_gamma)+'_'+str(grid)+'_'+str(pts_per_fit)+'_'+"{:.4f}".format(learn_rate_0)+'_'+"{:.2f}".format(A_M)+'/'
     dirname = '/home/users/r/rossid/CrBr3/results/' if cluster else '/home/dario/Desktop/git/CrBr3/results/'
     return dirname+name_particular
 
@@ -484,7 +525,7 @@ def name_dir_Phi(cluster=False):
     dirname = '/home/users/r/rossid/CrBr3/Phi_values/' if cluster else '/home/dario/Desktop/git/CrBr3/Phi_values/'
     return dirname
 
-def compute_grid_pd():
+def compute_parameters(n):
     """Computes the grid of alpha/beta points to consider in order to build up the phase diagram.
     The phase diagram is computed in scale of a/(1+a), so we consider pts_array values 'g' between 
     0 and 1 and compute alpha/beta as alpha(beta)=1/(1-g).
@@ -494,14 +535,18 @@ def compute_grid_pd():
     np.ndarray
         Matrix of values of size (pts_array,pts_array,2).
     """
-    pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
-    values = np.zeros((pts_array,pts_array,2))
-    g_array = np.linspace(0,1,pts_array,endpoint=False)
+    pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
+    values = np.zeros((pts_array,pts_array,pts_gamma,3))
+    ab_array = np.linspace(0,1,pts_array,endpoint=False)
+    g_array = np.linspace(0,1,pts_gamma)
     for i in range(pts_array):
         for j in range(pts_array):
-            values[i,j,0] = g_array[i]/(1-g_array[i])
-            values[i,j,1] = g_array[j]/(1-g_array[j])
-    return values
+            for k in range(pts_array):
+                values[i,j,k,0] = ab_array[i]/(1-ab_array[i])
+                values[i,j,k,1] = ab_array[j]/(1-ab_array[j])
+                values[i,j,k,2] = g_array[k]
+    pars = np.reshape(values,(pts_array*pts_array*pts_gamma,3))[n]
+    return pars
 
 def check_directories(cluster):
     """Check if the directories where to store the results exist and if not creates them.
@@ -617,7 +662,7 @@ def other_compute_derivatives(phi,n):
     return dn_phi
 
 def other_smooth(phi):
-    pts_array,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
+    pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     #Extend of factor 3
     xx_ext = np.linspace(-A_M,2*A_M,3*grid,endpoint=False)
     phi_ext = extend(phi)
@@ -630,26 +675,6 @@ def other_smooth(phi):
     xx = np.linspace(0,A_M,grid,endpoint=False)
     phi_new = fun(xx,xx)
     return phi_new, fun
-
-def extend(phi):
-    """Extend the domain of phi from 0,A_M to -A_M,2*A_M by copying it periodically.
-
-    Parameters
-    ----------
-    phi: np.ndarray
-        Function on a grid to extend.
-
-    Returns
-    -------
-    np.ndarray
-        Values of phi periodically repeated on larger domain.
-    """
-    grid = phi.shape[0]
-    L = np.zeros((3*grid,3*grid))
-    for i in range(3):
-        for j in range(3):
-            L[i*grid:(i+1)*grid,j*grid:(j+1)*grid] = phi
-    return L
 
 
 

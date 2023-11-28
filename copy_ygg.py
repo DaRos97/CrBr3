@@ -8,7 +8,7 @@ cluster = False
 args_general = inputs.args_general
 pts_array,grid,pts_per_fit,learn_rate_0,A_M = args_general
 fs.check_directories(cluster)
-values = fs.compute_grid_pd(pts_array)
+values = fs.compute_grid_pd()
 #
 filename_Phi = fs.name_Phi(cluster)
 if not Path(filename_Phi).is_file():
