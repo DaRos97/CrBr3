@@ -1,7 +1,7 @@
 #Input values common to all modules
 
 #Points of the phase diagram to compute
-pts_array = 10
+pts_array = 30
 pts_gamma = 10
 #Points in the moire unit cell
 grid = 200

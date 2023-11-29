@@ -536,7 +536,7 @@ def compute_parameters():
         Matrix of values of size (pts_array,pts_array,2).
     """
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
-    values = np.zeros((pts_array,pts_array,pts_gamma,3))
+    values = np.zeros((pts_gamma,pts_array,pts_array,3))
     ab_array = np.linspace(0,1,pts_array,endpoint=False)
     g_array = np.linspace(0,1,pts_gamma)
     for i in range(pts_gamma):
