@@ -1,7 +1,7 @@
 import numpy as np
 import functions as fs
 import inputs
-import sys, os
+import sys, os, h5py
 
 cluster = False if os.getcwd()[6:11]=='dario' else True
 #Parameters in name of solution
@@ -25,10 +25,16 @@ except FileNotFoundError:
     Phi = fs.compute_interlayer()
     np.save(filename_Phi,Phi)
 
-#Check if phi exists
-filename_phi = fs.name_phi(parameters,cluster)
 try:
-    phi = np.load(filename_phi)
+    #Check if phi exists
+    filename_phi = fs.name_phi(parameters,cluster)
+    if not cluster:
+        f = h5py.File(fs.name_dir_phi(cluster)[:-1]+'.hdf5','r')   #same name as folder but .hdf5
+        ds_name = filename_phi[len(filename_phi)-filename_phi[::-1].index('/'):-4]
+        phi = np.copy(f[ds_name])
+        f.close()
+    else:
+        phi = np.load(filename_phi)
     a = sys.argv[2]
 except :
     print("Computing magnetization...")
@@ -45,6 +51,12 @@ print("\nFinal energy: ",fs.compute_energy(phi[0],phi[1],Phi,parameters,d_phi))
 if not cluster:
     #Actual plot
     fs.plot_magnetization(phi[0],phi[1],Phi,parameters)
+    if input("save?(y/N)")=='y':
+        dirname = 'results/ivo/'
+        filename_s = dirname+'phi_s_'+"{:.8f}".format(alpha)+'_'+"{:.8f}".format(beta)+'.csv'
+        filename_a = dirname+'phi_a_'+"{:.8f}".format(alpha)+'_'+"{:.8f}".format(beta)+'.csv'
+        np.savetxt(filename_s,phi[0])
+        np.savetxt(filename_a,phi[1])
 
 
 

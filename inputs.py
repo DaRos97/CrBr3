@@ -1,12 +1,12 @@
 #Input values common to all modules
 
 #Points of the phase diagram to compute
-pts_array = 30
-pts_gamma = 10
+pts_array = 10
+pts_gamma = 30
 #Points in the moire unit cell
 grid = 200
 #Points to consider in the moire unit cell when smoothening
-pts_per_fit = 3
+pts_per_fit = 2
 #Learn rate step
 learn_rate_0 = -1e-2
 #Moire unit cell

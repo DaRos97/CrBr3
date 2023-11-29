@@ -101,7 +101,9 @@ def compute_magnetization(Phi,pars,args_minimization):
             #
         if args_minimization['disp']:
             print("Minimum energy at ",E[0]," ,dH at ",diff_H[0])
-            input()
+            plot_phis(result[0],result[1],'phi_s and phi_a')
+            plot_magnetization(result[0],result[1],Phi,pars)
+#            input()
     return result
 
 def initial_point(Phi,pars,fs,fa,ans):
@@ -139,7 +141,7 @@ def initial_point(Phi,pars,fs,fa,ans):
             delta = 10
         if abs(delta)>3/2:
             print("delta ",str(delta)," too large for twisted-s, switching to constant initial condition at pi,pi")
-            return initial_point(Phi,pars,0.5,0.5,1)
+            return initial_point(Phi,pars,0,0,1)
         phi0 = np.arccos(2/3*delta)
         const = 1/2-np.tan(phi0)**(-2)
         phi_s = np.ones((grid,grid))*np.pi
@@ -177,7 +179,7 @@ def compute_energy(phi_s,phi_a,Phi,pars,d_phi):
     grad_2s = np.absolute(d_phi[0][0])**2 + np.absolute(d_phi[0][1])**2
     grad_2a = np.absolute(d_phi[1][0])**2 + np.absolute(d_phi[1][1])**2
     kin_part = 1/2*(grad_2s+grad_2a)
-    energy = kin_part - np.cos(phi_a)*(alpha*Phi+beta*np.cos(phi_s))
+    energy = kin_part - np.cos(phi_a)*(alpha*Phi+beta*np.cos(phi_s)) - 2*gamma*np.cos(phi_s/2)*np.cos(phi_a/2)
     H = energy.sum()/grid**2
     return H
 
@@ -208,9 +210,9 @@ def grad_H(phi_s,phi_a,tt,Phi,pars,d2_phi):
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     res = -d2_phi[0]-d2_phi[1]
     if tt=='s':
-        return res + beta*np.sin(phi_s)*np.cos(phi_a)
+        return res + beta*np.sin(phi_s)*np.cos(phi_a) + gamma*np.cos(phi_a/2)*np.sin(phi_s/2)
     elif tt=='a':
-        return res + (beta*np.cos(phi_s)+alpha*Phi)*np.sin(phi_a)
+        return res + (beta*np.cos(phi_s)+alpha*Phi)*np.sin(phi_a) + gamma*np.cos(phi_s/2)*np.sin(phi_a/2)
 
 def smooth(phi):
     """Smooth out the periodic function phi.
@@ -538,7 +540,7 @@ def compute_parameters():
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     values = np.zeros((pts_gamma,pts_array,pts_array,3))
     ab_array = np.linspace(0,1,pts_array,endpoint=False)
-    g_array = np.linspace(0,1,pts_gamma)
+    g_array = np.linspace(0,1,pts_gamma,endpoint=False)
     for i in range(pts_gamma):
         for j in range(pts_array):
             for k in range(pts_array):
