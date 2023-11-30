@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 plt.rcParams.update({"text.usetex": True,})
 s_ = 20
 import functions as fs
-import inputs,os,h5py
+import inputs,sys,os,h5py
 from pathlib import Path
 
 cluster = False if os.getcwd()[6:11]=='dario' else True
@@ -17,9 +17,9 @@ cod_col = ['y','k','b','r','gray']
 Phi = np.load(fs.name_Phi())
 
 plt.figure(figsize=(15,10))
-i = 0           #gamma index
+i = int(sys.argv[1])           #gamma index
 #Open h5py File
-with h5py.File(fs.name_dir_phi(cluster)[:-1]+'.hdf5','r') as f:    #same name as folder but .hdf5
+with h5py.File(fs.name_dir_phi(cluster)[:-1]+'.hdf5','r') as f:
     for j in range(pts_array):
         for k in range(pts_array):
             parameters = values[i*pts_array**2+j*pts_array+k]
@@ -32,13 +32,10 @@ with h5py.File(fs.name_dir_phi(cluster)[:-1]+'.hdf5','r') as f:    #same name as
                 phi_a = phi[1]
                 d_phi = (fs.compute_derivatives(phi_s,1),fs.compute_derivatives(phi_a,1))
                 E = fs.compute_energy(phi_s,phi_a,Phi,parameters,d_phi)
-                if E+beta > 1e-5:       #Solution collinear was not tried for some reason
-                    col = 'orange'
-                elif abs(E+beta) < 1e-3:   #Collinear solution -> const
-                    col = 'y'
-                elif np.sum(np.absolute(phi_s-np.pi)/grid**2) < 1e-1 or (beta==0 and np.sum(np.absolute(d_phi[0]))<1e-5):    
-                    #twisted-s seen by: either phi_s=pi or phi_s=const at beta=0.
-                    col = 'b'
+                if E+beta+2*gamma > 1e-4:       #Solution collinear was not tried for some reason
+                    col = 'fuchsia'
+                elif abs(E+beta+2*gamma) < 1e-4:
+                    col = 'gold'
                 elif abs(np.max(np.cos(phi_s))-np.min(np.cos(phi_s))) < 0.1:
                     #twisted-s seen also by considering a nearly constant cos(phi_s)
                     col = 'dodgerblue'
@@ -60,5 +57,6 @@ plt.xlabel(r"$\alpha/(1+\alpha)$",size=s_)
 plt.ylabel(r"$\beta/(1+\beta)$",size=s_)
 plt.xticks(size=s_)
 plt.yticks(size=s_)
+plt.title("gamma = "+"{:.4f}".format(gamma))
 plt.show()
 

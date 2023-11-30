@@ -2,7 +2,7 @@
 
 #Points of the phase diagram to compute
 pts_array = 10
-pts_gamma = 30
+pts_gamma = 300
 #Points in the moire unit cell
 grid = 200
 #Points to consider in the moire unit cell when smoothening

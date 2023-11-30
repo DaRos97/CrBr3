@@ -46,8 +46,8 @@ def compute_magnetization(Phi,pars,args_minimization):
         if args_minimization['disp']:
             print("Starting minimization step ",str(sss))
         #Initial condition  -> Improve 
-        fs = 0.5 if sss==1 else random.random()
-        fa = 0.5 if sss==1 else random.random()
+        fs = 0 if sss==1 else random.random()
+        fa = 0 if sss==1 else random.random()
         ans = 0 if sss==0 else 1            #Use twisted-s ansatz for first evaluation or constant phi_s/a=pi
         #Compute first state and energy
         phi_s,phi_a = initial_point(Phi,pars,fs,fa,ans)
@@ -540,7 +540,7 @@ def compute_parameters():
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     values = np.zeros((pts_gamma,pts_array,pts_array,3))
     ab_array = np.linspace(0,1,pts_array,endpoint=False)
-    g_array = np.linspace(0,1,pts_gamma,endpoint=False)
+    g_array = np.linspace(0,10,pts_gamma,endpoint=False)
     for i in range(pts_gamma):
         for j in range(pts_array):
             for k in range(pts_array):

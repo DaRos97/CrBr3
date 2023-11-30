@@ -7,8 +7,8 @@ cluster = False if os.getcwd()[6:11]=='dario' else True
 #Parameters in name of solution
 args_general = inputs.args_general
 pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = args_general
-#Create result directories if they do not exist
-fs.check_directories(cluster)
+if cluster:#Create result directories if they do not exist
+    fs.check_directories(cluster)
 #Parameters of Moire lattice
 print("qm: ",4*np.pi/np.sqrt(3)/A_M)
 parameters = fs.compute_parameters()[int(sys.argv[1])]
@@ -51,7 +51,7 @@ print("\nFinal energy: ",fs.compute_energy(phi[0],phi[1],Phi,parameters,d_phi))
 if not cluster:
     #Actual plot
     fs.plot_magnetization(phi[0],phi[1],Phi,parameters)
-    if input("save?(y/N)")=='y':
+    if 0:#input("save?(y/N)")=='y':
         dirname = 'results/ivo/'
         filename_s = dirname+'phi_s_'+"{:.8f}".format(alpha)+'_'+"{:.8f}".format(beta)+'.csv'
         filename_a = dirname+'phi_a_'+"{:.8f}".format(alpha)+'_'+"{:.8f}".format(beta)+'.csv'
