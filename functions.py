@@ -528,7 +528,7 @@ def name_phi(pars,cluster=False):
     gamma,alpha,beta = pars
     return name_dir_phi(cluster)+'phi_'+"{:.4f}".format(alpha)+'_'+"{:.4f}".format(beta)+'_'+"{:.4f}".format(gamma)+'.npy'
 
-def name_hys(initial_state,limit_gamma,steps_gamma,cluster=False):
+def name_hys(cluster=False):
     """Computes the filename of the hysteresis cycle.
 
     Parameters
@@ -542,7 +542,8 @@ def name_hys(initial_state,limit_gamma,steps_gamma,cluster=False):
         Filename of the .hdf5 file.
     """
     dirname = '/home/users/r/rossid/CrBr3/results/' if cluster else '/home/dario/Desktop/git/CrBr3/results/'
-    return dirname+'hys_'+initial_state+'_'+str(inputs.dic_initial_states[initial_state])+'_'+str(limit_gamma)+'_'+str(steps_gamma)+'.hdf5'
+    #NEED to add grid,pts_per_fit,A_M on filename
+    return dirname+'hys_'+str(inputs.grid)+'_'+str(inputs.pts_per_fit)+'_'+"{:.2f}".format(inputs.A_M)+'_'+str(inputs.limit_gamma)+'_'+str(inputs.steps_gamma)+'.hdf5'
 
 def compute_parameters():
     """Computes the grid of alpha/beta points to consider in order to build up the phase diagram.
