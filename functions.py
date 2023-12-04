@@ -298,9 +298,10 @@ def check_energies(list_E):
     
     """
     nn = 5
+    if len(list_E) <= nn:
+        return False
     lim = 1e-8
-    n_check = nn if len(list_E)>nn else len(list_E)-1
-    for i in range(n_check):
+    for i in range(nn):
         if abs(list_E[i]-list_E[i+1]) > lim:
             return False
     return True
@@ -527,6 +528,22 @@ def name_phi(pars,cluster=False):
     gamma,alpha,beta = pars
     return name_dir_phi(cluster)+'phi_'+"{:.4f}".format(alpha)+'_'+"{:.4f}".format(beta)+'_'+"{:.4f}".format(gamma)+'.npy'
 
+def name_hys(initial_state,limit_gamma,steps_gamma,cluster=False):
+    """Computes the filename of the hysteresis cycle.
+
+    Parameters
+    ----------
+    cluster: bool, optional
+        Wether we are in the cluster or not (default is False).
+
+    Returns
+    -------
+    string
+        Filename of the .hdf5 file.
+    """
+    dirname = '/home/users/r/rossid/CrBr3/results/' if cluster else '/home/dario/Desktop/git/CrBr3/results/'
+    return dirname+'hys_'+initial_state+'_'+str(inputs.dic_initial_states[initial_state])+'_'+str(limit_gamma)+'_'+str(steps_gamma)+'.hdf5'
+
 def compute_parameters():
     """Computes the grid of alpha/beta points to consider in order to build up the phase diagram.
     The phase diagram is computed in scale of a/(1+a), so we consider pts_array values 'g' between 
@@ -564,7 +581,83 @@ def check_directories(cluster):
     if not Path(name_dir_Phi(cluster)).is_dir():
         os.system('mkdir '+name_dir_Phi(cluster))
 
+def hysteresis_minimization(Phi,in_pars,gamma,phi_initial,args_hysteresis):
+    """Minimizes the energy of the state phi_initial with the new gamma value, for the hysteresis cycle.
 
+    Parameters
+    ----------
+    Phi : np.ndarray
+        Interlayer coupling of size (grid,grid)
+    pars: tuple
+        Parameters of state: alpha, beta and gamma.
+    gamma: float
+        Parameter gamma.
+    phi_initial : np.ndarray
+        Initial state of minimization.
+
+    Returns
+    -------
+    tuple
+        Symmetric and antisymmetric phases at each position (grid,grid) of the Moirè unit cell.
+    """
+    gamma_old,alpha,beta = in_pars
+    pars = (gamma,alpha,beta)
+    while True:
+        E = []
+        diff_H = [1e20]
+        phi_s = np.copy(phi_initial[0])
+        phi_a = np.copy(phi_initial[1])
+        result = np.zeros((2,*phi_s.shape))
+        d_phi = (compute_derivatives(phi_s,1),compute_derivatives(phi_a,1))
+        E.append(compute_energy(phi_s,phi_a,Phi,pars,d_phi))
+        #Initiate learning rate and minimization loop
+        step = 1        #initial step
+        learn_rate_0 = args_hysteresis['learn_rate']
+        if 0:#args_hysteresis['disp']:
+            print("Minimization of gamma: ",gamma," with lr: ",learn_rate_0)
+        continue_minimization = True
+        while continue_minimization:
+            learn_rate = learn_rate_0*random.random()
+            #Energy gradients
+            dHs = grad_H(phi_s,phi_a,'s',Phi,pars,compute_derivatives(phi_s,2))
+            dHa = grad_H(phi_s,phi_a,'a',Phi,pars,compute_derivatives(phi_a,2))
+            #Update phi
+            phi_s += learn_rate*dHs
+            phi_a += learn_rate*dHa
+            #New energy
+            d_phi = (compute_derivatives(phi_s,1),compute_derivatives(phi_a,1))
+            E.insert(0,compute_energy(phi_s,phi_a,Phi,pars,d_phi))
+            #Check if dHs and dHa are very small
+            diff_H.insert(0,np.sum(np.absolute(dHs)+np.absolute(dHa)))
+            if 0:#args_hysteresis['disp']:
+                print("energy step ",step," is ",E[1]," ,dH at ",diff_H[0])
+            #Exit checks
+            if check_energies(E):   #stable energy
+                result[0] = np.copy(phi_s)
+                result[1] = np.copy(phi_a)
+                if 0:#gamma <= -11110:
+                    print("Energy: ",E[0],"\ndiff_H: ",diff_H[0],"\n steps: ",steps)
+                    plot_magnetization(phi_s,phi_a,Phi,pars)
+                return result
+            #Start with smaller learn rate
+            if diff_H[0]>diff_H[1] or E[0]>E[1]:    #worse solution
+                args_hysteresis['learn_rate'] /= 2
+                continue_minimization = False
+            #Max number of steps scenario
+            if step > args_hysteresis['maxiter']:
+                print("Maxiter reached at gamma step ", gamma)
+                result[0] = np.copy(phi_s)
+                result[1] = np.copy(phi_a)
+                return result
+            step += 1
+
+def compute_magnetization(phi_s,phi_a):
+    pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
+    #Single layer phases
+    phi_1 = (phi_s+phi_a)/2
+    phi_2 = (phi_s-phi_a)/2
+    total_magnetization = np.sum(np.cos(phi_1))/grid**2 + np.sum(np.cos(phi_2))/grid**2
+    return total_magnetization
 
 ##############################################################################
 ##############################################################################
