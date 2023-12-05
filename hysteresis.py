@@ -15,9 +15,16 @@ except FileNotFoundError:
     np.save(filename_Phi,Phi)
 #Upload initial state
 initial_state = inputs.dic_in_state[int(sys.argv[1])]
-parameters = fs.compute_parameters()[inputs.dic_initial_states[initial_state]]
+filename_hys = fs.name_hys(initial_state,cluster)
+try:    #parameters of initial state
+    with h5py.File(filename_hys,'r') as f:
+        parameters = np.copy(f['parameters'])
+except:
+    parameters = fs.compute_parameters()[inputs.dic_initial_states[initial_state]]
+    with h5py.File(filename_hys,'a') as f:
+        f.create_dataset('parameters',data=np.array(parameters))
 print("initial state of hysteresis cycle at pars: ",parameters)
-try:
+try:    #Initial state
     filename_phi = fs.name_phi(parameters,cluster)
     if not cluster:
         f = h5py.File(fs.name_dir_phi(cluster)[:-1]+'.hdf5','r')   #same name as folder but .hdf5
@@ -29,9 +36,6 @@ try:
 except:
     print("Initial state not computed, abort")
     exit()
-
-#Start hysteresis
-filename_hys = fs.name_hys(cluster)
 try:    #list_gamma
     with h5py.File(filename_hys,'r') as f:
         list_gamma = np.copy(f['list_gamma'])
@@ -53,22 +57,19 @@ args_hysteresis = {
 for i_g in range(1,len(list_gamma)):
     try:    #result phase
         with h5py.File(filename_hys,'r') as f:
-            in_group = f.require_group(initial_state)
-            result_phases[i_g] = np.copy(in_group['result_phases/'+str(i_g)])
+            result_phases[i_g] = np.copy(f['result_phases/'+str(i_g)])
     except:
         pars = (list_gamma[i_g],*parameters[1:])
         result_phases[i_g] = fs.hysteresis_minimization(Phi,pars,result_phases[i_g-1],args_hysteresis)
         with h5py.File(filename_hys,'a') as f:
-            in_group = f.require_group(initial_state)
-            result_phases_group = in_group.require_group('result_phases')
+            result_phases_group = f.require_group('result_phases')
             result_phases_group.create_dataset(str(i_g),data=result_phases[i_g])
 print("Computed/extracted phases")
 #
 try:    #Energy and magnetization
     with h5py.File(filename_hys,'r') as f:
-        in_group = f.require_group(initial_state)
-        Energy = np.copy(in_group['Energy'])
-        Magnetization = np.copy(in_group['Magnetization'])
+        Energy = np.copy(f['Energy'])
+        Magnetization = np.copy(f['Magnetization'])
     print("Extracted properties")
 except:
     Energy = np.zeros(len(list_gamma))
@@ -80,9 +81,8 @@ except:
         Magnetization[i_g] = fs.compute_magnetization(result_phases[i_g])
     #Save
     with h5py.File(filename_hys,'a') as f:
-        in_group = f.require_group(initial_state)
-        in_group.create_dataset('Energy',data=Energy)
-        in_group.create_dataset('Magnetization',data=Magnetization)
+        f.create_dataset('Energy',data=Energy)
+        f.create_dataset('Magnetization',data=Magnetization)
     print("Computed properties")
 
 
