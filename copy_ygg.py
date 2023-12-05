@@ -17,7 +17,8 @@ if sys.argv[1]=='pd':
     #Copy .hdf5 file
     os.system('scp rossid@login1.yggdrasil.hpc.unige.ch:'+fs.name_dir_phi(True)[:-1]+'.hdf5'+' '+fs.name_dir_phi(False)[:-1]+'.hdf5')
 elif sys.argv[1]=='h':
-    os.system('scp rossid@login1.yggdrasil.hpc.unige.ch:'+fs.name_hys(True)+' '+fs.name_hys(False))
+    for i in range(len(inputs.dic_in_state)):
+        os.system('scp rossid@login1.yggdrasil.hpc.unige.ch:'+fs.name_hys(inputs.dic_in_state[i],True)+' '+fs.name_hys(inputs.dic_in_state[i],False))
 else:
     print("Par not recognized (pd or h)")
     exit()

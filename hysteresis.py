@@ -54,13 +54,14 @@ args_hysteresis = {
         'maxiter':1e6, 
         'disp': not cluster,
         }
-for i_g in range(1,len(list_gamma)):
+for i_g in range(len(list_gamma)):
     try:    #result phase
         with h5py.File(filename_hys,'r') as f:
             result_phases[i_g] = np.copy(f['result_phases/'+str(i_g)])
     except:
-        pars = (list_gamma[i_g],*parameters[1:])
-        result_phases[i_g] = fs.hysteresis_minimization(Phi,pars,result_phases[i_g-1],args_hysteresis)
+        if i_g>0:
+            pars = (list_gamma[i_g],*parameters[1:])
+            result_phases[i_g] = fs.hysteresis_minimization(Phi,pars,result_phases[i_g-1],args_hysteresis)
         with h5py.File(filename_hys,'a') as f:
             result_phases_group = f.require_group('result_phases')
             result_phases_group.create_dataset(str(i_g),data=result_phases[i_g])
