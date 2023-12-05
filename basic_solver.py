@@ -11,7 +11,8 @@ if cluster:#Create result directories if they do not exist
     fs.check_directories(cluster)
 #Parameters of Moire lattice
 print("qm: ",4*np.pi/np.sqrt(3)/A_M)
-parameters = fs.compute_parameters()[int(sys.argv[1])]
+g_index = int(sys.argv[2])
+parameters = fs.compute_parameters()[g_index*pts_array**2+int(sys.argv[1])]
 gamma,alpha,beta = parameters
 print("alpha: ",alpha," beta: ",beta," gamma: ",gamma)
 print("alpha/1+alpha: ",alpha/(1+alpha)," beta/1+beta: ",beta/(1+beta))
@@ -35,7 +36,6 @@ try:
         f.close()
     else:
         phi = np.load(filename_phi)
-    a = sys.argv[2]
 except :
     print("Computing magnetization...")
     args_minimization = {

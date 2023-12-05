@@ -13,8 +13,10 @@ except FileNotFoundError:
     print("Computing interlayer coupling...")
     Phi = fs.compute_interlayer()
     np.save(filename_Phi,Phi)
+#Upload initial state
 initial_state = inputs.dic_in_state[int(sys.argv[1])]
 parameters = fs.compute_parameters()[inputs.dic_initial_states[initial_state]]
+print("initial state of hysteresis cycle at pars: ",parameters)
 try:
     filename_phi = fs.name_phi(parameters,cluster)
     if not cluster:
@@ -25,15 +27,8 @@ try:
     else:
         phi_0 = np.load(filename_phi)
 except:
-    print("Computing magnetization...")
-    args_minimization = {
-            'rand_m':100, 
-            'maxiter':1e5, 
-            'disp': not cluster,
-            }
-    phi_0 = fs.compute_magnetization(Phi,parameters,args_minimization)
-if 0:
-    fs.plot_magnetization(phi_0[0],phi_0[1],Phi,parameters)
+    print("Initial state not computed, abort")
+    exit()
 
 #Start hysteresis
 filename_hys = fs.name_hys(cluster)
@@ -50,8 +45,9 @@ except:
 result_phases = np.zeros((len(list_gamma),*phi_0.shape))
 result_phases[0] = phi_0
 args_hysteresis = {
-        'learn_rate':-0.1,
-        'maxiter':1e5, 
+        'noise':1e-1,
+        'learn_rate':-0.01,
+        'maxiter':1e6, 
         'disp': not cluster,
         }
 for i_g in range(1,len(list_gamma)):
@@ -60,8 +56,8 @@ for i_g in range(1,len(list_gamma)):
             in_group = f.require_group(initial_state)
             result_phases[i_g] = np.copy(in_group['result_phases/'+str(i_g)])
     except:
-        gamma = list_gamma[i_g]
-        result_phases[i_g] = fs.hysteresis_minimization(Phi,parameters,gamma,result_phases[i_g-1],args_hysteresis)
+        pars = (list_gamma[i_g],*parameters[1:])
+        result_phases[i_g] = fs.hysteresis_minimization(Phi,pars,result_phases[i_g-1],args_hysteresis)
         with h5py.File(filename_hys,'a') as f:
             in_group = f.require_group(initial_state)
             result_phases_group = in_group.require_group('result_phases')
@@ -78,11 +74,10 @@ except:
     Energy = np.zeros(len(list_gamma))
     Magnetization = np.zeros(len(list_gamma))
     for i_g in range(len(list_gamma)):
-        gamma = list_gamma[i_g]
-        pars = (gamma,parameters[1],parameters[2])
+        pars = (list_gamma[i_g],*parameters[1:])
         d_phi = (fs.compute_derivatives(result_phases[i_g][0],1),fs.compute_derivatives(result_phases[i_g][1],1))
-        Energy[i_g] = fs.compute_energy(result_phases[i_g][0],result_phases[i_g][1],Phi,pars,d_phi)
-        Magnetization[i_g] = fs.compute_magnetization(result_phases[i_g][0],result_phases[i_g][1])
+        Energy[i_g] = fs.compute_energy(result_phases[i_g],Phi,pars,d_phi)
+        Magnetization[i_g] = fs.compute_magnetization(result_phases[i_g])
     #Save
     with h5py.File(filename_hys,'a') as f:
         in_group = f.require_group(initial_state)
@@ -91,17 +86,6 @@ except:
     print("Computed properties")
 
 
-if not cluster:
-    import matplotlib.pyplot as plt
-    plt.rcParams.update({"text.usetex": True,})
-    s_ = 20
-    #Plot
-    plt.figure(figsize=(20,20))
-    plt.subplot(1,2,1)
-    plt.plot(list_gamma,Energy)
-    plt.subplot(1,2,2)
-    plt.plot(list_gamma,Magnetization)
-    plt.show()
 
 
 

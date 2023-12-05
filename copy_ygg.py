@@ -4,19 +4,28 @@ import functions as fs
 from pathlib import Path
 import inputs
 
-cluster = False
 args_general = inputs.args_general
 pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = args_general
-#
-filename_Phi = fs.name_Phi(cluster)
+#Copy interlayer potential
+filename_Phi = fs.name_Phi()
 if not Path(filename_Phi).is_file():
     print("Copying interlayer potential ",filename_Phi)
     os.system('scp rossid@login1.yggdrasil.hpc.unige.ch:'+fs.name_Phi(True)+' '+fs.name_Phi(False))
 
-if 1:
+#Copy result of phase diagram
+if sys.argv[1]=='pd':
     #Copy .hdf5 file
     os.system('scp rossid@login1.yggdrasil.hpc.unige.ch:'+fs.name_dir_phi(True)[:-1]+'.hdf5'+' '+fs.name_dir_phi(False)[:-1]+'.hdf5')
+elif sys.argv[1]=='h':
+    os.system('scp rossid@login1.yggdrasil.hpc.unige.ch:'+fs.name_hys(True)+' '+fs.name_hys(False))
+else:
+    print("Par not recognized (pd or h)")
     exit()
+
+
+
+
+
 
 if 0:
     #Copy all files in the directory

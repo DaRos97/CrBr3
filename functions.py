@@ -50,22 +50,22 @@ def compute_magnetization(Phi,pars,args_minimization):
         fa = 0 if sss==1 else random.random()
         ans = 0 if sss==0 else 1            #Use twisted-s ansatz for first evaluation or constant phi_s/a=pi
         #Compute first state and energy
-        phi_s,phi_a = initial_point(Phi,pars,fs,fa,ans)
-        d_phi = (compute_derivatives(phi_s,1),compute_derivatives(phi_a,1))
-        E.append(compute_energy(phi_s,phi_a,Phi,pars,d_phi))
+        phi = initial_point(Phi,pars,fs,fa,ans)
+        d_phi = (compute_derivatives(phi[0],1),compute_derivatives(phi[1],1))
+        E.append(compute_energy(phi,Phi,pars,d_phi))
         #Initiate learning rate and minimization loop
         step = 1        #initial step
         while True:
             learn_rate = learn_rate_0*random.random()
             #Energy gradients
-            dHs = grad_H(phi_s,phi_a,'s',Phi,pars,compute_derivatives(phi_s,2))
-            dHa = grad_H(phi_s,phi_a,'a',Phi,pars,compute_derivatives(phi_a,2))
+            dHs = grad_H(phi,'s',Phi,pars,compute_derivatives(phi[0],2))
+            dHa = grad_H(phi,'a',Phi,pars,compute_derivatives(phi[1],2))
             #Update phi
-            phi_s += learn_rate*dHs
-            phi_a += learn_rate*dHa
+            phi[0] += learn_rate*dHs
+            phi[1] += learn_rate*dHa
             #New energy
-            d_phi = (compute_derivatives(phi_s,1),compute_derivatives(phi_a,1))
-            E.insert(0,compute_energy(phi_s,phi_a,Phi,pars,d_phi))
+            d_phi = (compute_derivatives(phi[0],1),compute_derivatives(phi[1],1))
+            E.insert(0,compute_energy(phi,Phi,pars,d_phi))
             #Check if dHs and dHa are very small
             diff_H.insert(0,np.sum(np.absolute(dHs)+np.absolute(dHa)))
             if args_minimization['disp']:
@@ -74,18 +74,16 @@ def compute_magnetization(Phi,pars,args_minimization):
             if check_energies(E):   #stable energy
                 if E[0]<min_E:
                     min_E = E[0]
-                    result[0] = np.copy(phi_s)
-                    result[1] = np.copy(phi_a)
+                    result = np.copy(phi)
                 break
             if diff_H[0]>diff_H[1] or E[0]>E[1]:    #worse solution
-                phi_s -= learn_rate*dHs
-                phi_a -= learn_rate*dHa
+                phi[0] -= learn_rate*dHs
+                phi[1] -= learn_rate*dHa
                 del E[0]
                 del diff_H[0]
                 if E[0]<min_E:
                     min_E = E[0]
-                    result[0] = np.copy(phi_s)
-                    result[1] = np.copy(phi_a)
+                    result = np.copy(phi)
                 break
             if E[0] > 1e10: #VERY bad situation
                 print("bullshit")
@@ -101,8 +99,8 @@ def compute_magnetization(Phi,pars,args_minimization):
             #
         if args_minimization['disp']:
             print("Minimum energy at ",E[0]," ,dH at ",diff_H[0])
-            plot_phis(result[0],result[1],'phi_s and phi_a')
-            plot_magnetization(result[0],result[1],Phi,pars)
+            plot_phis(result,'phi_s and phi_a')
+            plot_magnetization(result,Phi,pars)
 #            input()
     return result
 
@@ -149,9 +147,9 @@ def initial_point(Phi,pars,fs,fa,ans):
     elif sol=='constant':
         phi_s = np.ones((grid,grid))*2*np.pi*fs
         phi_a = np.ones((grid,grid))*2*np.pi*fa
-    return phi_s, phi_a
+    return (phi_s, phi_a)
 
-def compute_energy(phi_s,phi_a,Phi,pars,d_phi):
+def compute_energy(phi,Phi,pars,d_phi):
     """Computes the energy of the system.
 
     Parameters
@@ -179,11 +177,11 @@ def compute_energy(phi_s,phi_a,Phi,pars,d_phi):
     grad_2s = np.absolute(d_phi[0][0])**2 + np.absolute(d_phi[0][1])**2
     grad_2a = np.absolute(d_phi[1][0])**2 + np.absolute(d_phi[1][1])**2
     kin_part = 1/2*(grad_2s+grad_2a)
-    energy = kin_part - np.cos(phi_a)*(alpha*Phi+beta*np.cos(phi_s)) - 2*gamma*np.cos(phi_s/2)*np.cos(phi_a/2)
+    energy = kin_part - np.cos(phi[1])*(alpha*Phi+beta*np.cos(phi[0])) - 2*gamma*np.cos(phi[0]/2)*np.cos(phi[1]/2)
     H = energy.sum()/grid**2
     return H
 
-def grad_H(phi_s,phi_a,tt,Phi,pars,d2_phi):
+def grad_H(phi,tt,Phi,pars,d2_phi):
     """Computes evolution step dH/d phi.
 
     Parameters
@@ -210,9 +208,9 @@ def grad_H(phi_s,phi_a,tt,Phi,pars,d2_phi):
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     res = -d2_phi[0]-d2_phi[1]
     if tt=='s':
-        return res + beta*np.sin(phi_s)*np.cos(phi_a) + gamma*np.cos(phi_a/2)*np.sin(phi_s/2)
+        return res + beta*np.sin(phi[0])*np.cos(phi[1]) + gamma*np.cos(phi[1]/2)*np.sin(phi[0]/2)
     elif tt=='a':
-        return res + (beta*np.cos(phi_s)+alpha*Phi)*np.sin(phi_a) + gamma*np.cos(phi_s/2)*np.sin(phi_a/2)
+        return res + (beta*np.cos(phi[0])+alpha*Phi)*np.sin(phi[1]) + gamma*np.cos(phi[0]/2)*np.sin(phi[1]/2)
 
 def smooth(phi):
     """Smooth out the periodic function phi.
@@ -274,7 +272,7 @@ def compute_derivatives(phi,n):
     qm = 4*np.pi/np.sqrt(3)/A_M
     xx = np.linspace(0,A_M,grid,endpoint=False)
     #
-    smooth_or_not = smooth if n == 2 else empty_fun
+    smooth_or_not = smooth #if n == 2 else empty_fun
     #Interpolate phase
     fun = smooth_or_not(phi)[1]
     #derivatives
@@ -306,7 +304,7 @@ def check_energies(list_E):
             return False
     return True
 
-def plot_phis(phi_1,phi_2,txt_title='mah'):
+def plot_phis(phi,txt_title='mah'):
     """Plot the phases phi_1 and phi_2 in a 3D graph
 
     Parameters
@@ -320,19 +318,29 @@ def plot_phis(phi_1,phi_2,txt_title='mah'):
 
     """
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
+    X,Y = np.meshgrid(np.linspace(0,1,grid,endpoint=False),np.linspace(0,1,grid,endpoint=False))
     import matplotlib.pyplot as plt 
     from matplotlib import cm
     #
-    fig, (ax1,ax2) = plt.subplots(1,2,subplot_kw={"projection": "3d"},figsize=(20,10))
+    fig = plt.figure(figsize=(20,20))
     plt.suptitle(txt_title)
-    X,Y = np.meshgrid(np.linspace(0,1,grid,endpoint=False),np.linspace(0,1,grid,endpoint=False))
-    surf = ax1.plot_surface(X, Y, phi_1, cmap=cm.coolwarm,
-               linewidth=0, antialiased=False)
-    fig.colorbar(surf, shrink=0.5, aspect=5)
-    surf = ax2.plot_surface(X, Y, phi_2, cmap=cm.coolwarm,
-               linewidth=0, antialiased=False)
-    fig.colorbar(surf, shrink=0.5, aspect=5)
+    nn = len(phi)
+    col = 3 if nn>=3 else nn
+    for i in range(nn):
+        ax = fig.add_subplot(nn//3+1,col,i+1,projection='3d')
+        surf = ax.plot_surface(X, Y, phi[i], cmap=cm.coolwarm,
+                   linewidth=0, antialiased=False)
+        fig.colorbar(surf, shrink=0.5, aspect=5)
     plt.show()
+    if 0:
+        fig, (ax1,ax2) = plt.subplots(1,2,subplot_kw={"projection": "3d"},figsize=(20,10))
+        surf = ax1.plot_surface(X, Y, phi_1, cmap=cm.coolwarm,
+                   linewidth=0, antialiased=False)
+        fig.colorbar(surf, shrink=0.5, aspect=5)
+        surf = ax2.plot_surface(X, Y, phi_2, cmap=cm.coolwarm,
+                   linewidth=0, antialiased=False)
+        fig.colorbar(surf, shrink=0.5, aspect=5)
+        plt.show()
 
 def extend(phi):
     """Extend the domain of phi from 0,A_M to -A_M,2*A_M by copying it periodically.
@@ -347,14 +355,14 @@ def extend(phi):
     np.ndarray
         Values of phi periodically repeated on larger domain.
     """
-    grid = phi.shape[0]
+    grid = inputs.grid
     L = np.zeros((3*grid,3*grid))
     for i in range(3):
         for j in range(3):
             L[i*grid:(i+1)*grid,j*grid:(j+1)*grid] = phi
     return L
 
-def plot_magnetization(phi_s,phi_a,Phi,pars):
+def plot_magnetization(phi,Phi,pars):
     """Plots the magnetization values in the Moirè unit cell, with a background given by the
     interlayer potential. The two images correspond to the 2 layers. Magnetization is in x-z
     plane while the layers are in x-y plane.
@@ -377,8 +385,8 @@ def plot_magnetization(phi_s,phi_a,Phi,pars):
     big_Phi = extend(Phi)
     fun_Phi = RBS(XX,XX,big_Phi)
     #Single layer phases
-    phi_1 = (phi_s+phi_a)/2
-    phi_2 = (phi_s-phi_a)/2
+    phi_1 = (phi[0]+phi[1])/2
+    phi_2 = (phi[0]-phi[1])/2
     #Background -> interlayer coupling
     long_X = np.linspace(-1,1,2*grid,endpoint=False)
     long_Y = np.linspace(-1,1,2*grid,endpoint=False)
@@ -582,7 +590,7 @@ def check_directories(cluster):
     if not Path(name_dir_Phi(cluster)).is_dir():
         os.system('mkdir '+name_dir_Phi(cluster))
 
-def hysteresis_minimization(Phi,in_pars,gamma,phi_initial,args_hysteresis):
+def hysteresis_minimization(Phi,pars,phi_initial,args_hysteresis):
     """Minimizes the energy of the state phi_initial with the new gamma value, for the hysteresis cycle.
 
     Parameters
@@ -601,62 +609,61 @@ def hysteresis_minimization(Phi,in_pars,gamma,phi_initial,args_hysteresis):
     tuple
         Symmetric and antisymmetric phases at each position (grid,grid) of the Moirè unit cell.
     """
-    gamma_old,alpha,beta = in_pars
-    pars = (gamma,alpha,beta)
+    gamma,alpha,beta = pars
+    noise = args_hysteresis['noise']
+    learn_rate_0 = args_hysteresis['learn_rate']
     while True:
         E = []
         diff_H = [1e20]
-        phi_s = np.copy(phi_initial[0])
-        phi_a = np.copy(phi_initial[1])
-        result = np.zeros((2,*phi_s.shape))
-        d_phi = (compute_derivatives(phi_s,1),compute_derivatives(phi_a,1))
-        E.append(compute_energy(phi_s,phi_a,Phi,pars,d_phi))
+        phi = np.copy(phi_initial) + noise 
+        result = np.zeros((2,*phi[0].shape))
+        d_phi = (compute_derivatives(phi[0],1),compute_derivatives(phi[1],1))
+        E.append(compute_energy(phi,Phi,pars,d_phi))
         #Initiate learning rate and minimization loop
         step = 1        #initial step
-        learn_rate_0 = args_hysteresis['learn_rate']
-        if 0:#args_hysteresis['disp']:
+        if args_hysteresis['disp']:
             print("Minimization of gamma: ",gamma," with lr: ",learn_rate_0)
+            input()
         continue_minimization = True
         while continue_minimization:
-            learn_rate = learn_rate_0*random.random()
+            learn_rate = learn_rate_0#*random.random()
             #Energy gradients
-            dHs = grad_H(phi_s,phi_a,'s',Phi,pars,compute_derivatives(phi_s,2))
-            dHa = grad_H(phi_s,phi_a,'a',Phi,pars,compute_derivatives(phi_a,2))
+            dHs = grad_H(phi,'s',Phi,pars,compute_derivatives(phi[0],2))
+            dHa = grad_H(phi,'a',Phi,pars,compute_derivatives(phi[1],2))
+            if 0:
+                plot_phis([phi[0],phi[1],dHs,dHa],'all '+str(gamma))
             #Update phi
-            phi_s += learn_rate*dHs
-            phi_a += learn_rate*dHa
+            phi[0] += learn_rate*dHs
+            phi[1] += learn_rate*dHa
             #New energy
-            d_phi = (compute_derivatives(phi_s,1),compute_derivatives(phi_a,1))
-            E.insert(0,compute_energy(phi_s,phi_a,Phi,pars,d_phi))
+            d_phi = (compute_derivatives(phi[0],1),compute_derivatives(phi[1],1))
+            E.insert(0,compute_energy(phi,Phi,pars,d_phi))
             #Check if dHs and dHa are very small
             diff_H.insert(0,np.sum(np.absolute(dHs)+np.absolute(dHa)))
-            if 0:#args_hysteresis['disp']:
-                print("energy step ",step," is ",E[1]," ,dH at ",diff_H[0])
+            if args_hysteresis['disp']:
+                print("energy step ",step," is ",E[0]," ,dH at ",diff_H[0])
             #Exit checks
             if check_energies(E):   #stable energy
-                result[0] = np.copy(phi_s)
-                result[1] = np.copy(phi_a)
-                if 0:#gamma <= -11110:
-                    print("Energy: ",E[0],"\ndiff_H: ",diff_H[0],"\n steps: ",steps)
-                    plot_magnetization(phi_s,phi_a,Phi,pars)
+                result = np.copy(phi)
+                if gamma <= 0:
+                    plot_magnetization(phi,Phi,pars)
                 return result
             #Start with smaller learn rate
-            if diff_H[0]>diff_H[1] or E[0]>E[1]:    #worse solution
-                args_hysteresis['learn_rate'] /= 2
+            if E[0]>E[1]:
+                learn_rate_0 /= 2
                 continue_minimization = False
             #Max number of steps scenario
             if step > args_hysteresis['maxiter']:
                 print("Maxiter reached at gamma step ", gamma)
-                result[0] = np.copy(phi_s)
-                result[1] = np.copy(phi_a)
+                result = np.copy(phi)
                 return result
             step += 1
 
-def compute_magnetization(phi_s,phi_a):
+def compute_magnetization(phi):
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     #Single layer phases
-    phi_1 = (phi_s+phi_a)/2
-    phi_2 = (phi_s-phi_a)/2
+    phi_1 = (phi[0]+phi[1])/2
+    phi_2 = (phi[0]-phi[1])/2
     total_magnetization = np.sum(np.cos(phi_1))/grid**2 + np.sum(np.cos(phi_2))/grid**2
     return total_magnetization
 
