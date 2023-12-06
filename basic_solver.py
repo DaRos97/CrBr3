@@ -10,7 +10,6 @@ pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = args_general
 if cluster:#Create result directories if they do not exist
     fs.check_directories(cluster)
 #Parameters of Moire lattice
-print("qm: ",4*np.pi/np.sqrt(3)/A_M)
 g_index = int(sys.argv[2])
 parameters = fs.compute_parameters()[g_index*pts_array**2+int(sys.argv[1])]
 gamma,alpha,beta = parameters
@@ -22,6 +21,8 @@ filename_Phi = fs.name_Phi(cluster)
 try:    
     Phi = np.load(filename_Phi)
 except FileNotFoundError:
+    print("Check to compute the intrlayer coupling BEFORE the calculation")
+    exit()
     print("Computing interlayer coupling...")
     Phi = fs.compute_interlayer()
     np.save(filename_Phi,Phi)
@@ -36,11 +37,11 @@ try:
         f.close()
     else:
         phi = np.load(filename_phi)
-except :
+except:
     print("Computing magnetization...")
     args_minimization = {
             'rand_m':100, 
-            'maxiter':1e5, 
+            'maxiter':1e6, 
             'disp': not cluster,
             }
     phi = fs.compute_magnetization(Phi,parameters,args_minimization)

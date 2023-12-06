@@ -76,7 +76,7 @@ def compute_magnetization(Phi,pars,args_minimization):
                     min_E = E[0]
                     result = np.copy(phi)
                 break
-            if diff_H[0]>diff_H[1] or E[0]>E[1]:    #worse solution
+            if E[0]>E[1]:    #worse solution
                 phi[0] -= learn_rate*dHs
                 phi[1] -= learn_rate*dHa
                 del E[0]
@@ -147,7 +147,7 @@ def initial_point(Phi,pars,fs,fa,ans):
     elif sol=='constant':
         phi_s = np.ones((grid,grid))*2*np.pi*fs
         phi_a = np.ones((grid,grid))*2*np.pi*fa
-    return (phi_s, phi_a)
+    return [phi_s, phi_a]
 
 def compute_energy(phi,Phi,pars,d_phi):
     """Computes the energy of the system.
@@ -342,27 +342,29 @@ def plot_phis(phi,txt_title='mah'):
         fig.colorbar(surf, shrink=0.5, aspect=5)
         plt.show()
 
-def extend(phi):
+def extend(phi,nn=3):
     """Extend the domain of phi from 0,A_M to -A_M,2*A_M by copying it periodically.
 
     Parameters
     ----------
     phi: np.ndarray
         Function on a grid to extend.
+    nn: int
+        Number of copies per direction.
 
     Returns
     -------
     np.ndarray
         Values of phi periodically repeated on larger domain.
     """
-    grid = inputs.grid
-    L = np.zeros((3*grid,3*grid))
-    for i in range(3):
-        for j in range(3):
+    grid = phi.shape[0]
+    L = np.zeros((nn*grid,nn*grid))
+    for i in range(nn):
+        for j in range(nn):
             L[i*grid:(i+1)*grid,j*grid:(j+1)*grid] = phi
     return L
 
-def plot_magnetization(phi,Phi,pars):
+def plot_magnetization(phi,Phi,pars,save=False,tt=''):
     """Plots the magnetization values in the Moirè unit cell, with a background given by the
     interlayer potential. The two images correspond to the 2 layers. Magnetization is in x-z
     plane while the layers are in x-y plane.
@@ -417,7 +419,7 @@ def plot_magnetization(phi,Phi,pars):
             return a,b
     phi_ = [phi_1,phi_2]
     #Plot magnetization patterns -> two different plots
-    fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(20,20))
+    fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(20,10))
     for ind,ax in enumerate([ax1,ax2]):
         ax.axis('off')
         ax.set_aspect(1.)
@@ -438,8 +440,12 @@ def plot_magnetization(phi,Phi,pars):
                 ax.arrow(x - l/2*np.sin(phi),y - l/2*np.cos(phi),l*np.sin(phi), l*np.cos(phi),head_width=hw,head_length=hl,color='k')
         ax.set_xlim(-0.6,0.6)
         ax.set_ylim(-0.65,0.65)
-    plt.suptitle("alpha/(1+alpha) = "+"{:.4f}".format(alpha/(1+alpha))+",  beta/(1+beta) = "+"{:.4f}".format(beta/(1+beta))+", gamma = "+"{:.4f}".format(gamma))
-    plt.show()
+    plt.suptitle("alpha/(1+alpha) = "+"{:.4f}".format(alpha/(1+alpha))+",  beta/(1+beta) = "+"{:.4f}".format(beta/(1+beta))+", gamma = "+"{:.4f}".format(gamma),size=20)
+    if save:
+        plt.savefig('temp'+tt+'.png')
+        plt.close()
+    else:
+        plt.show()
 
 ####################################################################################################################
 def compute_interlayer():
@@ -496,7 +502,7 @@ def name_Phi(cluster=False):
         The name of the .npy file containing the interlayer coupling.
     """
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
-    return name_dir_Phi(cluster) + 'Phi_'+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy'
+    return name_dir_Phi(cluster) + 'Phi_'+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy' 
 
 def name_dir_phi(cluster=False):
     """Computes the directory name where to save the results.
@@ -645,8 +651,6 @@ def hysteresis_minimization(Phi,pars,phi_initial,args_hysteresis):
             #Exit checks
             if check_energies(E):   #stable energy
                 result = np.copy(phi)
-                if gamma <= 0:
-                    plot_magnetization(phi,Phi,pars)
                 return result
             #Start with smaller learn rate
             if E[0]>E[1]:
@@ -659,7 +663,7 @@ def hysteresis_minimization(Phi,pars,phi_initial,args_hysteresis):
                 return result
             step += 1
 
-def compute_magnetization(phi):
+def compute_total_magnetization(phi):
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     #Single layer phases
     phi_1 = (phi[0]+phi[1])/2
@@ -672,10 +676,13 @@ def compute_magnetization(phi):
 ##############################################################################
 
 def find_closest(lattice,site,UC_):
-    #Finds the closest lattice site to the coordinates "site". The lattice is stored in "lattice" 
-    #and the search can be constrained to the unit cell "UC_", if given.
+    """Finds the closest lattice site to the coordinates "site". 
+    The lattice is stored in "lattice" and the search can be constrained 
+    to the unit cell "UC_", if given.
 
-    #Lattice has shape nx,ny,2->unit cell index,2->x and y.
+    Lattice has shape nx,ny,2->unit cell index,2->x and y.
+
+    """
     X,Y,W,Z = lattice.shape
     #
     dist_A = np.sqrt((lattice[:,:,0,0]-site[0])**2+(lattice[:,:,0,1]-site[1])**2)
@@ -698,17 +705,20 @@ def find_closest(lattice,site,UC_):
     #Smallest y-difference in A and B sublattice
     argx = arg//Y
     argy = arg%Y
-    if argx == X-1 or argy == Y-1 or argx == 0 or argy == 0:
+    if argx in [0,X-1] or argy in [0,Y-1]:
         print("Reached end of lattice, probably not good")
         exit()
     return argx,argy,UC
 
 def compute_lattices(A_1,A_2,theta):
+    """Compute the 2 honeycomb lattices with lattice lengths A_1/A_2 and a twist angle theta.
+
+
+    """
     A_M = moire_length(A_1,A_2,theta)
-    n_x = 3
-    n_y = 3
-    xxx = int(2*n_x*A_M)
-    yyy = int(2*n_y*A_M)
+    n_x = n_y = 3       #number of moirè lenths to include in l1,l2
+    xxx = int(n_x*A_M)
+    yyy = int(n_y*A_M)
     l1 = np.zeros((xxx,yyy,2,2))
     l2 = np.zeros((xxx,yyy,2,2))
     a1_1 = np.matmul(R_z(theta/2),a1)*A_1
@@ -719,18 +729,26 @@ def compute_lattices(A_1,A_2,theta):
     offset_sublattice_2 = np.matmul(R_z(-theta/2),np.array([0,A_2/np.sqrt(3)]))
     for i in range(xxx):
         for j in range(yyy):
-            l1[i,j,0] = (i-n_x*A_M)*a1_1+(j-n_y*A_M)*a2_1
+            l1[i,j,0] = (i-n_x//2*A_M)*a1_1+(j-n_y//2*A_M)*a2_1
             l1[i,j,1] = l1[i,j,0] + offset_sublattice_1
-            l2[i,j,0] = (i-n_x*A_M)*a1_2+(j-n_y*A_M)*a2_2
+            l2[i,j,0] = (i-n_x//2*A_M)*a1_2+(j-n_y//2*A_M)*a2_2
             l2[i,j,1] = l2[i,j,0] + offset_sublattice_2
     return l1,l2,xxx,yyy
 
 def moire_length(A_1,A_2,theta):
-    if A_1 == 1 and A_2 == 1 and theta == 0:
+    """Moirè length of two lattices with lengths A_1/A_2 and twist theta. From Louk's paper.
+
+
+    """
+    if A_1 == 1 and A_2 == 1 and theta == 0:    #Limit case
         return 1
     return 1/np.sqrt(1/A_1**2+1/A_2**2-2*np.cos(theta)/(A_1*A_2))
 
 def R_z(t):
+    """Z-rotations of angle t.
+
+
+    """
     R = np.zeros((2,2))
     R[0,0] = np.cos(t)
     R[0,1] = -np.sin(t)

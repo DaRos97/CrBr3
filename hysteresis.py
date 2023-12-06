@@ -41,7 +41,7 @@ try:    #list_gamma
         list_gamma = np.copy(f['list_gamma'])
     print("Extracted gamma")
 except:
-    list_gamma = list(np.linspace(0,inputs.limit_gamma,inputs.steps_gamma//2,endpoint=False)) + list(np.linspace(inputs.limit_gamma,-inputs.limit_gamma,inputs.steps_gamma,endpoint=False)) + list(np.linspace(-inputs.limit_gamma,inputs.limit_gamma,inputs.steps_gamma+1,endpoint=False))
+    list_gamma = list(np.linspace(0,inputs.limit_gamma,inputs.steps_gamma//2,endpoint=False)) + list(np.linspace(inputs.limit_gamma,-inputs.limit_gamma,inputs.steps_gamma,endpoint=False)) + list(np.linspace(-inputs.limit_gamma,inputs.limit_gamma,inputs.steps_gamma+1))
     with h5py.File(filename_hys,'a') as f:
         f.create_dataset('list_gamma',data=np.array(list_gamma))
     print("Computed gamma")
@@ -79,7 +79,7 @@ except:
         pars = (list_gamma[i_g],*parameters[1:])
         d_phi = (fs.compute_derivatives(result_phases[i_g][0],1),fs.compute_derivatives(result_phases[i_g][1],1))
         Energy[i_g] = fs.compute_energy(result_phases[i_g],Phi,pars,d_phi)
-        Magnetization[i_g] = fs.compute_magnetization(result_phases[i_g])
+        Magnetization[i_g] = fs.compute_total_magnetization(result_phases[i_g])
     #Save
     with h5py.File(filename_hys,'a') as f:
         f.create_dataset('Energy',data=Energy)

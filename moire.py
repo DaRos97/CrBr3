@@ -2,28 +2,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import functions as fs
+import inputs
 from scipy.interpolate import RectBivariateSpline as RBS
-import sys,getopt
 
-argv = sys.argv[1:]
-try:
-    opts, args = getopt.getopt(argv, "M:", ["A1=","A2=","theta=","pts="])
-    A_1 = 1.0
-    A_2 = 1.0
-    theta = 0
-    xpts = ypys = 100
-except:
-    print("Error in passed parameters of "+sys.argv[0])
-    exit()
-for opt, arg in opts:
-    if opt == '--A1':
-        A_1 = float(arg)
-    if opt == '--A2':
-        A_2 = float(arg)
-    if opt == '--theta':
-        theta = float(arg)/180*np.pi    #degrees ˚
-    if opt == '--pts':
-        xpts = ypts = int(arg)
+A_1 = inputs.interlayer['general']['A_1']
+A_2 = inputs.interlayer['general']['A_2']
+theta = inputs.interlayer['general']['theta']
+xpts = ypts = inputs.grid
 print("Moire length: ",fs.moire_length(A_1,A_2,theta))
 
 dataname = "Data/CrBr3_interlayer.npy"
@@ -46,7 +31,6 @@ except:
         a = l.split(' ')
         for j in range(4):
             data[i,j] = float(a[j])
-    #np.save(dataname,data)
 
     #Extract CrBr3 interlayer data in matrix form
     pts = int(np.sqrt(data.shape[0]))
@@ -66,41 +50,33 @@ except:
 
 #Interpolate interlayer DFT data
 pts = I.shape[0]
-big_I = np.zeros((4*pts,4*pts))
-big_I[:pts,:pts] = I; big_I[:pts,pts:2*pts] = I; big_I[:pts,2*pts:3*pts] = I; big_I[:pts,3*pts:] = I;
-big_I[pts:2*pts,:pts] = I; big_I[pts:2*pts,pts:2*pts] = I; big_I[pts:2*pts,2*pts:3*pts] = I; big_I[pts:2*pts,3*pts:] = I;
-big_I[2*pts:3*pts,:pts] = I; big_I[2*pts:3*pts,pts:2*pts] = I; big_I[2*pts:3*pts,2*pts:3*pts] = I; big_I[2*pts:3*pts,3*pts:] = I;
-big_I[3*pts:,:pts] = I; big_I[3*pts:,pts:2*pts] = I; big_I[3*pts:,2*pts:3*pts] = I; big_I[3*pts:,3*pts:] = I;
+big_I = fs.extend(I,4)
 S_array = np.linspace(-2,2,4*pts,endpoint=False)
 fun_I = RBS(S_array,S_array,big_I)
 
 if 0:   #plot interpolated interlayer DFT data
     plt.figure(figsize=(20,20))
     plt.gca().set_aspect('equal')
-    #we want each point to be in units of a1, a2
     nnn = 100
-    XX = np.linspace(-1,1,nnn,endpoint=False)
-    dx = XX[1]-XX[0]
-    YY = np.linspace(-1,1,nnn,endpoint=False)*np.sqrt(3)/2
-    a,b = np.meshgrid(XX,YY)
-    for i in range(nnn):
-        a[i,:] -= 1/2*i*dx
+    long_X = np.linspace(0,1,nnn,endpoint=False)
+    X,Y = np.meshgrid(long_X,long_X)
+    X = X-Y/2
+    Y = Y/2*np.sqrt(3)
     plt.subplot(1,2,1)
     plt.title("Interpolated data")
-    plt.contourf(a,b,fun_I(XX,XX),levels=10)
+    plt.contourf(X,Y,fun_I(long_X,long_X),levels=10)
     plt.xlabel('s1')
     plt.ylabel('s2')
     plt.colorbar()
+    #
     plt.subplot(1,2,2)
-    nnn = 42
-    XX = np.linspace(-1,1,nnn,endpoint=False)
-    dx = XX[1]-XX[0]
-    YY = np.linspace(-1,1,nnn,endpoint=False)*np.sqrt(3)/2
-    a,b = np.meshgrid(XX,YY)
-    for i in range(nnn):
-        a[i,:] -= 1/2*i*dx
+    nnn = I.shape[0]
+    long_X = np.linspace(0,1,nnn,endpoint=False)
+    X,Y = np.meshgrid(long_X,long_X)
+    X = X-Y/2
+    Y = Y/2*np.sqrt(3)
     plt.title("Marco's data")
-    plt.contourf(a,b,big_I,levels=10)
+    plt.contourf(X,Y,I,levels=10)
     plt.xlabel('s1')
     plt.ylabel('s2')
     plt.colorbar()
@@ -109,18 +85,16 @@ if 0:   #plot interpolated interlayer DFT data
 
 #Lattice directions -> small a denotes a vector, capital A denotes a distance
 
-#Points to compute of J -> Final Moire potential
-J = np.zeros((xpts,ypts))
-X = np.linspace(0,1,xpts,endpoint=False)
-Y = np.linspace(0,1,ypts,endpoint=False)
 #Lattice-1 and lattice-2
 l1,l2,xxx,yyy = fs.compute_lattices(A_1,A_2,theta)
 #Moire vectors in real and momentum space
 A_M = fs.moire_length(A_1,A_2,theta)
-a_m1 = A_M*fs.a1
-a_m2 = A_M*fs.a2
-g_m1 = 2*np.pi/A_M*np.array([1,1/np.sqrt(3)])
-g_m2 = 2*np.pi/A_M*np.array([0,2/np.sqrt(3)])
+a1 = np.matmul(fs.R_z(theta),fs.a1)
+a2 = np.matmul(fs.R_z(theta),fs.a2)
+a_m1 = A_M*a1
+a_m2 = A_M*a2
+#g_m1 = 2*np.pi/A_M*np.array([1,1/np.sqrt(3)])
+#g_m2 = 2*np.pi/A_M*np.array([0,2/np.sqrt(3)])
 
 if 0:   #Plot Moirè pattern
     plt.figure(figsize=(20,20))
@@ -151,18 +125,19 @@ if 0:   #Plot Moirè pattern
         for y in range(yyy):
             plt.scatter(l1[:,y,n,0],l1[:,y,n,1],color='b',s=3)
             plt.scatter(l2[:,y,n,0],l2[:,y,n,1],color='r',s=3)
-#    plt.xlim(-8*A_M,8*A_M)
-#    plt.ylim(-2*A_M,6*A_M)
     plt.show()
     exit()
 
 #Compute interlayer energy by evaluating the local stacking of the two layers
+J = np.zeros((xpts,ypts))
+X = np.linspace(0,1,xpts,endpoint=False)
+Y = np.linspace(0,1,ypts,endpoint=False)
 for i in tqdm(range(xpts)):
     for j in range(ypts):     #Cycle over all considered points in Moirè unit cell
         site = X[i]*a_m1 + Y[j]*a_m2    #x and y components of consider point
         x1,y1,UC = fs.find_closest(l1,site,'nan')
         x2,y2,UC = fs.find_closest(l2,site,UC)
-        if 0:   #plot two lattices, chosen site and coloured closest sites
+        if i==j and 0:   #plot two lattices, chosen site and coloured closest sites
             plt.figure(figsize=(10,10))
             plt.gca().set_aspect('equal')
             for n in range(2):  #lattices
@@ -178,32 +153,24 @@ for i in tqdm(range(xpts)):
             exit()
         #Find displacement
         disp = l1[x1,y1,UC] - l2[x2,y2,UC]
-#        vec_x1 = np.tensordot(fs.R_z(theta/2),(x1*fs.a1+y1*fs.a2)*A_1 + UC*A_1/np.sqrt(3)*np.array([0,1]),1)
-#        vec_x2 = np.tensordot(fs.R_z(-theta/2),(x2*fs.a1+y2*fs.a2)*A_2 + UC*A_2/np.sqrt(3)*np.array([0,1]),1)
-#        d = vec_x1-vec_x2
         S1 = disp[0]+disp[1]/np.sqrt(3)
         S2 = 2*disp[1]/np.sqrt(3)
         #Find value of I[d] and assign it to J[x]
         J[i,j] = fun_I(S1,S2)
 
-ask_print = input("Print found interlayer interaction? (y/N)")
-if ask_print == 'y':   #Plot found J
+if 1:#input("Print found interlayer interaction? (y/N)")=='y':
     fig, axs = plt.subplots(figsize=(20,20))
-    XX = np.linspace(0,1,xpts,endpoint=False)
-    dx = XX[1]-XX[0]
-    YY = np.linspace(0,1,ypts,endpoint=False)*np.sqrt(3)/2
-    a,b = np.meshgrid(XX,YY)
-    for i in range(xpts):
-        a[i,:] -= 1/2*i*dx
-    ax1 = axs.contourf(a,b,J)
+    X_,Y_ = np.meshgrid(X,Y)
+    X_ = X_-Y_/2
+    Y_ = Y_/2*np.sqrt(3)
+    ax1 = axs.contourf(X_,Y_,J)
     fig.colorbar(ax1)
     plt.show()
-#Save for future use
-pars_name = "A1="+"{:.3f}".format(A_1).replace('.',',') + "_A2="+"{:.3f}".format(A_2).replace('.',',') + "_theta="+"{:.3f}".format(theta).replace('.',',')+"_pts="+str(xpts)
-moire_potential_name = "Data/moire_potential_" + pars_name + ".npy"
-np.save(moire_potential_name,J)
 
-print("Saving interlayer interaction for ",pars_name)
+if input("Save? (y/N)")=='y':
+    moire_potential_name = fs.name_Phi(False)
+    np.save(moire_potential_name,J)
+
 
 
 
