@@ -15,6 +15,7 @@ pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = args_general
 values = fs.compute_parameters()
 cod_col = ['y','k','b','r','gray']
 Phi = np.load(fs.name_Phi())
+P0 = np.sum(Phi)/Phi.shape[0]**2
 
 plt.figure(figsize=(15,10))
 i = int(sys.argv[1])           #gamma index
@@ -24,6 +25,7 @@ with h5py.File(fs.name_dir_phi(cluster)[:-1]+'.hdf5','r') as f:
         for k in range(pts_array):
             parameters = values[i*pts_array**2+j*pts_array+k]
             gamma, alpha, beta = parameters
+            E0 = -beta+alpha*P0-2*gamma
             filename = fs.name_phi(parameters)
             ds_name = filename[len(filename)-filename[::-1].index('/'):-4]
             try:
@@ -31,12 +33,12 @@ with h5py.File(fs.name_dir_phi(cluster)[:-1]+'.hdf5','r') as f:
                 phi_s = phi[0]
                 phi_a = phi[1]
                 d_phi = (fs.compute_derivatives(phi_s,1),fs.compute_derivatives(phi_a,1))
-                E = fs.compute_energy(phi_s,phi_a,Phi,parameters,d_phi)
-                if E+beta+2*gamma > 1e-4:       #Solution collinear was not tried for some reason
+                E = fs.compute_energy(phi,Phi,parameters,d_phi)
+                if E-E0 > 1e-4:       #Solution collinear was not tried for some reason
                     col = 'fuchsia'
-                elif abs(E+beta+2*gamma) < 1e-4:
+                elif abs(E-E0) < 1e-4:
                     col = 'gold'
-                elif abs(np.max(np.cos(phi_s))-np.min(np.cos(phi_s))) < 0.1:
+                elif abs(np.max(np.cos(phi_s))-np.min(np.cos(phi_s))) < 0.3:
                     #twisted-s seen also by considering a nearly constant cos(phi_s)
                     col = 'dodgerblue'
                 else:    #twisted-a

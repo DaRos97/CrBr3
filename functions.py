@@ -423,6 +423,7 @@ def plot_magnetization(phi,Phi,pars,save=False,tt=''):
     for ind,ax in enumerate([ax1,ax2]):
         ax.axis('off')
         ax.set_aspect(1.)
+        ax.contour(X,Y,fun_Phi(long_X,long_Y),levels=[0,],colors=('r',),linestyles=('-',),linewidths=(1,))
         surf = ax.contourf(X,Y,fun_Phi(long_X,long_Y),levels=20)
         ax.vlines(1/2,-1/2/s3,1/2/s3,linestyles='dashed',color='r')
         ax.vlines(-1/2,-1/2/s3,1/2/s3,linestyles='dashed',color='r')
@@ -755,6 +756,18 @@ def R_z(t):
     R[1,0] = np.sin(t)
     R[1,1] = np.cos(t)
     return R
+
+def plot_Phi(J,title=''):
+    import matplotlib.pyplot as plt
+    X = Y = np.linspace(0,1,J.shape[0])
+    fig, axs = plt.subplots(figsize=(20,20))
+    X_,Y_ = np.meshgrid(X,Y)
+    X_ = X_-Y_/2
+    Y_ = Y_/2*np.sqrt(3)
+    ax1 = axs.contourf(X_,Y_,J)
+    fig.colorbar(ax1)
+    plt.title(title)
+    plt.show()
 
 
 

@@ -26,7 +26,10 @@ except FileNotFoundError:
     print("Computing interlayer coupling...")
     Phi = fs.compute_interlayer()
     np.save(filename_Phi,Phi)
-
+P0 = np.sum(Phi)/Phi.shape[0]**2
+E0 = -beta+alpha*P0-2*gamma
+print("constant part of Phi: ",P0)
+print("Energy of collinear: ",E0)
 try:
     #Check if phi exists
     filename_phi = fs.name_phi(parameters,cluster)
@@ -47,11 +50,11 @@ except:
     phi = fs.compute_magnetization(Phi,parameters,args_minimization)
 
 d_phi = (fs.compute_derivatives(phi[0],1),fs.compute_derivatives(phi[1],1))
-print("\nFinal energy: ",fs.compute_energy(phi[0],phi[1],Phi,parameters,d_phi))
+print("\nFinal energy: ",fs.compute_energy(phi,Phi,parameters,d_phi))
 
 if not cluster:
     #Actual plot
-    fs.plot_magnetization(phi[0],phi[1],Phi,parameters)
+    fs.plot_magnetization(phi,Phi,parameters)
     if 0:#input("save?(y/N)")=='y':
         dirname = 'results/ivo/'
         filename_s = dirname+'phi_s_'+"{:.8f}".format(alpha)+'_'+"{:.8f}".format(beta)+'.csv'

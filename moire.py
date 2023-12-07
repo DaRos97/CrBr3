@@ -4,11 +4,20 @@ from tqdm import tqdm
 import functions as fs
 import inputs
 from scipy.interpolate import RectBivariateSpline as RBS
+from pathlib import Path
 
 A_1 = inputs.interlayer['general']['A_1']
 A_2 = inputs.interlayer['general']['A_2']
 theta = inputs.interlayer['general']['theta']
 xpts = ypts = inputs.grid
+moire_potential_name = fs.name_Phi(False)
+title = "(A2-A1)/A1 = "+"{:.4f}".format((A_2-A_1)/A_1)+", theta (rad) = "+"{:.4f}".format(theta)
+if Path(moire_potential_name).is_file():
+    print("Already computed..")
+    fs.plot_Phi(np.load(moire_potential_name),title)
+    if input("Translate to csv for Ivo? (y/N)")=='y':
+        np.savetxt('results/ivo/'+moire_potential_name[41:-4]+'.csv',np.load(moire_potential_name))
+    exit()
 print("Moire length: ",fs.moire_length(A_1,A_2,theta))
 
 dataname = "Data/CrBr3_interlayer.npy"
@@ -125,6 +134,7 @@ if 0:   #Plot Moirè pattern
         for y in range(yyy):
             plt.scatter(l1[:,y,n,0],l1[:,y,n,1],color='b',s=3)
             plt.scatter(l2[:,y,n,0],l2[:,y,n,1],color='r',s=3)
+    plt.title(title)
     plt.show()
     exit()
 
@@ -157,18 +167,13 @@ for i in tqdm(range(xpts)):
         S2 = 2*disp[1]/np.sqrt(3)
         #Find value of I[d] and assign it to J[x]
         J[i,j] = fun_I(S1,S2)
+#Smooth
+J = fs.smooth(J)[0]
 
 if 1:#input("Print found interlayer interaction? (y/N)")=='y':
-    fig, axs = plt.subplots(figsize=(20,20))
-    X_,Y_ = np.meshgrid(X,Y)
-    X_ = X_-Y_/2
-    Y_ = Y_/2*np.sqrt(3)
-    ax1 = axs.contourf(X_,Y_,J)
-    fig.colorbar(ax1)
-    plt.show()
+    fs.plot_Phi(J)
 
 if input("Save? (y/N)")=='y':
-    moire_potential_name = fs.name_Phi(False)
     np.save(moire_potential_name,J)
 
 
