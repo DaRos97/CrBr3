@@ -29,11 +29,11 @@ except FileNotFoundError:
         Phi = fs.compute_interlayer()
         np.save(filename_Phi,Phi)
 P0 = np.sum(Phi)/Phi.shape[0]**2
-E0 = -beta+alpha*P0-2*gamma
+E0 = -beta-alpha*P0-2*gamma
 print("constant part of Phi: ",P0)
 print("Energy of collinear: ",E0)
+
 try:
-    a = b
     #Check if phi exists
     filename_phi = fs.name_phi(parameters,cluster)
     if not cluster:

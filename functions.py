@@ -778,8 +778,9 @@ def plot_Phi(J,title=''):
     X_ = X_-Y_/2
     Y_ = Y_/2*np.sqrt(3)
     ax1 = axs.contourf(X_,Y_,J)
+    axs.contour(X_,Y_,J,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(1,))
     fig.colorbar(ax1)
-    plt.title(title)
+    axs.set_title(title)
     plt.show()
 
 
