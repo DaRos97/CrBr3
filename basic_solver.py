@@ -21,16 +21,19 @@ filename_Phi = fs.name_Phi(cluster)
 try:    
     Phi = np.load(filename_Phi)
 except FileNotFoundError:
-    print("Check to compute the intrlayer coupling BEFORE the calculation")
-    exit()
-    print("Computing interlayer coupling...")
-    Phi = fs.compute_interlayer()
-    np.save(filename_Phi,Phi)
+    if inputs.int_type == 'general':
+        print("Check to compute the intrlayer coupling BEFORE the calculation")
+        exit()
+    else:
+        print("Computing interlayer coupling...")
+        Phi = fs.compute_interlayer()
+        np.save(filename_Phi,Phi)
 P0 = np.sum(Phi)/Phi.shape[0]**2
 E0 = -beta+alpha*P0-2*gamma
 print("constant part of Phi: ",P0)
 print("Energy of collinear: ",E0)
 try:
+    a = b
     #Check if phi exists
     filename_phi = fs.name_phi(parameters,cluster)
     if not cluster:

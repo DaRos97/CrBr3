@@ -45,18 +45,19 @@ def compute_magnetization(Phi,pars,args_minimization):
         diff_H = [1e20]  #list of dH for the while loop
         if args_minimization['disp']:
             print("Starting minimization step ",str(sss))
-        #Initial condition  -> Improve 
-        fs = 0 if sss==1 else random.random()
-        fa = 0 if sss==1 else random.random()
-        ans = 0 if sss==0 else 1            #Use twisted-s ansatz for first evaluation or constant phi_s/a=pi
+        #Initial condition
+        ans = sss if sss<3 else 3
+        fs = ((sss-3)//8)/4 if (sss>2 and sss<66) else random.random()
+        fa = ((sss-3)%8)/4 if (sss>2 and sss<66) else random.random()
         #Compute first state and energy
         phi = initial_point(Phi,pars,fs,fa,ans)
         d_phi = (compute_derivatives(phi[0],1),compute_derivatives(phi[1],1))
         E.append(compute_energy(phi,Phi,pars,d_phi))
         #Initiate learning rate and minimization loop
         step = 1        #initial step
+        lr = learn_rate_0
         while True:
-            learn_rate = learn_rate_0*random.random()
+            learn_rate = lr*random.random()
             #Energy gradients
             dHs = grad_H(phi,'s',Phi,pars,compute_derivatives(phi[0],2))
             dHa = grad_H(phi,'a',Phi,pars,compute_derivatives(phi[1],2))
@@ -68,7 +69,7 @@ def compute_magnetization(Phi,pars,args_minimization):
             E.insert(0,compute_energy(phi,Phi,pars,d_phi))
             #Check if dHs and dHa are very small
             diff_H.insert(0,np.sum(np.absolute(dHs)+np.absolute(dHa)))
-            if args_minimization['disp']:
+            if 0 and args_minimization['disp']:
                 print("energy step ",step," is ",E[1]," ,dH at ",diff_H[0])
             #Exit checks
             if check_energies(E):   #stable energy
@@ -81,10 +82,12 @@ def compute_magnetization(Phi,pars,args_minimization):
                 phi[1] -= learn_rate*dHa
                 del E[0]
                 del diff_H[0]
-                if E[0]<min_E:
-                    min_E = E[0]
-                    result = np.copy(phi)
-                break
+                lr /= 2
+                if 0:
+                    if E[0]<min_E:
+                        min_E = E[0]
+                        result = np.copy(phi)
+                    break
             if E[0] > 1e10: #VERY bad situation
                 print("bullshit")
                 break
@@ -99,8 +102,8 @@ def compute_magnetization(Phi,pars,args_minimization):
             #
         if args_minimization['disp']:
             print("Minimum energy at ",E[0]," ,dH at ",diff_H[0])
-            plot_phis(result,'phi_s and phi_a')
-            plot_magnetization(result,Phi,pars)
+            plot_phis(phi,'phi_s and phi_a')
+            plot_magnetization(phi,Phi,pars)
 #            input()
     return result
 
@@ -130,23 +133,33 @@ def initial_point(Phi,pars,fs,fa,ans):
     """
     gamma,alpha,beta = pars
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
-    initial_ansatz = ['twisted-s','constant']
+    initial_ansatz = ['t-s_custom','t-a_custom','t-s_pert','constant']
     sol = initial_ansatz[ans]
-    if sol=='twisted-s':      #ansatz for alpha,beta<<1
+    if sol=='t-s_pert':      #ansatz for alpha,beta<<1
         if alpha > 0:
             delta = beta/alpha**2
         else:
             delta = 10
         if abs(delta)>3/2:
             print("delta ",str(delta)," too large for twisted-s, switching to constant initial condition at pi,pi")
-            return initial_point(Phi,pars,0,0,1)
+            return initial_point(Phi,pars,0,0,3)
         phi0 = np.arccos(2/3*delta)
         const = 1/2-np.tan(phi0)**(-2)
         phi_s = np.ones((grid,grid))*np.pi
         phi_a = phi0 - alpha*np.sin(phi0)*(Phi-const)
+        print(sol)
     elif sol=='constant':
         phi_s = np.ones((grid,grid))*2*np.pi*fs
         phi_a = np.ones((grid,grid))*2*np.pi*fa
+        print(sol,fs,fa)
+    elif sol=='t-s_custom':
+        phi_s = np.ones((grid,grid))*np.pi  #(np.sign(Phi)+2)*np.pi/2
+        phi_a = (np.sign(Phi)-1)*np.pi/2
+        print(sol)
+    elif sol=='t-a_custom':
+        phi_s = (1-np.sign(Phi))*np.pi/2
+        phi_a = (np.sign(Phi)-1)*np.pi/2
+        print(sol)
     return [phi_s, phi_a]
 
 def compute_energy(phi,Phi,pars,d_phi):

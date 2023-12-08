@@ -53,21 +53,21 @@ except:
         y = "{:.5f}".format(data[i,1])
         ind1 = S_txt.index(x)
         ind2 = S_txt.index(y)
-        I[ind1,ind2] = (data[i,2]-data[i,3])/2
+        I[ind1,ind2] = -(data[i,2]-data[i,3])/2
     #
     np.save(dataname,I)
 
 #Interpolate interlayer DFT data
 pts = I.shape[0]
-big_I = fs.extend(I,4)
-S_array = np.linspace(-2,2,4*pts,endpoint=False)
+big_I = fs.extend(I,5)
+S_array = np.linspace(-2,3,5*pts,endpoint=False)
 fun_I = RBS(S_array,S_array,big_I)
 
 if 0:   #plot interpolated interlayer DFT data
     plt.figure(figsize=(20,20))
     plt.gca().set_aspect('equal')
     nnn = 100
-    long_X = np.linspace(0,1,nnn,endpoint=False)
+    long_X = np.linspace(-2,3,nnn,endpoint=False)
     X,Y = np.meshgrid(long_X,long_X)
     X = X-Y/2
     Y = Y/2*np.sqrt(3)
@@ -102,8 +102,6 @@ a1 = np.matmul(fs.R_z(theta),fs.a1)
 a2 = np.matmul(fs.R_z(theta),fs.a2)
 a_m1 = A_M*a1
 a_m2 = A_M*a2
-#g_m1 = 2*np.pi/A_M*np.array([1,1/np.sqrt(3)])
-#g_m2 = 2*np.pi/A_M*np.array([0,2/np.sqrt(3)])
 
 if 0:   #Plot Moirè pattern
     plt.figure(figsize=(20,20))
@@ -147,7 +145,7 @@ for i in tqdm(range(xpts)):
         site = X[i]*a_m1 + Y[j]*a_m2    #x and y components of consider point
         x1,y1,UC = fs.find_closest(l1,site,'nan')
         x2,y2,UC = fs.find_closest(l2,site,UC)
-        if i==j and 0:   #plot two lattices, chosen site and coloured closest sites
+        if i==j and i==-1:   #plot two lattices, chosen site and coloured closest sites
             plt.figure(figsize=(10,10))
             plt.gca().set_aspect('equal')
             for n in range(2):  #lattices
