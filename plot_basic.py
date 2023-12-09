@@ -13,39 +13,57 @@ args_general = inputs.args_general
 pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = args_general
 
 values = fs.compute_parameters()
-cod_col = ['y','k','b','r','gray']
+cod_col = ['fuchsia','gold','b','r','k']
 Phi = np.load(fs.name_Phi())
 P0 = np.sum(Phi)/Phi.shape[0]**2
 
 plt.figure(figsize=(15,10))
 i = int(sys.argv[1])           #gamma index
+
+Order_ds = 'Order_'+"{:.5f}".format(values[i*pts_array**2][0])
 #Open h5py File
-with h5py.File(fs.name_dir_phi(cluster)[:-1]+'.hdf5','r') as f:
-    for j in range(pts_array):
-        for k in range(pts_array):
-            parameters = values[i*pts_array**2+j*pts_array+k]
-            gamma, alpha, beta = parameters
-            E0 = -beta+alpha*P0-2*gamma
-            filename = fs.name_phi(parameters)
-            ds_name = filename[len(filename)-filename[::-1].index('/'):-4]
-            try:
-                phi = f[ds_name]
-                phi_s = phi[0]
-                phi_a = phi[1]
-                d_phi = (fs.compute_derivatives(phi_s,1),fs.compute_derivatives(phi_a,1))
-                E = fs.compute_energy(phi,Phi,parameters,d_phi)
-                if E-E0 > 1e-4:       #Solution collinear was not tried for some reason
-                    col = 'fuchsia'
-                elif abs(E-E0) < 1e-4:
-                    col = 'gold'
-                elif abs(np.max(np.cos(phi_s))-np.min(np.cos(phi_s))) < 0.3:
-                    #twisted-s seen also by considering a nearly constant cos(phi_s)
-                    col = 'dodgerblue'
-                else:    #twisted-a
-                    col = 'r'
-            except:
-                col = 'k'
-            plt.scatter(alpha/(1+alpha),beta/(1+beta),color=col)
+with h5py.File(fs.name_dir_phi(cluster)[:-1]+'.hdf5','a') as f:
+    try:
+        Order = np.copy(f[Order_ds])
+        if not input("Use computed order ds? (y/N)")=='y':
+            a = b
+    except:
+        print("Computing order")
+        Order = np.zeros((pts_array,pts_array),dtype=int)
+        for j in range(pts_array):
+            for k in range(pts_array):
+                parameters = values[i*pts_array**2+j*pts_array+k]
+                gamma, alpha, beta = parameters
+                E0 = -beta-alpha*P0-2*gamma
+                filename = fs.name_phi(parameters)
+                ds_name = filename[len(filename)-filename[::-1].index('/'):-4]
+                try:
+                    phi = f[ds_name]
+                    phi_s = phi[0]
+                    phi_a = phi[1]
+                    d_phi = (fs.compute_derivatives(phi_s,1),fs.compute_derivatives(phi_a,1))
+                    E = fs.compute_energy(phi,Phi,parameters,d_phi)
+                    if E-E0 > 1e-4:       #Solution collinear was not tried for some reason
+                        col = 0
+                    elif abs(E-E0) < 1e-4:
+                        col = 1
+                    elif abs(np.max(np.cos(phi_s))-np.min(np.cos(phi_s))) < 0.1:
+                        #twisted-s seen also by considering a nearly constant cos(phi_s)
+                        col = 2
+                    else:    #twisted-a
+                        col = 3
+                except:
+                    col = 4
+                Order[j,k] = col
+        if Order_ds in f.keys():
+            del f[Order_ds]
+        f.create_dataset(Order_ds,data=Order)   
+
+for j in range(pts_array):
+    for k in range(pts_array):
+        parameters = values[i*pts_array**2+j*pts_array+k]
+        gamma, alpha, beta = parameters
+        plt.scatter(alpha/(1+alpha),beta/(1+beta),color=cod_col[Order[j,k]])
 #Phase boundaries
 filename_1 = 'Fit_PD_hejazi/l1.npy'
 line1 = np.load(filename_1)

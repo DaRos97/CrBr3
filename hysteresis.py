@@ -62,9 +62,10 @@ for i_g in range(len(list_gamma)):
         if i_g>0:
             pars = (list_gamma[i_g],*parameters[1:])
             result_phases[i_g] = fs.hysteresis_minimization(Phi,pars,result_phases[i_g-1],args_hysteresis)
-        with h5py.File(filename_hys,'a') as f:
-            result_phases_group = f.require_group('result_phases')
-            result_phases_group.create_dataset(str(i_g),data=result_phases[i_g])
+        if cluster:
+            with h5py.File(filename_hys,'a') as f:
+                result_phases_group = f.require_group('result_phases')
+                result_phases_group.create_dataset(str(i_g),data=result_phases[i_g])
 print("Computed/extracted phases")
 #
 try:    #Energy and magnetization

@@ -62,7 +62,7 @@ except:
             pars = (list_gamma[i_g],*parameters[1:])
             d_phi = (fs.compute_derivatives(result_phase[0],1),fs.compute_derivatives(result_phase[1],1))
             Energy[i_g] = fs.compute_energy(result_phase,Phi,pars,d_phi)
-            Magnetization[i_g] = fs.compute_magnetization(result_phase)
+            Magnetization[i_g] = fs.compute_total_magnetization(result_phase)
         except:
             Energy[i_g] = np.nan
             Magnetization[i_g] = np.nan

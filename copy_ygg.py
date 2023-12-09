@@ -13,7 +13,7 @@ if not Path(filename_Phi).is_file():
     os.system('scp rossid@login1.yggdrasil.hpc.unige.ch:'+fs.name_Phi(True)+' '+fs.name_Phi(False))
 
 #Copy result of phase diagram
-if sys.argv[1]=='pd':
+if sys.argv[1]=='b':
     #Copy .hdf5 file
     os.system('scp rossid@login1.yggdrasil.hpc.unige.ch:'+fs.name_dir_phi(True)[:-1]+'.hdf5'+' '+fs.name_dir_phi(False)[:-1]+'.hdf5')
 elif sys.argv[1]=='h':

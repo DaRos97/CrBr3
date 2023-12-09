@@ -64,31 +64,33 @@ S_array = np.linspace(-2,3,5*pts,endpoint=False)
 fun_I = RBS(S_array,S_array,big_I)
 
 if 0:   #plot interpolated interlayer DFT data
-    plt.figure(figsize=(20,20))
-    plt.gca().set_aspect('equal')
-    nnn = 100
-    long_X = np.linspace(-2,3,nnn,endpoint=False)
-    X,Y = np.meshgrid(long_X,long_X)
-    X = X-Y/2
-    Y = Y/2*np.sqrt(3)
-    plt.subplot(1,2,1)
-    plt.title("Interpolated data")
-    plt.contourf(X,Y,fun_I(long_X,long_X),levels=10)
-    plt.xlabel('s1')
-    plt.ylabel('s2')
-    plt.colorbar()
-    #
-    plt.subplot(1,2,2)
+    fig = plt.figure(figsize=(20,20))
+    if 0:
+        nnn = 100
+        long_X = np.linspace(-2,3,nnn,endpoint=False)
+        X,Y = np.meshgrid(long_X,long_X)
+        X = X-Y/2
+        Y = Y/2*np.sqrt(3)
+        plt.subplot(1,2,1)
+        plt.title("Interpolated data")
+        plt.contourf(X,Y,fun_I(long_X,long_X),levels=10)
+        plt.xlabel('s1')
+        plt.ylabel('s2')
+        plt.colorbar()
+        #
+        plt.subplot(1,2,2)
     nnn = I.shape[0]
     long_X = np.linspace(0,1,nnn,endpoint=False)
     X,Y = np.meshgrid(long_X,long_X)
     X = X-Y/2
     Y = Y/2*np.sqrt(3)
-    plt.title("Marco's data")
-    plt.contourf(X,Y,I,levels=10)
-    plt.xlabel('s1')
-    plt.ylabel('s2')
-    plt.colorbar()
+    ax = fig.add_subplot(aspect=1)
+    ax.set_title("Marco's data")
+    ax.contour(X,Y,I,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(1,))
+    surf = ax.contourf(X,Y,I,levels=10)
+    ax.set_xlabel('s1')
+    ax.set_ylabel('s2')
+    fig.colorbar(surf)
     plt.show()
     exit()
 

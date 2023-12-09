@@ -47,7 +47,7 @@ except:
     print("Computing magnetization...")
     args_minimization = {
             'rand_m':100, 
-            'maxiter':1e6, 
+            'maxiter':1e5, 
             'disp': not cluster,
             }
     phi = fs.compute_magnetization(Phi,parameters,args_minimization)

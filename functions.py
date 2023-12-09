@@ -42,9 +42,10 @@ def compute_magnetization(Phi,pars,args_minimization):
         if min_E<1e8 and not args_minimization['disp']:
             np.save(name_phi(pars,True),result)
         E = []  #list of energies for the while loop
-        diff_H = [1e20]  #list of dH for the while loop
         if args_minimization['disp']:
             print("Starting minimization step ",str(sss))
+            diff_H = [1e20,]  #list of dH for the while loop
+            from time import time
         #Initial condition
         ans = sss if sss<3 else 3
         fs = ((sss-3)//8)/4 if (sss>2 and sss<66) else random.random()
@@ -68,9 +69,9 @@ def compute_magnetization(Phi,pars,args_minimization):
             d_phi = (compute_derivatives(phi[0],1),compute_derivatives(phi[1],1))
             E.insert(0,compute_energy(phi,Phi,pars,d_phi))
             #Check if dHs and dHa are very small
-            diff_H.insert(0,np.sum(np.absolute(dHs)+np.absolute(dHa)))
-            if 0 and args_minimization['disp']:
+            if args_minimization['disp']:
                 print("energy step ",step," is ",E[1]," ,dH at ",diff_H[0])
+                diff_H.insert(0,np.sum(np.absolute(dHs)+np.absolute(dHa)))
             #Exit checks
             if check_energies(E):   #stable energy
                 if E[0]<min_E:
@@ -632,50 +633,52 @@ def hysteresis_minimization(Phi,pars,phi_initial,args_hysteresis):
     gamma,alpha,beta = pars
     noise = args_hysteresis['noise']
     learn_rate_0 = args_hysteresis['learn_rate']
-    while True:
-        E = []
+
+    E = []
+    phi = np.copy(phi_initial) + noise*(np.random.rand(*phi_initial.shape)-0.5)
+    result = np.zeros((2,*phi[0].shape))
+    d_phi = (compute_derivatives(phi[0],1),compute_derivatives(phi[1],1))
+    E.append(compute_energy(phi,Phi,pars,d_phi))
+    #Initiate learning rate and minimization loop
+    step = 1        #initial step
+    if args_hysteresis['disp']:
+        print("Minimization of gamma: ",gamma," with lr: ",learn_rate_0)
         diff_H = [1e20]
-        phi = np.copy(phi_initial) + noise 
-        result = np.zeros((2,*phi[0].shape))
+        input()
+    continue_minimization = True
+    while continue_minimization:
+        learn_rate = learn_rate_0#*random.random()
+        #Energy gradients
+        dHs = grad_H(phi,'s',Phi,pars,compute_derivatives(phi[0],2))
+        dHa = grad_H(phi,'a',Phi,pars,compute_derivatives(phi[1],2))
+        #Update phi
+        phi[0] += learn_rate*dHs
+        phi[1] += learn_rate*dHa
+        #New energy
         d_phi = (compute_derivatives(phi[0],1),compute_derivatives(phi[1],1))
-        E.append(compute_energy(phi,Phi,pars,d_phi))
-        #Initiate learning rate and minimization loop
-        step = 1        #initial step
+        E.insert(0,compute_energy(phi,Phi,pars,d_phi))
+        #Check if dHs and dHa are very small
         if args_hysteresis['disp']:
-            print("Minimization of gamma: ",gamma," with lr: ",learn_rate_0)
-            input()
-        continue_minimization = True
-        while continue_minimization:
-            learn_rate = learn_rate_0#*random.random()
-            #Energy gradients
-            dHs = grad_H(phi,'s',Phi,pars,compute_derivatives(phi[0],2))
-            dHa = grad_H(phi,'a',Phi,pars,compute_derivatives(phi[1],2))
-            if 0:
-                plot_phis([phi[0],phi[1],dHs,dHa],'all '+str(gamma))
-            #Update phi
-            phi[0] += learn_rate*dHs
-            phi[1] += learn_rate*dHa
-            #New energy
-            d_phi = (compute_derivatives(phi[0],1),compute_derivatives(phi[1],1))
-            E.insert(0,compute_energy(phi,Phi,pars,d_phi))
-            #Check if dHs and dHa are very small
+            print("energy step ",step," is ",E[0]," ,dH at ",diff_H[0])
             diff_H.insert(0,np.sum(np.absolute(dHs)+np.absolute(dHa)))
-            if args_hysteresis['disp']:
-                print("energy step ",step," is ",E[0]," ,dH at ",diff_H[0])
-            #Exit checks
-            if check_energies(E):   #stable energy
-                result = np.copy(phi)
-                return result
-            #Start with smaller learn rate
-            if E[0]>E[1]:
-                learn_rate_0 /= 2
-                continue_minimization = False
-            #Max number of steps scenario
-            if step > args_hysteresis['maxiter']:
-                print("Maxiter reached at gamma step ", gamma)
-                result = np.copy(phi)
-                return result
-            step += 1
+        #Exit checks
+        if check_energies(E):   #stable energy
+            result = np.copy(phi)
+            return result
+        #Start with smaller learn rate
+        if E[0]>E[1]:
+            phi[0] -= learn_rate*dHs
+            phi[1] -= learn_rate*dHa
+            del E[0]
+            learn_rate_0 /= 2
+            print("new ",learn_rate_0)
+            #continue_minimization = False
+        #Max number of steps scenario
+        if step > args_hysteresis['maxiter']:
+            print("Maxiter reached at gamma step ", gamma)
+            result = np.copy(phi)
+            return result
+        step += 1
 
 def compute_total_magnetization(phi):
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
