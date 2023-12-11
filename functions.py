@@ -68,7 +68,7 @@ def compute_magnetization(Phi,pars,args_minimization):
             E.insert(0,compute_energy(phi,Phi,pars,d_phi))
             #Check if dHs and dHa are very small
             if args_minimization['disp']:
-                print("energy step ",step," is ",E[1]," ,dH at ",diff_H[0])
+                print("energy step ",step," is ",E[1])
             #Exit checks
             if check_energies(E):   #stable energy
                 if E[0]<min_E:

@@ -1,7 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
-plt.rcParams.update({"text.usetex": True,})
-s_ = 20
 import functions as fs
 import inputs,sys,os,h5py
 from pathlib import Path
@@ -17,7 +14,6 @@ cod_col = ['fuchsia','gold','b','r','k']
 Phi = np.load(fs.name_Phi())
 P0 = np.sum(Phi)/Phi.shape[0]**2
 
-plt.figure(figsize=(15,10))
 i = int(sys.argv[1])           #gamma index
 
 Order_ds = 'Order_'+"{:.5f}".format(values[i*pts_array**2][0])
@@ -25,8 +21,9 @@ Order_ds = 'Order_'+"{:.5f}".format(values[i*pts_array**2][0])
 with h5py.File(fs.name_dir_phi(cluster)[:-1]+'.hdf5','a') as f:
     try:
         Order = np.copy(f[Order_ds])
-        if not input("Use computed order ds? (y/N)")=='y':
-            a = b
+        if cluster=='loc':
+            if not input("Use computed order ds? (y/N)")=='y':
+                a = b
     except:
         print("Computing order")
         Order = np.zeros((pts_array,pts_array),dtype=int)
@@ -59,24 +56,29 @@ with h5py.File(fs.name_dir_phi(cluster)[:-1]+'.hdf5','a') as f:
             del f[Order_ds]
         f.create_dataset(Order_ds,data=Order)   
 
-for j in range(pts_array):
-    for k in range(pts_array):
-        parameters = values[i*pts_array**2+j*pts_array+k]
-        gamma, alpha, beta = parameters
-        plt.scatter(alpha/(1+alpha),beta/(1+beta),color=cod_col[Order[j,k]])
-#Phase boundaries
-filename_1 = 'Fit_PD_hejazi/l1.npy'
-line1 = np.load(filename_1)
-plt.plot(line1[:,0],line1[:,1],color='b')
-filename_2 = 'Fit_PD_hejazi/l2.npy'
-line2 = np.load(filename_2)
-plt.plot(line2[:,0],line2[:,1],color='b')
-plt.xlim(0,1)
-plt.ylim(0,1)
-plt.xlabel(r"$\alpha/(1+\alpha)$",size=s_)
-plt.ylabel(r"$\beta/(1+\beta)$",size=s_)
-plt.xticks(size=s_)
-plt.yticks(size=s_)
-plt.title("gamma = "+"{:.4f}".format(gamma))
-plt.show()
+if cluster=='loc':
+    import matplotlib.pyplot as plt
+    plt.rcParams.update({"text.usetex": True,})
+    s_ = 20
+    plt.figure(figsize=(15,10))
+    for j in range(pts_array):
+        for k in range(pts_array):
+            parameters = values[i*pts_array**2+j*pts_array+k]
+            gamma, alpha, beta = parameters
+            plt.scatter(alpha/(1+alpha),beta/(1+beta),color=cod_col[Order[j,k]])
+    #Phase boundaries
+    filename_1 = 'Fit_PD_hejazi/l1.npy'
+    line1 = np.load(filename_1)
+    plt.plot(line1[:,0],line1[:,1],color='b')
+    filename_2 = 'Fit_PD_hejazi/l2.npy'
+    line2 = np.load(filename_2)
+    plt.plot(line2[:,0],line2[:,1],color='b')
+    plt.xlim(0,1)
+    plt.ylim(0,1)
+    plt.xlabel(r"$\alpha/(1+\alpha)$",size=s_)
+    plt.ylabel(r"$\beta/(1+\beta)$",size=s_)
+    plt.xticks(size=s_)
+    plt.yticks(size=s_)
+    plt.title("gamma = "+"{:.4f}".format(gamma))
+    plt.show()
 

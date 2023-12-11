@@ -1,6 +1,12 @@
 # Title
 
-#Yggdrasil down -> locallly
+# To do
+Update git -> changed cluster info.
+Look at 200_general 0 -> look at single solutions and if not good try singularly locally with different parameters.
+Write script to compute many gamma of particular points in PD -> first for basic.
+Try new things on hysteresis.
+
+#Locallly
 Args in 'inputs.py' oredr: 20, 1000, 200, 2, -1e-2, basic (AM=20). 
 - Index a/b = 208
     Used 7 inputs: t-s_custom, t-a_custom, t-s_pert, const (0 and pi). 
@@ -17,22 +23,27 @@ Args in 'inputs.py' oredr: 20, 1000, 200, 2, -1e-2, basic (AM=20).
     
 - Index a/b = 294
     Used 5 inputs: t-s_pert, const (0 and pi).
+    t-a solution from 0.20 untill 0.32, then c+ up to 0.4.
 
-# Computed --> Bao
+# Baobab
 
 ## Basic Interlayer
+Args in 'inputs.py' oredr: 20, 1000, 200, 2, -1e-2, basic (AM=20)
+gamma index: 0, 0.1-1,2,3(..)
 Args in 'inputs.py' oredr: 20, 1000, 300, 2, -1e-2, basic (AM=20)
-gamma index: 1(..)
+gamma index: 1
 Args in 'inputs.py' oredr: 20, 1000, 500, 2, -1e-2, basic (AM=20)
-gamma index: 0(..)
+gamma index: 0
 
 ## General Interlayer
+Args in 'inputs.py' oredr: 20, 1000, 200, 2, -1e-2, general (A2=1.01)
+gamma index: 0(..)->to watch
 Args in 'inputs.py' oredr: 20, 1000, 300, 2, -1e-2, general (A2=1.01)
-gamma index: 0(..)
+gamma index: 0
 Args in 'inputs.py' oredr: 20, 1000, 500, 2, -1e-2, general (A2=1.01)
-gamma index: 0(..)
+gamma index: 0
 
-# Computed --> Ygg
+# Yggdrasil
 
 ## Basic Interlayer
 Args in 'inputs.py' oredr: 20, 1000, 100, 2, -1e-2, basic (AM=20)
@@ -52,7 +63,7 @@ gamma index: 0(..)
 Args in 'inputs.py' oredr: 20, 1000, 500, 2, -1e-2, general (A2=1.01)
 gamma index: 0(..)
 
-# Old-results -- Computed
+# Old-results
 Here we used 1/30 steps of gamma. --> pts-gamma = 300
 
 Using 200 points per direction AND a learn rate of 0.01 AND an average done over a distance of 2 sites were computed:

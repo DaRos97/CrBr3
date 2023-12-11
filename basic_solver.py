@@ -32,11 +32,10 @@ P0 = np.sum(Phi)/Phi.shape[0]**2
 E0 = -beta-alpha*P0-2*gamma
 print("constant part of Phi: ",P0)
 print("Energy of collinear: ",E0)
-
 try:
     #Check if phi exists
     filename_phi = fs.name_phi(parameters,cluster)
-    if not cluster=='loc':
+    if cluster=='loc':
         f = h5py.File(fs.name_dir_phi(cluster)[:-1]+'.hdf5','r')   #same name as folder but .hdf5
         ds_name = filename_phi[len(filename_phi)-filename_phi[::-1].index('/'):-4]
         phi = np.copy(f[ds_name])
@@ -54,7 +53,7 @@ except:
 
 print("Finished")
 
-if not cluster=='loc':
+if cluster=='loc':
     #Actual plot
     fs.plot_magnetization(phi,Phi,parameters)
     if 0:#input("save?(y/N)")=='y':

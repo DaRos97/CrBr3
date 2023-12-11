@@ -5,14 +5,14 @@ import numpy as np
 pts_array = 20
 pts_gamma = 1000
 #Points in the moire unit cell
-grid = 500
+grid = 200
 #Points to consider in the moire unit cell when smoothening
 pts_per_fit = 2
 #Learn rate step
 learn_rate_0 = -1e-2
 #Interlayer potential which depends on Moirè pattern
-int_type = 'general'
-#int_type = 'basic'
+#int_type = 'general'
+int_type = 'basic'
 
 ####################################################################
 ####################################################################
