@@ -16,7 +16,8 @@ list_i_g = [0,  #start
         ]
 
 #Upload interlayer coupling
-filename_Phi = fs.name_Phi(False)
+cluster = fs.get_machine(os.getcwd())
+filename_Phi = fs.name_Phi(cluster)
 try:    
     Phi = np.load(filename_Phi)
 except FileNotFoundError:
@@ -26,7 +27,7 @@ except FileNotFoundError:
 #
 initial_state = inputs.dic_in_state[int(sys.argv[1])]
 
-filename_hys = fs.name_hys(initial_state,False)
+filename_hys = fs.name_hys(initial_state,cluster)
 try:
     with h5py.File(filename_hys,'r') as f:
         parameters = np.copy(f['parameters'])

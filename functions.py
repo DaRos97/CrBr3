@@ -44,12 +44,10 @@ def compute_magnetization(Phi,pars,args_minimization):
         E = []  #list of energies for the while loop
         if args_minimization['disp']:
             print("Starting minimization step ",str(sss))
-            diff_H = [1e20,]  #list of dH for the while loop
-            from time import time
         #Initial condition
-        ans = sss if sss<3 else 3
-        fs = ((sss-3)//8)/4 if (sss>2 and sss<66) else random.random()
-        fa = ((sss-3)%8)/4 if (sss>2 and sss<66) else random.random()
+        ans = sss if sss==0 else 1
+        fs = ((sss-1)//8)/4 if (sss>0 and sss<65) else random.random()
+        fa = ((sss-1)%8)/4 if (sss>0 and sss<65) else random.random()
         #Compute first state and energy
         phi = initial_point(Phi,pars,fs,fa,ans)
         d_phi = (compute_derivatives(phi[0],1),compute_derivatives(phi[1],1))
@@ -71,7 +69,6 @@ def compute_magnetization(Phi,pars,args_minimization):
             #Check if dHs and dHa are very small
             if args_minimization['disp']:
                 print("energy step ",step," is ",E[1]," ,dH at ",diff_H[0])
-                diff_H.insert(0,np.sum(np.absolute(dHs)+np.absolute(dHa)))
             #Exit checks
             if check_energies(E):   #stable energy
                 if E[0]<min_E:
@@ -82,16 +79,7 @@ def compute_magnetization(Phi,pars,args_minimization):
                 phi[0] -= learn_rate*dHs
                 phi[1] -= learn_rate*dHa
                 del E[0]
-                del diff_H[0]
                 lr /= 2
-                if 0:
-                    if E[0]<min_E:
-                        min_E = E[0]
-                        result = np.copy(phi)
-                    break
-            if E[0] > 1e10: #VERY bad situation
-                print("bullshit")
-                break
             #Max number of steps scenario
             if step > args_minimization['maxiter']:
                 if sss == 0:    #If this happens for the first minimization step, save a clearly fake one for later comparison
@@ -102,10 +90,9 @@ def compute_magnetization(Phi,pars,args_minimization):
             step += 1
             #
         if args_minimization['disp']:
-            print("Minimum energy at ",E[0]," ,dH at ",diff_H[0])
+            print("Minimum energy at ",E[0])
             plot_phis(phi,'phi_s and phi_a')
             plot_magnetization(phi,Phi,pars)
-#            input()
     return result
 
 def initial_point(Phi,pars,fs,fa,ans):
@@ -134,7 +121,7 @@ def initial_point(Phi,pars,fs,fa,ans):
     """
     gamma,alpha,beta = pars
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
-    initial_ansatz = ['t-s_custom','t-a_custom','t-s_pert','constant']
+    initial_ansatz = ['t-s_pert','constant']
     sol = initial_ansatz[ans]
     if sol=='t-s_pert':      #ansatz for alpha,beta<<1
         if alpha > 0:
@@ -142,25 +129,21 @@ def initial_point(Phi,pars,fs,fa,ans):
         else:
             delta = 10
         if abs(delta)>3/2:
-            print("delta ",str(delta)," too large for twisted-s, switching to constant initial condition at pi,pi")
-            return initial_point(Phi,pars,0,0,3)
+            print("delta ",str(delta)," too large for twisted-s, switching to random constant initial condition")
+            return initial_point(Phi,pars,random.random(),random.random(),1)
         phi0 = np.arccos(2/3*delta)
         const = 1/2-np.tan(phi0)**(-2)
         phi_s = np.ones((grid,grid))*np.pi
         phi_a = phi0 - alpha*np.sin(phi0)*(Phi-const)
-        print(sol)
     elif sol=='constant':
         phi_s = np.ones((grid,grid))*2*np.pi*fs
         phi_a = np.ones((grid,grid))*2*np.pi*fa
-        print(sol,fs,fa)
     elif sol=='t-s_custom':
         phi_s = np.ones((grid,grid))*np.pi  #(np.sign(Phi)+2)*np.pi/2
         phi_a = (np.sign(Phi)-1)*np.pi/2
-        print(sol)
     elif sol=='t-a_custom':
         phi_s = (1-np.sign(Phi))*np.pi/2
         phi_a = (np.sign(Phi)-1)*np.pi/2
-        print(sol)
     return [phi_s, phi_a]
 
 def compute_energy(phi,Phi,pars,d_phi):
@@ -487,7 +470,15 @@ def compute_interlayer():
                 Phi[i,j] += np.cos(np.dot(b_[a],x))
     return Phi
 
-def name_dir_Phi(cluster=False):
+def get_machine(pwd):
+    if pwd[6:11] == 'dario':
+        return 'loc'
+    elif pwd[:20] == '/home/users/r/rossid':
+        return 'hpc'
+    elif pwd[:13] == '/users/rossid':
+        return 'maf'
+
+def name_dir_Phi(cluster='loc'):
     """Computes the directory name where to save the interlayer potential.
 
     Parameters
@@ -500,10 +491,10 @@ def name_dir_Phi(cluster=False):
     string
         The directory name.
     """
-    dirname = '/home/users/r/rossid/CrBr3/Phi_values/' if cluster else '/home/dario/Desktop/git/CrBr3/Phi_values/'
+    dirname = inputs.home_dirname[cluster]+'Phi_values/'
     return dirname
 
-def name_Phi(cluster=False):
+def name_Phi(cluster='loc'):
     """Computes the filename of the interlayer coupling.
 
     Parameters
@@ -519,7 +510,7 @@ def name_Phi(cluster=False):
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     return name_dir_Phi(cluster) + 'Phi_'+str(grid)+'_'+"{:.2f}".format(A_M)+'.npy' 
 
-def name_dir_phi(cluster=False):
+def name_dir_phi(cluster='loc'):
     """Computes the directory name where to save the results.
 
     Parameters
@@ -534,10 +525,10 @@ def name_dir_phi(cluster=False):
     """
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     name_particular = 'results_'+str(grid)+'_'+str(pts_per_fit)+'_'+"{:.4f}".format(learn_rate_0)+'_'+"{:.2f}".format(A_M)+'/'
-    dirname = '/home/users/r/rossid/CrBr3/results/' if cluster else '/home/dario/Desktop/git/CrBr3/results/'
+    dirname = inputs.home_dirname[cluster]+'results/'
     return dirname+name_particular
 
-def name_phi(pars,cluster=False):
+def name_phi(pars,cluster='loc'):
     """Computes the filename of the result of the minimization.
 
     Parameters
@@ -557,7 +548,7 @@ def name_phi(pars,cluster=False):
     gamma,alpha,beta = pars
     return name_dir_phi(cluster)+'phi_'+"{:.4f}".format(alpha)+'_'+"{:.4f}".format(beta)+'_'+"{:.4f}".format(gamma)+'.npy'
 
-def name_hys(in_state,cluster=False):
+def name_hys(in_state,cluster='loc'):
     """Computes the filename of the hysteresis cycle.
 
     Parameters
@@ -570,8 +561,7 @@ def name_hys(in_state,cluster=False):
     string
         Filename of the .hdf5 file.
     """
-    dirname = '/home/users/r/rossid/CrBr3/results/' if cluster else '/home/dario/Desktop/git/CrBr3/results/'
-    #NEED to add grid,pts_per_fit,A_M on filename
+    dirname = inputs.home_dirname[cluster]+'results/'
     return dirname+'hys_'+in_state+'_'+str(inputs.grid)+'_'+str(inputs.pts_per_fit)+'_'+"{:.2f}".format(inputs.A_M)+'_'+str(inputs.limit_gamma)+'_'+str(inputs.steps_gamma)+'.hdf5'
 
 def compute_parameters():

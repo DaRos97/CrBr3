@@ -1,6 +1,40 @@
 # Title
 
-# Computed
+#Yggdrasil down -> locallly
+Args in 'inputs.py' oredr: 20, 1000, 200, 2, -1e-2, basic (AM=20). 
+- Index a/b = 208
+    Used 7 inputs: t-s_custom, t-a_custom, t-s_pert, const (0 and pi). 
+    t-s_pert always solution up to 0.08 which becomes collinear.
+    Only transition t-s -> c+ between 0.07 and 0.08.
+- Index a/b = 162
+    Used 8 inputs: t-s_custom, t-s_pert, t-s2_custom, t-a_custom, const (0 and pi). 
+    t-s_pert solution up untill 0.03. From 0.04 to 0.09 it passes to t-s2 got from ansatz 0,pi.
+    For 0.42, 0.46, 0.50 stays in t-s2 alligning more and more and becomes collinear at 0.54 and 0.58.
+- Index a/b = 248
+    Used 5 inputs: t-s_pert, const (0 and pi).
+    t-s solution given by t-s_pert untill 0.2, then t-s2 given by 0,pi (small deviation at 0.38, solution of t-s_pert) untill 0.4.
+    t-s2 given by both t-s_pert and 0,pi untill c+ at 0.1.
+    
+- Index a/b = 294
+    Used 5 inputs: t-s_pert, const (0 and pi).
+
+# Computed --> Bao
+
+## Basic Interlayer
+Args in 'inputs.py' oredr: 20, 1000, 300, 2, -1e-2, basic (AM=20)
+gamma index: 1(..)
+Args in 'inputs.py' oredr: 20, 1000, 500, 2, -1e-2, basic (AM=20)
+gamma index: 0(..)
+
+## General Interlayer
+Args in 'inputs.py' oredr: 20, 1000, 300, 2, -1e-2, general (A2=1.01)
+gamma index: 0(..)
+Args in 'inputs.py' oredr: 20, 1000, 500, 2, -1e-2, general (A2=1.01)
+gamma index: 0(..)
+
+# Computed --> Ygg
+
+## Basic Interlayer
 Args in 'inputs.py' oredr: 20, 1000, 100, 2, -1e-2, basic (AM=20)
 gamma index: 0
 Args in 'inputs.py' oredr: 20, 1000, 200, 2, -1e-2, basic (AM=20)

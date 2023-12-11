@@ -105,7 +105,7 @@ a2 = np.matmul(fs.R_z(theta),fs.a2)
 a_m1 = A_M*a1
 a_m2 = A_M*a2
 
-if 0:   #Plot Moirè pattern
+if 1:   #Plot Moirè pattern
     plt.figure(figsize=(20,20))
     plt.gca().set_aspect('equal')
     if 0:       #Unit cell lines

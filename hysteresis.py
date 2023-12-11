@@ -4,7 +4,7 @@ import inputs
 import sys, os, h5py
 
 
-cluster = False if os.getcwd()[6:11]=='dario' else True
+cluster = fs.get_machine(os.getcwd())
 #Upload interlayer coupling
 filename_Phi = fs.name_Phi(cluster)
 try:    
@@ -26,7 +26,7 @@ except:
 print("initial state of hysteresis cycle at pars: ",parameters)
 try:    #Initial state
     filename_phi = fs.name_phi(parameters,cluster)
-    if not cluster:
+    if not cluster=='loc':
         f = h5py.File(fs.name_dir_phi(cluster)[:-1]+'.hdf5','r')   #same name as folder but .hdf5
         ds_name = filename_phi[len(filename_phi)-filename_phi[::-1].index('/'):-4]
         phi_0 = np.copy(f[ds_name])
@@ -52,7 +52,7 @@ args_hysteresis = {
         'noise':1e-1,
         'learn_rate':-0.01,
         'maxiter':1e6, 
-        'disp': not cluster,
+        'disp': not cluster=='loc',
         }
 for i_g in range(len(list_gamma)):
     try:    #result phase
@@ -62,7 +62,7 @@ for i_g in range(len(list_gamma)):
         if i_g>0:
             pars = (list_gamma[i_g],*parameters[1:])
             result_phases[i_g] = fs.hysteresis_minimization(Phi,pars,result_phases[i_g-1],args_hysteresis)
-        if cluster:
+        if cluster=='loc':
             with h5py.File(filename_hys,'a') as f:
                 result_phases_group = f.require_group('result_phases')
                 result_phases_group.create_dataset(str(i_g),data=result_phases[i_g])

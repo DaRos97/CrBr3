@@ -3,11 +3,11 @@ import functions as fs
 import inputs
 import sys, os, h5py
 
-cluster = False if os.getcwd()[6:11]=='dario' else True
+cluster = fs.get_machine(os.getcwd())
 #Parameters in name of solution
 args_general = inputs.args_general
 pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = args_general
-if cluster:#Create result directories if they do not exist
+if not cluster=='loc':    #Create result directories if they do not exist
     fs.check_directories(cluster)
 #Parameters of Moire lattice
 g_index = int(sys.argv[2])
@@ -36,7 +36,7 @@ print("Energy of collinear: ",E0)
 try:
     #Check if phi exists
     filename_phi = fs.name_phi(parameters,cluster)
-    if not cluster:
+    if not cluster=='loc':
         f = h5py.File(fs.name_dir_phi(cluster)[:-1]+'.hdf5','r')   #same name as folder but .hdf5
         ds_name = filename_phi[len(filename_phi)-filename_phi[::-1].index('/'):-4]
         phi = np.copy(f[ds_name])
@@ -46,19 +46,21 @@ try:
 except:
     print("Computing magnetization...")
     args_minimization = {
-            'rand_m':100, 
+            'rand_m':65, 
             'maxiter':1e5, 
-            'disp': not cluster,
+            'disp': not cluster=='loc',
             }
     phi = fs.compute_magnetization(Phi,parameters,args_minimization)
 
-d_phi = (fs.compute_derivatives(phi[0],1),fs.compute_derivatives(phi[1],1))
-print("\nFinal energy: ",fs.compute_energy(phi,Phi,parameters,d_phi))
+print("Finished")
 
-if not cluster:
+if not cluster=='loc':
     #Actual plot
     fs.plot_magnetization(phi,Phi,parameters)
     if 0:#input("save?(y/N)")=='y':
+        d_phi = (fs.compute_derivatives(phi[0],1),fs.compute_derivatives(phi[1],1))
+        print("\nFinal energy: ",fs.compute_energy(phi,Phi,parameters,d_phi))
+
         dirname = 'results/ivo/'
         filename_s = dirname+'phi_s_'+"{:.8f}".format(alpha)+'_'+"{:.8f}".format(beta)+'.csv'
         filename_a = dirname+'phi_a_'+"{:.8f}".format(alpha)+'_'+"{:.8f}".format(beta)+'.csv'

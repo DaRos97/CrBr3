@@ -6,7 +6,7 @@ import functions as fs
 import inputs,sys,os,h5py
 from pathlib import Path
 
-cluster = False if os.getcwd()[6:11]=='dario' else True
+cluster = fs.get_machine(os.getcwd())
 
 #Parameters in name of solution
 args_general = inputs.args_general
