@@ -1,19 +1,18 @@
 import numpy as np
-import functions as fs
+import Functions as fs
 import inputs
 import sys, os, h5py
 
-cluster = fs.get_machine(os.getcwd())
+cluster = False
 #Parameters in name of solution
 args_general = inputs.args_general
 pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = args_general
-if not cluster=='loc':    #Create result directories if they do not exist
-    fs.check_directories(cluster)
+fs.check_directories(cluster)
 #Parameters of Moire lattice
 g_index = int(sys.argv[2])
 parameters = fs.compute_parameters()[g_index*pts_array**2+int(sys.argv[1])]
 gamma,alpha,beta = parameters
-print("alpha: ",alpha," beta: ",beta," gamma: ",gamma)
+print("\nalpha: ",alpha," beta: ",beta," gamma: ",gamma)
 print("alpha/1+alpha: ",alpha/(1+alpha)," beta/1+beta: ",beta/(1+beta))
 
 #Check if Phi already computed
@@ -32,10 +31,11 @@ P0 = np.sum(Phi)/Phi.shape[0]**2
 E0 = -beta-alpha*P0-2*gamma
 print("constant part of Phi: ",P0)
 print("Energy of collinear: ",E0)
+
 try:
     #Check if phi exists
     filename_phi = fs.name_phi(parameters,cluster)
-    if cluster=='loc':
+    if not cluster:
         f = h5py.File(fs.name_dir_phi(cluster)[:-1]+'.hdf5','r')   #same name as folder but .hdf5
         ds_name = filename_phi[len(filename_phi)-filename_phi[::-1].index('/'):-4]
         phi = np.copy(f[ds_name])
@@ -45,22 +45,20 @@ try:
 except:
     print("Computing magnetization...")
     args_minimization = {
-            'rand_m':65, 
+            'rand_m':5, 
             'maxiter':1e5, 
-            'disp': not cluster=='loc',
+            'disp': not cluster,
             }
     phi = fs.compute_magnetization(Phi,parameters,args_minimization)
 
-print("Finished")
+exit()
+d_phi = (fs.compute_derivatives(phi[0],1),fs.compute_derivatives(phi[1],1))
+print("\nFinal energy: ",fs.compute_energy(phi,Phi,parameters,d_phi))
 
-if cluster=='loc':
+if not cluster:
     #Actual plot
     fs.plot_magnetization(phi,Phi,parameters)
-    fs.plot_phis(phi)
     if 0:#input("save?(y/N)")=='y':
-        d_phi = (fs.compute_derivatives(phi[0],1),fs.compute_derivatives(phi[1],1))
-        print("\nFinal energy: ",fs.compute_energy(phi,Phi,parameters,d_phi))
-
         dirname = 'results/ivo/'
         filename_s = dirname+'phi_s_'+"{:.8f}".format(alpha)+'_'+"{:.8f}".format(beta)+'.csv'
         filename_a = dirname+'phi_a_'+"{:.8f}".format(alpha)+'_'+"{:.8f}".format(beta)+'.csv'

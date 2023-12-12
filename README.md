@@ -29,15 +29,21 @@ Args in 'inputs.py' oredr: 20, 1000, 200, 2, -1e-2, basic (AM=20).
 
 ## Basic Interlayer
 Args in 'inputs.py' oredr: 20, 1000, 200, 2, -1e-2, basic (AM=20)
-gamma index: 0, 0.1-1,2,3(..)
+gamma index: 0,0.01-0.09(..) ,0.1-1,2,3,5,7 
 Args in 'inputs.py' oredr: 20, 1000, 300, 2, -1e-2, basic (AM=20)
 gamma index: 1
 Args in 'inputs.py' oredr: 20, 1000, 500, 2, -1e-2, basic (AM=20)
 gamma index: 0
 
+index a/b 334: gamma 0 to 10. t-a to t-s2 to c+.
+index a/b 81 : 
+index a/b 166: 
+index a/b 252: 
+index a/b 246: 
+
 ## General Interlayer
 Args in 'inputs.py' oredr: 20, 1000, 200, 2, -1e-2, general (A2=1.01)
-gamma index: 0(..)->to watch
+gamma index: 0
 Args in 'inputs.py' oredr: 20, 1000, 300, 2, -1e-2, general (A2=1.01)
 gamma index: 0
 Args in 'inputs.py' oredr: 20, 1000, 500, 2, -1e-2, general (A2=1.01)
