@@ -40,7 +40,7 @@ def compute_magnetization(Phi,pars,args_minimization):
     result = np.zeros((2,grid,grid))
     for sss in range(args_minimization['rand_m']):
         if min_E<1e8 and not args_minimization['disp']:
-            np.save(name_phi(pars,True),result)
+            np.save(name_phi(pars,args_minimization['cluster_name']),result)
         E = []  #list of energies for the while loop
         if args_minimization['disp']:
             print("Starting minimization step ",str(sss))

@@ -47,6 +47,7 @@ except:
     args_minimization = {
             'rand_m':65,        #65 initial states: t-s_pert, 0,pi/2,2pi/2,3pi/2,4pi/2,5pi/2,6pi/2,7pi/2
             'maxiter':1e5, 
+            'cluster_name':cluster, 
             'disp': cluster=='loc',
             }
     phi = fs.compute_magnetization(Phi,parameters,args_minimization)
