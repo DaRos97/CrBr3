@@ -22,7 +22,7 @@ with h5py.File(fs.name_dir_phi(cluster)[:-1]+'.hdf5','a') as f:
     try:
         Order = np.copy(f[Order_ds])
         if cluster=='loc':
-            if not input("Use computed order ds? (y/N)")=='y':
+            if input("Use computed order ds? (Y/n)")=='n':
                 a = b
     except:
         print("Computing order")

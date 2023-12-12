@@ -471,6 +471,9 @@ def compute_interlayer():
     return Phi
 
 def get_machine(pwd):
+    """Selects the machine the code is running on by looking at the working directory. Supports local, hpc (baobab or yggdrasil) and mafalda.
+
+    """
     if pwd[6:11] == 'dario':
         return 'loc'
     elif pwd[:20] == '/home/users/r/rossid':
@@ -671,6 +674,9 @@ def hysteresis_minimization(Phi,pars,phi_initial,args_hysteresis):
         step += 1
 
 def compute_total_magnetization(phi):
+    """Computes the total magnetization of the 2 layers (max is 2), given phi which contains symmetric and antisymmetric phases.
+
+    """
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     #Single layer phases
     phi_1 = (phi[0]+phi[1])/2

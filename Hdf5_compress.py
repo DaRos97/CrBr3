@@ -7,10 +7,10 @@ cluster = fs.get_machine(os.getcwd())
 
 
 hdf5_name = fs.name_dir_phi(cluster)[:-1]+'.hdf5'
-if Path(hdf5_name).is_file():
+if input("Compute from scratch (y) or just add new files (N)?"=='y'):
     os.system('rm '+hdf5_name)
 #Open h5py File
-with h5py.File(hdf5_name,'w') as f:
+with h5py.File(hdf5_name,'a') as f:
     #List elements in directory
     for filename in Path(fs.name_dir_phi(cluster)).iterdir():
         filename = str(filename)

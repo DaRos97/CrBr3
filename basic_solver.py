@@ -33,7 +33,7 @@ E0 = -beta-alpha*P0-2*gamma
 print("constant part of Phi: ",P0)
 print("Energy of collinear: ",E0)
 try:
-    #Check if phi exists
+    #Check if phi exists: check .hdf5 in loc and .npy in clusters
     filename_phi = fs.name_phi(parameters,cluster)
     if cluster=='loc':
         f = h5py.File(fs.name_dir_phi(cluster)[:-1]+'.hdf5','r')   #same name as folder but .hdf5
@@ -45,9 +45,9 @@ try:
 except:
     print("Computing magnetization...")
     args_minimization = {
-            'rand_m':65, 
+            'rand_m':65,        #65 initial states: t-s_pert, 0,pi/2,2pi/2,3pi/2,4pi/2,5pi/2,6pi/2,7pi/2
             'maxiter':1e5, 
-            'disp': not cluster=='loc',
+            'disp': cluster=='loc',
             }
     phi = fs.compute_magnetization(Phi,parameters,args_minimization)
 
@@ -56,7 +56,7 @@ print("Finished")
 if cluster=='loc':
     #Actual plot
     fs.plot_magnetization(phi,Phi,parameters)
-    fs.plot_phis(phi)
+#    fs.plot_phis(phi)
     if 0:#input("save?(y/N)")=='y':
         d_phi = (fs.compute_derivatives(phi[0],1),fs.compute_derivatives(phi[1],1))
         print("\nFinal energy: ",fs.compute_energy(phi,Phi,parameters,d_phi))
