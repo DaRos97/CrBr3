@@ -38,12 +38,13 @@ def compute_magnetization(Phi,pars,args_minimization):
     #Variables for storing best solution
     min_E = 1e10
     result = np.zeros((2,grid,grid))
-    for sss in range(args_minimization['rand_m']):
-        if min_E<1e8 and not args_minimization['disp']:
+    for sss in range(1,args_minimization['rand_m']):        #########################
+        if min_E<1e8 and not args_minimization['cluster_name']=='loc':
             np.save(name_phi(pars,args_minimization['cluster_name']),result)
         E = []  #list of energies for the while loop
         if args_minimization['disp']:
             print("Starting minimization step ",str(sss))
+            input()
         #Initial condition
         ans = sss if sss==0 else 1
         fs = ((sss-1)//8)/4 if (sss>0 and sss<65) else random.random()
@@ -58,8 +59,8 @@ def compute_magnetization(Phi,pars,args_minimization):
         while True:
             learn_rate = lr*random.random()
             #Energy gradients
-            dHs = grad_H(phi,'s',Phi,pars,compute_derivatives(phi[0],2))
-            dHa = grad_H(phi,'a',Phi,pars,compute_derivatives(phi[1],2))
+            dHs = symmetrize(grad_H(phi,'s',Phi,pars,compute_derivatives(phi[0],2)))
+            dHa = symmetrize(grad_H(phi,'a',Phi,pars,compute_derivatives(phi[1],2)))
             #Update phi
             phi[0] += learn_rate*dHs
             phi[1] += learn_rate*dHa
@@ -68,7 +69,7 @@ def compute_magnetization(Phi,pars,args_minimization):
             E.insert(0,compute_energy(phi,Phi,pars,d_phi))
             #Check if dHs and dHa are very small
             if args_minimization['disp']:
-                print("energy step ",step," is ",E[1])
+                print("energy step ",step," is ",E[0])
             #Exit checks
             if check_energies(E):   #stable energy
                 if E[0]<min_E:
@@ -121,7 +122,7 @@ def initial_point(Phi,pars,fs,fa,ans):
     """
     gamma,alpha,beta = pars
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
-    initial_ansatz = ['t-s_pert','constant']
+    initial_ansatz = ['t-s_pert','constant','t-s_custom']
     sol = initial_ansatz[ans]
     if sol=='t-s_pert':      #ansatz for alpha,beta<<1
         if alpha > 0:
@@ -139,11 +140,12 @@ def initial_point(Phi,pars,fs,fa,ans):
         phi_s = np.ones((grid,grid))*2*np.pi*fs
         phi_a = np.ones((grid,grid))*2*np.pi*fa
     elif sol=='t-s_custom':
-        phi_s = np.ones((grid,grid))*np.pi  #(np.sign(Phi)+2)*np.pi/2
-        phi_a = (np.sign(Phi)-1)*np.pi/2
+        phi_s = np.zeros((grid,grid))
+        phi_a = (1-np.sign(Phi))*np.pi/4
     elif sol=='t-a_custom':
         phi_s = (1-np.sign(Phi))*np.pi/2
         phi_a = (np.sign(Phi)-1)*np.pi/2
+    print(sol,fs,fa)
     return [phi_s, phi_a]
 
 def compute_energy(phi,Phi,pars,d_phi):
@@ -824,14 +826,36 @@ def other_smooth(phi):
     return phi_new, fun
 
 
+def symmetrize(phi):
+    """Symmetrize pi with C3 symmetry by taking the average of the three symmetry-related points.
+
+    """
+    grid = phi.shape[0]
+    # Create indices for the shifted positions
+    i_indices, j_indices = np.indices((grid, grid))
+
+    shifted_i = (grid - i_indices + j_indices) % grid
+    shifted_j = (grid - i_indices) % grid
+    r3_phi = phi[shifted_i,shifted_j]
+
+    shifted_i = (grid - j_indices) % grid
+    shifted_j = (grid - j_indices + i_indices) % grid
+    r6_phi = phi[shifted_i,shifted_j]
+
+    new_phi = (phi+r3_phi+r6_phi)/3
+    return new_phi
 
 
 
 
 
-
-
-
+def old_symmetrize(phi):
+    for i in range(grid):
+        for j in range(grid):
+            new_phi[i,j] = (phi[i,j] 
+                    + phi[(grid-i+j)%grid,(grid-i)%grid] 
+                    + phi[(grid-j)%grid,(grid-j+i)%grid]
+                    )/3
 
 
 
