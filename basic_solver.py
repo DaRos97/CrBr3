@@ -28,7 +28,7 @@ except FileNotFoundError:
         print("Computing interlayer coupling...")
         Phi = fs.compute_interlayer()
         np.save(filename_Phi,Phi)
-Phi = np.symmetrize(Phi)
+Phi = fs.symmetrize(Phi)
 P0 = np.sum(Phi)/Phi.shape[0]**2
 E0 = -beta-alpha*P0-2*gamma
 print("constant part of Phi: ",P0)
@@ -41,9 +41,9 @@ try:
         ds_name = filename_phi[len(filename_phi)-filename_phi[::-1].index('/'):-4]
         phi = np.copy(f[ds_name])
         f.close()
+        a = sys.argv[3]
     else:
         phi = np.load(filename_phi)
-    a = sys.argv[3]
 except:
     print("Computing magnetization...")
     args_minimization = {

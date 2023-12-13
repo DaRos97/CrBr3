@@ -38,7 +38,7 @@ def compute_magnetization(Phi,pars,args_minimization):
     #Variables for storing best solution
     min_E = 1e10
     result = np.zeros((2,grid,grid))
-    for sss in range(1,args_minimization['rand_m']):        #########################
+    for sss in range(args_minimization['rand_m']):
         if min_E<1e8 and not args_minimization['cluster_name']=='loc':
             np.save(name_phi(pars,args_minimization['cluster_name']),result)
         E = []  #list of energies for the while loop
@@ -81,6 +81,10 @@ def compute_magnetization(Phi,pars,args_minimization):
                 phi[1] -= learn_rate*dHa
                 del E[0]
                 lr /= 2
+                if abs(lr) < 1e-7:
+                    break
+                else:
+                    lr /= 2
             #Max number of steps scenario
             if step > args_minimization['maxiter']:
                 if sss == 0:    #If this happens for the first minimization step, save a clearly fake one for later comparison
