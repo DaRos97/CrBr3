@@ -38,6 +38,7 @@ def compute_magnetization(Phi,pars,args_minimization):
     #Variables for storing best solution
     min_E = 1e10
     result = np.zeros((2,grid,grid))
+    symm_or_not = symmetrize if inputs.symmetrize else trivial
     for sss in range(args_minimization['rand_m']):
         if min_E<1e8 and not args_minimization['cluster_name']=='loc':
             np.save(name_phi(pars,args_minimization['cluster_name']),result)
@@ -59,8 +60,8 @@ def compute_magnetization(Phi,pars,args_minimization):
         while True:
             learn_rate = lr*random.random()
             #Energy gradients
-            dHs = symmetrize(grad_H(phi,'s',Phi,pars,compute_derivatives(phi[0],2)))
-            dHa = symmetrize(grad_H(phi,'a',Phi,pars,compute_derivatives(phi[1],2)))
+            dHs = symm_or_not(grad_H(phi,'s',Phi,pars,compute_derivatives(phi[0],2)))
+            dHa = symm_or_not(grad_H(phi,'a',Phi,pars,compute_derivatives(phi[1],2)))
             #Update phi
             phi[0] += learn_rate*dHs
             phi[1] += learn_rate*dHa
@@ -385,6 +386,8 @@ def plot_magnetization(phi,Phi,pars,save=False,tt=''):
     gamma,alpha,beta = pars
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     import matplotlib.pyplot as plt 
+    plt.rcParams.update({"text.usetex": True,})
+    s_ = 40
     #Interpolate Phi
     XX = np.linspace(-1,2,3*grid,endpoint=False)
     big_Phi = extend(Phi)
@@ -445,6 +448,10 @@ def plot_magnetization(phi,Phi,pars,save=False,tt=''):
         ax.set_xlim(-0.6,0.6)
         ax.set_ylim(-0.65,0.65)
     plt.suptitle("alpha/(1+alpha) = "+"{:.4f}".format(alpha/(1+alpha))+",  beta/(1+beta) = "+"{:.4f}".format(beta/(1+beta))+", gamma = "+"{:.4f}".format(gamma),size=20)
+    #plt.suptitle("Collinear order (c+)",size=s_)
+    #plt.suptitle("Twisted-s 1 (t-s1)",size=s_)
+    #plt.suptitle("Twisted-s 2 (t-s2)",size=s_)
+    #plt.suptitle("Twisted-a (t-a)",size=s_)
     if save:
         plt.savefig('temp'+tt+'.png')
         plt.close()
@@ -775,19 +782,58 @@ def R_z(t):
     R[1,1] = np.cos(t)
     return R
 
-def plot_Phi(J,title=''):
+def plot_Phi(Phi,title=''):
+    grid = Phi.shape[0]
     import matplotlib.pyplot as plt
-    X = Y = np.linspace(0,1,J.shape[0])
-    fig, axs = plt.subplots(figsize=(20,20))
-    X_,Y_ = np.meshgrid(X,Y)
-    X_ = X_-Y_/2
-    Y_ = Y_/2*np.sqrt(3)
-    ax1 = axs.contourf(X_,Y_,J)
-    axs.contour(X_,Y_,J,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(1,))
-    fig.colorbar(ax1)
-    axs.set_title(title)
+    plt.rcParams.update({"text.usetex": True,})
+    s_ = 20
+    Phi = symmetrize(Phi)
+    XX = np.linspace(-1,2,3*grid,endpoint=False)
+    big_Phi = extend(Phi)
+    fun_Phi = RBS(XX,XX,big_Phi)
+    #Background -> interlayer coupling
+    long_X = np.linspace(-1,1,2*grid,endpoint=False)
+    long_Y = np.linspace(-1,1,2*grid,endpoint=False)
+    X,Y = np.meshgrid(long_X,long_Y)
+    X = X-Y/2
+    Y = Y/2*np.sqrt(3)
+    #Box the Moirè unit cell
+    s3 = np.sqrt(3)
+    def line(x,y0,q):
+        return y0+q*x
+    xx14 = np.linspace(-1/2,0,100)
+    xx23 = np.linspace(0,1/2,100)
+    pars = [[(1/s3,1/s3),(-1/s3,-1/s3)],
+            [(1/s3,-1/s3),(-1/s3,1/s3)]]
+    #Plot the arrows
+    l = 0.02       #length of arrow
+    hw = 0.01       #arrow head width
+    hl = 0.01       #arrow head length
+    fac = grid//20     #plot 1 spin every "fac" of grid
+    def inside_UC(a,b):
+        if a > 1/2:
+            return inside_UC(a-1,b)
+        elif b>1/s3+a/s3:
+            return inside_UC(a+1/2,b-s3/2)
+        elif b>1/s3-a/s3:
+            return inside_UC(a-1/2,b-s3/2)
+        else:
+            return a,b
+    fig, ax = plt.subplots(figsize=(10,10))
+    ax.axis('off')
+    ax.set_aspect(1.)
+    ax.contour(X,Y,fun_Phi(long_X,long_Y),levels=[0,],colors=('r',),linestyles=('-',),linewidths=(0.5))
+    surf = ax.contourf(X,Y,fun_Phi(long_X,long_Y),levels=20)
+    ax.vlines(1/2,-1/2/s3,1/2/s3,linestyles='dashed',color='r')
+    ax.vlines(-1/2,-1/2/s3,1/2/s3,linestyles='dashed',color='r')
+    for i,x in enumerate([xx14,xx23]):
+        for j in range(2):
+            ax.plot(x,line(x,*pars[i][j]),linestyle='dashed',color='r')
+    ax.set_xlim(-0.6,0.6)
+    ax.set_ylim(-0.65,0.65)
+    #ax.set_title("Interlayer potential of strained Moirè lattice",size=s_)
+#    ax.set_title("interlayer potential",size=s_)
     plt.show()
-
 
 
 
@@ -829,6 +875,8 @@ def other_smooth(phi):
     phi_new = fun(xx,xx)
     return phi_new, fun
 
+def trivial(phi):
+    return phi
 
 def symmetrize(phi):
     """Symmetrize pi with C3 symmetry by taking the average of the three symmetry-related points.
@@ -861,6 +909,17 @@ def old_symmetrize(phi):
                     + phi[(grid-j)%grid,(grid-j+i)%grid]
                     )/3
 
+def old_plot_Phi(Phi):
+    X = Y = np.linspace(0,1,J.shape[0])
+    fig, axs = plt.subplots(figsize=(20,20))
+    X_,Y_ = np.meshgrid(X,Y)
+    X_ = X_-Y_/2
+    Y_ = Y_/2*np.sqrt(3)
+    ax1 = axs.contourf(X_,Y_,J)
+    axs.contour(X_,Y_,J,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(1,))
+    fig.colorbar(ax1)
+    axs.set_title(title)
+    plt.show()
 
 
 

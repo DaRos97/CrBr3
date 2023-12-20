@@ -11,14 +11,16 @@ pts_per_fit = 2
 #Learn rate step
 learn_rate_0 = -1e-2
 #Interlayer potential which depends on Moirè pattern
-#int_type = 'general'
-int_type = 'basic'
+int_type = 'general'
+#int_type = 'basic'
+
+symmetrize = True
 
 ####################################################################
 ####################################################################
 ####################################################################
 interlayer = {
-        'general':{'A_1':1,'A_2':1.01,'theta':0},
+        'general':{'A_1':1,'A_2':1.05,'theta':0},
         'basic':{'A_M':20}
             }
 interlayer['general']['A_M'] = 1/np.sqrt(1/interlayer['general']['A_1']**2+1/interlayer['general']['A_2']**2-2*np.cos(interlayer['general']['theta'])/(interlayer['general']['A_1']*interlayer['general']['A_2']))
@@ -34,7 +36,7 @@ dic_in_state = ['c+0','c+','t-s','t-a']
 
 #Home directory names
 home_dirname = {
-        'loc':'/home/dario/Desktop/git/CrBr3/',
-        'hpc':'/home/users/r/rossid/CrBr3/',
-        'maf':'/users/rossid/CrBr3/',
+        'loc':'/home/dario/Desktop/git/CrBr3/phase_1/',
+        'hpc':'/home/users/r/rossid/phase_1/',
+        'maf':'/users/rossid/phase_1/',
         }

@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import functions as fs
-import inputs
+import inputs,os
 from scipy.interpolate import RectBivariateSpline as RBS
 from pathlib import Path
 
@@ -10,12 +10,13 @@ A_1 = inputs.interlayer['general']['A_1']
 A_2 = inputs.interlayer['general']['A_2']
 theta = inputs.interlayer['general']['theta']
 xpts = ypts = inputs.grid
-moire_potential_name = fs.name_Phi(False)
+cluster = fs.get_machine(os.getcwd())
+moire_potential_name = fs.name_Phi(cluster)
 title = "(A2-A1)/A1 = "+"{:.4f}".format((A_2-A_1)/A_1)+", theta (rad) = "+"{:.4f}".format(theta)
 if Path(moire_potential_name).is_file():
     print("Already computed..")
     fs.plot_Phi(np.load(moire_potential_name),title)
-    if input("Translate to csv for Ivo? (y/N)")=='y':
+    if 0:#input("Translate to csv for Ivo? (y/N)")=='y':
         np.savetxt('results/ivo/'+moire_potential_name[41:-4]+'.csv',np.load(moire_potential_name))
     exit()
 print("Moire length: ",fs.moire_length(A_1,A_2,theta))
@@ -135,6 +136,7 @@ if 1:   #Plot Moirè pattern
             plt.scatter(l1[:,y,n,0],l1[:,y,n,1],color='b',s=3)
             plt.scatter(l2[:,y,n,0],l2[:,y,n,1],color='r',s=3)
     plt.title(title)
+    plt.axis('off')
     plt.show()
     exit()
 

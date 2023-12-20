@@ -28,7 +28,8 @@ except FileNotFoundError:
         print("Computing interlayer coupling...")
         Phi = fs.compute_interlayer()
         np.save(filename_Phi,Phi)
-Phi = fs.symmetrize(Phi)
+if inputs.symmetrize:
+    Phi = fs.symmetrize(Phi)
 P0 = np.sum(Phi)/Phi.shape[0]**2
 E0 = -beta-alpha*P0-2*gamma
 print("constant part of Phi: ",P0)
@@ -57,12 +58,12 @@ except:
 print("Finished")
 
 if cluster=='loc':
-    if 1:   #Compute energy
+    if 0:   #Compute energy
         d_phi = (fs.compute_derivatives(phi[0],1),fs.compute_derivatives(phi[1],1))
         print("\nFinal energy: ",fs.compute_energy(phi,Phi,parameters,d_phi))
     #Actual plot
     fs.plot_magnetization(phi,Phi,parameters)
-    fs.plot_phis(phi)
+    #fs.plot_phis(phi)
 
     if 0:#input("save?(y/N)")=='y':
         dirname = 'results/ivo/'
