@@ -17,20 +17,19 @@ def compute_magnetization(Phi,pars,args_minimization):
 
     Parameters
     ----------
-    Phi : np.ndarray
+    Phi: np.ndarray
         Interlayer coupling of size (grid,grid)
-    alpha: float
-        Parameter alpha.
-    beta: float
-        Parameter beta.
+    pars: 3-tuple
+        Parameters alpha, beta and gamma.
     args_minimization : dic
         'rand_m' -> int, number of random initial seeds,
-        'maxiter' -> int, max number of update evaluations.
+        'maxiter' -> int, max number of update evaluations,
+        'cluster_name' -> string, name of machine,
         'disp' -> bool, diplay messages.
 
     Returns
     -------
-    tuple
+    np.ndarray
         Symmetric and antisymmetric phases at each position (grid,grid) of the Moirè unit cell.
     """
     gamma,alpha,beta = pars
@@ -109,10 +108,8 @@ def initial_point(Phi,pars,fs,fa,ans):
     ----------
     Phi : np.ndarray
         Interlayer coupling of size (grid,grid)
-    alpha: float
-        Parameter alpha.
-    beta: float
-        Parameter beta.
+    pars : 3-tuple
+        Parameters alpha, beta and gamma.
     fs : float
         Random number between 0 and 1 to set inisial condition for symmetric phase.
     fa : float
@@ -122,7 +119,7 @@ def initial_point(Phi,pars,fs,fa,ans):
 
     Returns
     -------
-    tuple
+    List
         Symmetric and antisymmetric phases at each position (grid,grid) of the Moirè unit cell.
     """
     gamma,alpha,beta = pars
@@ -158,16 +155,12 @@ def compute_energy(phi,Phi,pars,d_phi):
 
     Parameters
     ----------
-    phi_s: np.ndarray
-        Symmetric phases.
-    phi_a: np.ndarray
-        A-symmetric phases.
+    phi: 2-tuple
+        Symmetric and Anti-Symmetric phases.
     Phi : np.ndarray
         Interlayer coupling of size (grid,grid)
-    alpha: float
-        Parameter alpha.
-    beta: float
-        Parameter beta.
+    pars : 3-tuple
+        Parameters alpha, beta and gamma.
 
     Returns
     -------
@@ -190,18 +183,16 @@ def grad_H(phi,tt,Phi,pars,d2_phi):
 
     Parameters
     ----------
-    phi_s: np.ndarray
-        Symmetric phases.
-    phi_a: np.ndarray
-        A-symmetric phases.
+    phi: 2-tuple
+        Symmetric and Anti-Symmetric phases.
     tt : char
         Determines which functional derivative to compute (wrt phi_s or phi_a).
     Phi : np.ndarray
         Interlayer coupling of size (grid,grid)
-    alpha: float
-        Parameter alpha.
-    beta: float
-        Parameter beta.
+    pars : 3-tuple
+        Parameters alpha, beta and gamma.
+    d2_phi : ndarray
+        Second derivative of the phase (symm or anti-symm) to compute.
 
     Returns
     -------
@@ -313,10 +304,8 @@ def plot_phis(phi,txt_title='mah'):
 
     Parameters
     ----------
-    phi_1 : np.ndarray
-        Phases defined on (grid,grid) space.
-    phi_2 : np.ndarray
-        Phases defined on (grid,grid) space.
+    phi: 2-tuple
+        Symmetric and Anti-Symmetric phases.
     txt_title : string (optional)
         Title of the plot.
 
@@ -375,12 +364,16 @@ def plot_magnetization(phi,Phi,pars,save=False,tt=''):
 
     Parameters
     ----------
-    phi_s : np.ndarray
-        Symmetric phases defined on (grid,grid) space.
-    phi_a : np.ndarray
-        A-symmetric phases defined on (grid,grid) space.
+    phi: 2-tuple
+        Symmetric and Anti-Symmetric phases.
     Phi : np.ndarray
         Interlayer coupling of size (grid,grid).
+    pars : 3-tuple
+        Parameters alpha, beta and gamma.
+    save : bool (optional, default=False)
+        Wether to save or not the plot.
+    tt : string (optional)
+        Name of the figure (just needed if save=True).
 
     """
     gamma,alpha,beta = pars
@@ -486,6 +479,15 @@ def compute_interlayer():
 def get_machine(pwd):
     """Selects the machine the code is running on by looking at the working directory. Supports local, hpc (baobab or yggdrasil) and mafalda.
 
+    Parameters
+    ----------
+    pwd : string
+        Result of os.pwd(), the working directory.
+
+    Returns
+    -------
+    string
+        An acronim for the computing machine.
     """
     if pwd[6:11] == 'dario':
         return 'loc'
@@ -500,7 +502,7 @@ def name_dir_Phi(cluster='loc'):
     Parameters
     ----------
     cluster: bool, optional
-        Wether we are in the cluster or not (default is False).
+        Wether we are in the cluster or not (default is 'loc').
 
     Returns
     -------
@@ -516,7 +518,7 @@ def name_Phi(cluster='loc'):
     Parameters
     ----------
     cluster: bool, optional
-        Wether we are in the cluster or not (default is False).
+        Wether we are in the cluster or not (default is 'loc').
 
     Returns
     -------
@@ -532,7 +534,7 @@ def name_dir_phi(cluster='loc'):
     Parameters
     ----------
     cluster: bool, optional
-        Wether we are in the cluster or not (default is False).
+        Wether we are in the cluster or not (default is 'loc').
 
     Returns
     -------
@@ -549,12 +551,10 @@ def name_phi(pars,cluster='loc'):
 
     Parameters
     ----------
-    alpha: float
-        Parameter alpha.
-    beta: float
-        Parameter beta.
+    pars : 3-tuple
+        Parameters alpha, beta and gamma.
     cluster: bool, optional
-        Wether we are in the cluster or not (default is False).
+        Wether we are in the cluster or not (default is 'loc').
 
     Returns
     -------
@@ -569,8 +569,10 @@ def name_hys(in_state,cluster='loc'):
 
     Parameters
     ----------
+    in_state : string
+        Acronim of initial state.
     cluster: bool, optional
-        Wether we are in the cluster or not (default is False).
+        Wether we are in the cluster or not (default is 'loc').
 
     Returns
     -------
@@ -588,7 +590,7 @@ def compute_parameters():
     Returns
     -------
     np.ndarray
-        Matrix of values of size (pts_array,pts_array,2).
+        Matrix of values of size (pts_gamma,pts_array,pts_array,3).
     """
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     values = np.zeros((pts_gamma,pts_array,pts_array,3))
@@ -609,7 +611,7 @@ def check_directories(cluster):
     Parameters
     ----------
     cluster: bool, optional
-        Wether we are in the cluster or not (default is False).
+        Wether we are in the cluster or not (default is 'loc').
 
     """
     if not Path(name_dir_phi(cluster)).is_dir():
@@ -624,12 +626,15 @@ def hysteresis_minimization(Phi,pars,phi_initial,args_hysteresis):
     ----------
     Phi : np.ndarray
         Interlayer coupling of size (grid,grid)
-    pars: tuple
+    pars: 3-tuple
         Parameters of state: alpha, beta and gamma.
-    gamma: float
-        Parameter gamma.
     phi_initial : np.ndarray
         Initial state of minimization.
+    args_hysteresis : dic
+        'noise' -> constant noise over initial condition,
+        'learn_rate' -> gradient descent step,
+        'maxiter' -> max number of iterations,
+        'disp' -> display results during computation.
 
     Returns
     -------
@@ -689,6 +694,16 @@ def hysteresis_minimization(Phi,pars,phi_initial,args_hysteresis):
 def compute_total_magnetization(phi):
     """Computes the total magnetization of the 2 layers (max is 2), given phi which contains symmetric and antisymmetric phases.
 
+
+    Parameters
+    ----------
+    phi: 2-tuple
+        Symmetric and Anti-Symmetric phases.
+
+    Returns
+    -------
+    float
+        Total magnetization along z of the spin configuration.
     """
     pts_array,pts_gamma,grid,pts_per_fit,learn_rate_0,A_M = inputs.args_general
     #Single layer phases
@@ -696,6 +711,35 @@ def compute_total_magnetization(phi):
     phi_2 = (phi[0]-phi[1])/2
     total_magnetization = np.sum(np.cos(phi_1))/grid**2 + np.sum(np.cos(phi_2))/grid**2
     return total_magnetization
+
+def symmetrize(phi):
+    """Symmetrize pi with C3 symmetry by taking the average of the three symmetry-related points.
+    
+    Parameters
+    ----------
+    phi: 2-tuple
+        Symmetric and Anti-Symmetric phases.
+
+    Returns
+    -------
+    ndarray
+        Symmetrized phase.
+    """
+    grid = phi.shape[0]
+    # Create indices for the shifted positions
+    i_indices, j_indices = np.indices((grid, grid))
+
+    shifted_i = (grid - i_indices + j_indices) % grid
+    shifted_j = (grid - i_indices) % grid
+    r3_phi = phi[shifted_i,shifted_j]
+
+    shifted_i = (grid - j_indices) % grid
+    shifted_j = (grid - j_indices + i_indices) % grid
+    r6_phi = phi[shifted_i,shifted_j]
+
+    new_phi = (phi+r3_phi+r6_phi)/3
+    return new_phi
+
 
 ##############################################################################
 ##############################################################################
@@ -706,8 +750,20 @@ def find_closest(lattice,site,UC_):
     The lattice is stored in "lattice" and the search can be constrained 
     to the unit cell "UC_", if given.
 
-    Lattice has shape nx,ny,2->unit cell index,2->x and y.
 
+    Parameters
+    ----------
+    lattice : ndarray
+        Lattice sites storage. Lattice has shape nx,ny,2->unit cell index,2->x and y.
+    site : np.array
+        x and y coordinates of space.
+    UC_ : string
+        Unit cell to constrain the search.
+
+    Returns
+    -------
+    int, int, UC
+        Indexes of clusest site, together with corresponding UC.
     """
     X,Y,W,Z = lattice.shape
     #
@@ -739,7 +795,20 @@ def find_closest(lattice,site,UC_):
 def compute_lattices(A_1,A_2,theta):
     """Compute the 2 honeycomb lattices with lattice lengths A_1/A_2 and a twist angle theta.
 
+    Parameters
+    ----------
+    A_1 : float
+        Lattice length of lattice 1.
+    A_2 : float
+        Lattice length of lattice 2.
+    theta : float
+        Relative rotation of the 2 axes.
 
+    Returns
+    -------
+    ndarray, ndarray, int, int
+        Lattices 1 and 2, together with x and y extesions.
+        
     """
     A_M = moire_length(A_1,A_2,theta)
     n_x = n_y = 3       #number of moirè lenths to include in l1,l2
@@ -764,7 +833,19 @@ def compute_lattices(A_1,A_2,theta):
 def moire_length(A_1,A_2,theta):
     """Moirè length of two lattices with lengths A_1/A_2 and twist theta. From Louk's paper.
 
+    Parameters
+    ----------
+    A_1 : float
+        Lattice length of lattice 1.
+    A_2 : float
+        Lattice length of lattice 2.
+    theta : float
+        Relative rotation of the 2 axes.
 
+    Returns
+    -------
+    float
+        Moire lattice length.
     """
     if A_1 == 1 and A_2 == 1 and theta == 0:    #Limit case
         return 1
@@ -773,7 +854,15 @@ def moire_length(A_1,A_2,theta):
 def R_z(t):
     """Z-rotations of angle t.
 
+    Parameters
+    ----------
+    t : float
+        Rotation angle.
 
+    Returns
+    -------
+    ndarray
+        2x2 matrix.
     """
     R = np.zeros((2,2))
     R[0,0] = np.cos(t)
@@ -783,6 +872,15 @@ def R_z(t):
     return R
 
 def plot_Phi(Phi,title=''):
+    """Plot interlayer.
+
+    Parameters
+    ----------
+    Phi : ndarray
+        Interlayer poptential.
+    title : string, optional (default = '').
+        Plot title.
+    """
     grid = Phi.shape[0]
     import matplotlib.pyplot as plt
     plt.rcParams.update({"text.usetex": True,})
@@ -877,25 +975,6 @@ def other_smooth(phi):
 
 def trivial(phi):
     return phi
-
-def symmetrize(phi):
-    """Symmetrize pi with C3 symmetry by taking the average of the three symmetry-related points.
-
-    """
-    grid = phi.shape[0]
-    # Create indices for the shifted positions
-    i_indices, j_indices = np.indices((grid, grid))
-
-    shifted_i = (grid - i_indices + j_indices) % grid
-    shifted_j = (grid - i_indices) % grid
-    r3_phi = phi[shifted_i,shifted_j]
-
-    shifted_i = (grid - j_indices) % grid
-    shifted_j = (grid - j_indices + i_indices) % grid
-    r6_phi = phi[shifted_i,shifted_j]
-
-    new_phi = (phi+r3_phi+r6_phi)/3
-    return new_phi
 
 
 

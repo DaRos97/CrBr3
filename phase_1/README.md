@@ -1,6 +1,6 @@
 # Code structure
 
-All main scripts refer to functions.py and inputs.
+All main scripts refer to functions.py and inputs.py.
 
 ## Solver -> basic_solver.py
 
