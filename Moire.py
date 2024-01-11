@@ -11,20 +11,11 @@ cluster = fs.get_machine(os.getcwd())
 moire_potential_fn = fs.name_Phi(cluster)
 
 if Path(moire_potential_fn).is_file():
-    print("Already computed..")
+    print("Already computed interlayer coupling..")
     fs.plot_Phi(np.load(moire_potential_fn))
     exit()
 
-#print("Moire length: ",fs.moire_length(A_1,A_2,theta))
-
-data_fn = inputs.home_dirname[cluster]+"Data/CrBr3_interlayer.npy"
-
-#Compute or just load data interlayer
-if Path(data_fn).is_file():
-    I = np.load(data_fn)
-else:
-    I = fs.compute_dft_data(cluster,save=True)
-    np.save(data_fn,I)
+I = fs.get_dft_data(cluster)
 
 #Interpolate interlayer DFT data
 pts = I.shape[0]
@@ -32,54 +23,29 @@ big_I = fs.extend(I,5)
 S_array = np.linspace(-2,3,5*pts,endpoint=False)
 fun_I = RBS(S_array,S_array,big_I)
 
-if 1:   #plot interpolated interlayer DFT data
+if 0:   #plot interpolated interlayer DFT data
     fs.plot_Phi(I)
     exit()
 
 #Lattice directions -> small a denotes a vector, capital A denotes a distance
 
 #Lattice-1 and lattice-2
-l1,l2,xxx,yyy = fs.compute_lattices()
-#Moire vectors in real and momentum space
-A_M = fs.moire_length(A_1,A_2,theta)
-a1 = np.matmul(fs.R_z(theta),fs.a1)
-a2 = np.matmul(fs.R_z(theta),fs.a2)
-a_m1 = A_M*a1
-a_m2 = A_M*a2
+l1,l2,a1_m,a2_m = fs.compute_lattices()
 
 if 1:   #Plot Moirè pattern
-    plt.figure(figsize=(20,20))
-    plt.gca().set_aspect('equal')
-    if 0:       #Unit cell lines
-        for i in range(8):
-            y_y = np.ones(100)*i*A_M*np.sqrt(3)/2
-            x_x = np.linspace(-4*A_M,8*A_M,100)
-            xp = []
-            yp = []
-            for j in range(100):
-                mul = np.matmul(fs.R_z(theta/2),np.array([x_x[j],y_y[j]]))
-                xp.append(mul[0])
-                yp.append(mul[1])
-            plt.plot(xp,yp,'k',linewidth=0.5)
-            #plt.hlines(i*A_M*np.sqrt(3)/2,-4*A_M,8*A_M,'k',linewidth=0.5)
-            x_x = np.linspace(i*A_M-4*A_M,i*A_M,100)
-            y_y = -x_x*np.sqrt(3)+A_M*i*np.sqrt(3)
-            xp = []
-            yp = []
-            for j in range(100):
-                mul = np.matmul(fs.R_z(theta/2),np.array([x_x[j],y_y[j]]))
-                xp.append(mul[0])
-                yp.append(mul[1])
-            plt.plot(xp,yp,'k',linewidth=0.5)
+    fig,ax = plt.subplots(figsize=(20,20))
+    ax.set_aspect('equal')
     #
     for n in range(2):      #Actual lattices
-        for y in range(yyy):
-            plt.scatter(l1[:,y,n,0],l1[:,y,n,1],color='b',s=3)
-            plt.scatter(l2[:,y,n,0],l2[:,y,n,1],color='r',s=3)
-    plt.title(title)
-    plt.axis('off')
+        for y in range(l1.shape[1]):
+            ax.scatter(l1[:,y,n,0],l1[:,y,n,1],color='b',s=3)
+            ax.scatter(l2[:,y,n,0],l2[:,y,n,1],color='r',s=3)
+
+    ax.arrow(0,0,a1_m[0],a1_m[1],color='g',lw=2,head_width=0.2,zorder=-1,alpha=0.5)
+    ax.arrow(0,0,a2_m[0],a2_m[1],color='g',lw=2,head_width=0.2,zorder=-1,alpha=0.5)
+    ax.axis('off')
     plt.show()
-    exit()
+    #exit()
 
 #Compute interlayer energy by evaluating the local stacking of the two layers
 J = np.zeros((xpts,ypts))
@@ -87,10 +53,10 @@ X = np.linspace(0,1,xpts,endpoint=False)
 Y = np.linspace(0,1,ypts,endpoint=False)
 for i in tqdm(range(xpts)):
     for j in range(ypts):     #Cycle over all considered points in Moirè unit cell
-        site = X[i]*a_m1 + Y[j]*a_m2    #x and y components of consider point
+        site = X[i]*a1_m + Y[j]*a2_m    #x and y components of consider point
         x1,y1,UC = fs.find_closest(l1,site,'nan')
         x2,y2,UC = fs.find_closest(l2,site,UC)
-        if i==j and i==-1:   #plot two lattices, chosen site and coloured closest sites
+        if i==j and 0:   #plot two lattices, chosen site and coloured closest sites
             plt.figure(figsize=(10,10))
             plt.gca().set_aspect('equal')
             for n in range(2):  #lattices
