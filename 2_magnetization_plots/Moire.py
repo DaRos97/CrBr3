@@ -2,20 +2,27 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import functions as fs
-import inputs,os
+import os,h5py,sys
 from scipy.interpolate import RectBivariateSpline as RBS
 from pathlib import Path
 
-xpts = ypts = inputs.grid
-cluster = fs.get_machine(os.getcwd())
-moire_potential_fn = fs.name_Phi(cluster)
+disp = False
+#
+xpts = ypts = 200
+machine = fs.get_machine(os.getcwd())
+moire_potential_fn = fs.get_Phi_fn(machine)
 
 if Path(moire_potential_fn).is_file():
     print("Already computed interlayer coupling..")
-    fs.plot_Phi(np.load(moire_potential_fn))
+    if disp:
+        with h5py.File(moire_potential_fn,'r') as f:
+            J = f['Phi']
+            a1_m = f['a1_m']
+            a2_m = f['a2_m']
+            fs.plot_Phi(J,a1_m,a2_m)
     exit()
 
-I = fs.get_dft_data(cluster)
+I = fs.get_dft_data(machine)
 
 #Interpolate interlayer DFT data
 pts = I.shape[0]
@@ -24,19 +31,20 @@ S_array = np.linspace(-2,3,5*pts,endpoint=False)
 fun_I = RBS(S_array,S_array,big_I)
 
 if 0:   #plot interpolated interlayer DFT data
-    fs.plot_Phi(I)
+    fs.plot_Phi(I,fs.a1,fs.a2)
     exit()
 
 #Lattice directions -> small a denotes a vector, capital A denotes a distance
 
 #Lattice-1 and lattice-2
 l1,l2,a1_m,a2_m = fs.compute_lattices()
+print("|a_1|=",np.linalg.norm(a1_m),", |a_1|=",np.linalg.norm(a2_m))
 
-if 1:   #Plot Moirè pattern
+if disp:   #Plot Moirè pattern
     fig,ax = plt.subplots(figsize=(20,20))
     ax.set_aspect('equal')
     #
-    for n in range(2):      #Actual lattices
+    for n in range(2):      #sublattice index
         for y in range(l1.shape[1]):
             ax.scatter(l1[:,y,n,0],l1[:,y,n,1],color='b',s=3)
             ax.scatter(l2[:,y,n,0],l2[:,y,n,1],color='r',s=3)
@@ -56,11 +64,11 @@ for i in tqdm(range(xpts)):
         site = X[i]*a1_m + Y[j]*a2_m    #x and y components of consider point
         x1,y1,UC = fs.find_closest(l1,site,'nan')
         x2,y2,UC = fs.find_closest(l2,site,UC)
-        if i==j and 0:   #plot two lattices, chosen site and coloured closest sites
+        if i==j and i==-1:   #plot two lattices, chosen site and coloured closest sites
             plt.figure(figsize=(10,10))
             plt.gca().set_aspect('equal')
             for n in range(2):  #lattices
-                for y in range(yyy):
+                for y in range(l1.shape[1]):
                     plt.scatter(l1[:,y,n,0],l1[:,y,n,1],color='b',s=3)
                     plt.scatter(l2[:,y,n,0],l2[:,y,n,1],color='r',s=3)
             plt.scatter(l1[x1,y1,UC,0],l1[x1,y1,UC,1],color='g',s=15)
@@ -71,19 +79,23 @@ for i in tqdm(range(xpts)):
             plt.show()
             exit()
         #Find displacement
-        disp = l1[x1,y1,UC] - l2[x2,y2,UC]
-        S1 = disp[0]+disp[1]/np.sqrt(3)
-        S2 = 2*disp[1]/np.sqrt(3)
+        displacement = l1[x1,y1,UC] - l2[x2,y2,UC]
+        S1 = displacement[0]+displacement[1]/np.sqrt(3)
+        S2 = 2*displacement[1]/np.sqrt(3)
         #Find value of I[d] and assign it to J[x]
         J[i,j] = fun_I(S1,S2)
 #Smooth
-J = fs.smooth(J)[0]
+J = fs.smooth(J,2)
 
-if 1:#input("Print found interlayer interaction? (y/N)")=='y':
-    fs.plot_Phi(J)
+if disp:#input("Print found interlayer interaction? (y/N)")=='y':
+   fs.plot_Phi(J,a1_m,a2_m)
 
-if input("Save? (y/N)")=='y':
-    np.save(moire_potential_name,J)
+if (disp and input("Save? (y/N)")=='y') or not disp:
+    with h5py.File(moire_potential_fn,'w') as f:
+        f.create_dataset('Phi',data=J)
+        f.create_dataset('a1_m',data=a1_m)
+        f.create_dataset('a2_m',data=a2_m)
+
 
 
 
