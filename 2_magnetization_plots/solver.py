@@ -3,6 +3,10 @@ import functions as fs
 import sys, os, h5py
 from pathlib import Path
 
+"""
+Check energy, grad_H and smooth -> derivatives might be wrong
+"""
+
 input_type = 'DFT'
 machine = fs.get_machine(os.getcwd())
 #
@@ -20,7 +24,7 @@ with h5py.File(Phi_fn,'r') as f:
     a1_m = np.copy(f['a1_m'])
     a2_m = np.copy(f['a2_m'])
 gridx = 150 #make it relative to length of a1_m
-gridy = 100
+gridy = 120
 #Compute Phi over new grid parameters
 Phi = fs.reshape_Phi(Phi,gridx,gridy)
 
@@ -34,7 +38,7 @@ if not Path(solution_fn).is_file():
             'learn_rate':       -1e-2,                      #Needs to be negative
             'pts_per_fit':      2,                          #Maybe can be related to gridx/gridy
             'n_initial_pts':    64,                         #65 initial states: t-s_pert, 0,pi/2,2pi/2,3pi/2,4pi/2,5pi/2,6pi/2,7pi/2
-            'maxiter':          1e1,#5, 
+            'maxiter':          1e4,#5, 
             'machine':          machine, 
             'disp':             machine=='loc',
             }

@@ -83,22 +83,20 @@ def compute_solution(gamma,args_m):
         fa = ((ind_in_pt-1)%8)/4 if ind_in_pt<64 else random.random()
         #Compute first state and energy
         phi = initial_point(fs,fa,gridx,gridy)
-        d_phi = (compute_derivatives(phi[0],1,A_M,rg),compute_derivatives(phi[1],1,A_M,rg))
-        E.append(compute_energy(phi,Phi,gamma,rho,anisotropy,d_phi))
+        E.append(compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,rg))
         #Initiate learning rate and minimization loop
         step = 1        #initial step
         lr = args_m['learn_rate']
         while True:
             learn_rate = lr*random.random()
             #Energy gradients
-            dHs = grad_H(phi,'s',Phi,gamma,rho,anisotropy,compute_derivatives(phi[0],2,A_M,rg))
-            dHa = grad_H(phi,'a',Phi,gamma,rho,anisotropy,compute_derivatives(phi[1],2,A_M,rg))
+            dHs = grad_H(phi,'s',Phi,gamma,rho,anisotropy,A_M,rg)
+            dHa = grad_H(phi,'a',Phi,gamma,rho,anisotropy,A_M,rg)
             #Update phi
             phi[0] += learn_rate*dHs
             phi[1] += learn_rate*dHa
             #New energy
-            d_phi = (compute_derivatives(phi[0],1,A_M,rg),compute_derivatives(phi[1],1,A_M,rg))
-            E.insert(0,compute_energy(phi,Phi,gamma,rho,anisotropy,d_phi))
+            E.insert(0,compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,rg))
             #Check if dHs and dHa are very small
             if args_m['disp']:
                 print("energy step ",step," is ",E[0])
@@ -130,7 +128,7 @@ def compute_solution(gamma,args_m):
             plot_magnetization(phi,Phi,gamma,A_M)
     return result
 
-def compute_energy(phi,Phi,gamma,rho,anisotropy,d_phi):
+def compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,rg):
     """Computes the energy of the system.
 
     Parameters
@@ -148,14 +146,27 @@ def compute_energy(phi,Phi,gamma,rho,anisotropy,d_phi):
         Energy density summed over all sites.
     """
     #Old derivative squared
+    a1_m, a2_m = A_M
+    grad_2 = []
     gx,gy = phi[0].shape
-    grad_2s = np.absolute(d_phi[0][0])**2 + np.absolute(d_phi[0][1])**2
-    grad_2a = np.absolute(d_phi[1][0])**2 + np.absolute(d_phi[1][1])**2
-    energy = rho/4*(grad_2s+grad_2a) - anisotropy*np.cos(phi[1])*np.cos(phi[0]) - Phi*np.cos(phi[1]) - 2*gamma*np.cos(phi[0]/2)*np.cos(phi[1]/2)
+    xx = np.linspace(0,1,gx,endpoint=False)
+    yy = np.linspace(0,1,gy,endpoint=False)
+#    xx = np.linspace(0,np.linalg.norm(A_M[0]),gx,endpoint=False)
+#    yy = np.linspace(0,np.linalg.norm(A_M[1]),gy,endpoint=False)
+    for i in range(2):
+        #Interpolate phase
+        fun = smooth(phi[i],rg,A_M)[1]
+        #derivatives
+        d_phi1 = smooth(fun.partial_derivative(1,0)(xx,yy),rg,A_M)[0]
+        d_phi2 = smooth(fun.partial_derivative(0,1)(xx,yy),rg,A_M)[0]
+        #
+        grad_2.append( (a1_m[0]*d_phi1+a2_m[0]*d_phi2)**2+(a1_m[1]*d_phi1+a2_m[1]*d_phi2)**2 )
+    #
+    energy = rho/4*(grad_2[0]+grad_2[1]) - anisotropy*np.cos(phi[1])*np.cos(phi[0]) - Phi*np.cos(phi[1]) - 2*gamma*np.cos(phi[0]/2)*np.cos(phi[1]/2)
     H = energy.sum()/gx/gy
     return H
 
-def grad_H(phi,tt,Phi,gamma,rho,anisotropy,d2_phi):
+def grad_H(phi,tt,Phi,gamma,rho,anisotropy,A_M,rg):
     """Computes evolution step dH/d phi.
 
     Parameters
@@ -176,11 +187,23 @@ def grad_H(phi,tt,Phi,gamma,rho,anisotropy,d2_phi):
     np.ndarray
         Gradient of Hamiltonian on the (grid,grid) space.
     """
-    res = -rho/2*(d2_phi[0]+d2_phi[1])
+    a1_m, a2_m = A_M
+    gx,gy = phi[0].shape
+    xx = np.linspace(0,1,gx,endpoint=False)
+    yy = np.linspace(0,1,gy,endpoint=False)
+#    xx = np.linspace(0,np.linalg.norm(A_M[0]),gx,endpoint=False)
+#    yy = np.linspace(0,np.linalg.norm(A_M[1]),gy,endpoint=False)
+    tt_phi = phi[0] if tt == 's' else phi[1]
+    fun = smooth(tt_phi,rg,A_M)[1]
+    d_phi11 = smooth(fun.partial_derivative(2,0)(xx,yy),rg,A_M)[0]
+    d_phi22 = smooth(fun.partial_derivative(0,2)(xx,yy),rg,A_M)[0]
+    d_phi12 = smooth(fun.partial_derivative(1,1)(xx,yy),rg,A_M)[0]
+    lapl = (a1_m[0]**2+a1_m[1]**2)*d_phi11 + 2*(a1_m[0]*a2_m[0]+a1_m[1]*a2_m[1])*d_phi12 + (a2_m[0]**2+a2_m[1]**2)*d_phi22
+    #
     if tt=='s':
-        return res + anisotropy*np.sin(phi[0])*np.cos(phi[1]) + gamma*np.cos(phi[1]/2)*np.sin(phi[0]/2)
+        return -rho/2*lapl + anisotropy*np.sin(phi[0])*np.cos(phi[1]) + gamma*np.cos(phi[1]/2)*np.sin(phi[0]/2)
     elif tt=='a':
-        return res + anisotropy*np.cos(phi[0])*np.sin(phi[1]) + Phi*np.sin(phi[1]) + gamma*np.cos(phi[0]/2)*np.sin(phi[1]/2)
+        return -rho/2*lapl + anisotropy*np.cos(phi[0])*np.sin(phi[1]) + Phi*np.sin(phi[1]) + gamma*np.cos(phi[0]/2)*np.sin(phi[1]/2)
 
 def initial_point(fs,fa,gx,gy):
     """Computes the initial point for the minimization. The possibilities are for now
@@ -207,32 +230,6 @@ def initial_point(fs,fa,gx,gy):
     phi_s = np.ones((gx,gy))*2*np.pi*fs
     phi_a = np.ones((gx,gy))*2*np.pi*fa
     return [phi_s, phi_a]
-
-def compute_derivatives(phi,n,A_M,rg):
-    """Compute the 'n' derivative of phi.
-
-    Parameters
-    ----------
-    phi: np.ndarray
-        Function on a grid.
-    n: int
-        Order of derivative to compute.
-
-    Returns
-    -------
-    tuple
-        2-tuple containing the x and y derivatives of order 'n' of phi. Only the second derivatives are smoothen out.
-    """
-    gridx,gridy = phi.shape
-    xx = np.linspace(0,np.linalg.norm(A_M[0]),gridx,endpoint=False)
-    yy = np.linspace(0,np.linalg.norm(A_M[1]),gridy,endpoint=False)
-    #Interpolate phase
-    fun = smooth(phi,rg,A_M)[1]
-    #derivatives
-    dn_phi_x = smooth(fun.partial_derivative(n,0)(xx,yy),rg,A_M)[0]
-    dn_phi_y = smooth(fun.partial_derivative(0,n)(xx,yy),rg,A_M)[0]
-    dn_phi = (dn_phi_x,dn_phi_y)
-    return dn_phi
 
 def check_energies(list_E):
     """ Checks wether the last nn energies in the list_E are within lim distance to each other.
@@ -395,14 +392,16 @@ def smooth(phi,rg,A_M):
         Values of phi after being smoothen by first extending it on a larger domain and then interpolate it on
         fewer points (second returned argument) and finally computed on the original grid.
     """
-    gridx,gridy = phi.shape
-    smooth_phi = np.zeros((gridx,gridy))
+    gx,gy = phi.shape
+    smooth_phi = np.zeros((gx,gy))
     for i in range(-rg,rg+1):
         for j in range(-rg,rg+1):
             smooth_phi += np.roll(np.roll(phi,i,axis=0),j,axis=1)
     smooth_phi /= (1+2*rg)**2
-    xx = np.linspace(0,np.linalg.norm(A_M[0]),gridx,endpoint=False)
-    yy = np.linspace(0,np.linalg.norm(A_M[1]),gridy,endpoint=False)
+    xx = np.linspace(0,1,gx,endpoint=False)
+    yy = np.linspace(0,1,gy,endpoint=False)
+#    xx = np.linspace(0,np.linalg.norm(A_M[0]),gridx,endpoint=False)
+#    yy = np.linspace(0,np.linalg.norm(A_M[1]),gridy,endpoint=False)
     fun = RBS(xx,yy,smooth_phi)
     return smooth_phi,fun
 
@@ -442,6 +441,70 @@ def get_dft_data(machine):
     np.save(data_fn,I)
     return I
 
+def dist_xy(x,y):
+    return np.sqrt((x[0]-y[0])**2+(x[1]-y[1])**2)
+
+def inside_UC(a,b,mi,qi,a1_m,a2_m,a12_m):
+    x = np.array([a,b])
+    if dist_xy(x,a2_m)<np.linalg.norm(x) and dist_xy(x,a2_m)<dist_xy(x,a12_m):
+        return a-a2_m[0],b-a2_m[1]
+    elif dist_xy(x,a1_m)<np.linalg.norm(x) and dist_xy(x,a1_m)<dist_xy(x,a12_m):
+        return a-a1_m[0],b-a1_m[1]
+    elif dist_xy(x,a12_m)<np.linalg.norm(x):# and dist_xy(x,a1_m)<dist_xy(x,a12_m):
+        return a-a1_m[0]-a2_m[0],b-a1_m[1]-a2_m[1]
+    else:
+        return a,b
+
+def line(x,args,s=1):
+    xi,yi,mx,my = args
+    mx *= s
+    my *= s
+    if type(x) == np.float64:
+        return np.array([x*xi+mx,x*yi+my])
+    res = np.zeros((len(x),2))
+    for i in range(len(x)):
+        res[i] = np.array([x[i]*xi+mx,x[i]*yi+my])
+    return res
+
+def get_BZ_args(a1_m,a2_m,a12_m):
+    if a1_m[1] == 0:
+        x_1 = a2_m[1]/2+a2_m[0]/2*a12_m[0]/a12_m[1]
+        args_1 = (0,1,a1_m[0]/2,a1_m[1]/2)
+        x_2 = a2_m[1]*(a1_m[0]*a12_m[0]+a1_m[1]*a12_m[1])/2/(a12_m[0]*a2_m[1]-a12_m[1]*a2_m[0])
+        args_2 = (1,-a2_m[0]/a2_m[1],a2_m[0]/2,a2_m[1]/2)
+        x_12 = -a2_m[0]/2
+        args_12 = (1,-a12_m[0]/a12_m[1],a12_m[0]/2,a12_m[1]/2)
+    elif a2_m[1] == 0:
+        x_1 = a1_m[1]*(a2_m[0]*a12_m[0]+a2_m[1]*a12_m[1])/2/(a12_m[0]*a1_m[1]-a12_m[1]*a1_m[0])
+        args_1 = (1,-a1_m[0]/a1_m[1],a1_m[0]/2,a1_m[1]/2)
+        x_2 = a1_m[1]/2+a1_m[0]/2*a12_m[0]/a12_m[1]
+        args_2 = (0,1,a2_m[0]/2,a2_m[1]/2)
+        x_12 = -a1_m[0]/2
+        args_12 = (1,-a12_m[0]/a12_m[1],a12_m[0]/2,a12_m[1]/2)
+    elif a12_m[1] == 0:
+        x_1 = a1_m[1]*(a2_m[0]*a12_m[0]+a2_m[1]*a12_m[1])/2/(a12_m[0]*a1_m[1]-a12_m[1]*a1_m[0])
+        args_1 = (1,-a1_m[0]/a1_m[1],a1_m[0]/2,a1_m[1]/2)
+        x_2 = a2_m[1]*(a1_m[0]*a12_m[0]+a1_m[1]*a12_m[1])/2/(a12_m[0]*a2_m[1]-a12_m[1]*a2_m[0])
+        args_2 = (1,-a2_m[0]/a2_m[1],a2_m[0]/2,a2_m[1]/2)
+        x_12 = -a2_m[0]/2*a1_m[0]/a1_m[1]-a2_m[1]/2
+        args_12 = (0,1,a12_m[0]/2,a12_m[1]/2)
+    else:
+        x_1 = a1_m[1]*(a2_m[0]*a12_m[0]+a2_m[1]*a12_m[1])/2/(a12_m[0]*a1_m[1]-a12_m[1]*a1_m[0])
+        args_1 = (1,-a1_m[0]/a1_m[1],a1_m[0]/2,a1_m[1]/2)
+        x_2 = a2_m[1]*(a1_m[0]*a12_m[0]+a1_m[1]*a12_m[1])/2/(a12_m[0]*a2_m[1]-a12_m[1]*a2_m[0])
+        args_2 = (1,-a2_m[0]/a2_m[1],a2_m[0]/2,a2_m[1]/2)
+        x_12 = x_1-a2_m[0]/2
+        args_12 = (1,-a12_m[0]/a12_m[1],a12_m[0]/2,a12_m[1]/2)
+    return [x_1,x_2,x_12],[args_1,args_2,args_12]
+
+def get_l_args(args_i):
+    mi = []
+    qi = []
+    for i in range(3):
+        mi.append((args_i[i][1])/(args_i[i][0]) if not args_i[i][0]==0 else 0)
+        qi.append(args_i[i][3] - mi[i]*args_i[i][2])
+    return mi,qi
+
 def plot_magnetization(phi,Phi,gamma,A_M,save=False,tt=''):
     """Plots the magnetization values in the Moirè unit cell, with a background given by the
     interlayer potential. The two images correspond to the 2 layers. Magnetization is in x-z
@@ -462,62 +525,59 @@ def plot_magnetization(phi,Phi,gamma,A_M,save=False,tt=''):
 
     """
     gx,gy = phi[0].shape
+    a1_m,a2_m = A_M
+    a12_m = a1_m+a2_m
     #Interpolate Phi
-    XX = np.linspace(-1,2,3*gx,endpoint=False)
-    YY = np.linspace(-1,2,3*gy,endpoint=False)
-    big_Phi = extend(Phi,3)
+    nn = 5
+    XX = np.linspace(-nn//2,nn//2+1,nn*gx,endpoint=False)
+    YY = np.linspace(-nn//2,nn//2+1,nn*gy,endpoint=False)
+    big_Phi = extend(Phi,nn)
     fun_Phi = RBS(XX,YY,big_Phi)
     #Single layer phases
     phi_1 = (phi[0]+phi[1])/2
     phi_2 = (phi[0]-phi[1])/2
     #Background -> interlayer coupling
-    long_X = np.linspace(-1,1,2*gx,endpoint=False)
-    long_Y = np.linspace(-1,1,2*gy,endpoint=False)
+    long_X = np.linspace(-nn//2,nn//2,nn//2*gx,endpoint=False)
+    long_Y = np.linspace(-nn//2,nn//2,nn//2*gy,endpoint=False)
     X,Y = np.meshgrid(long_X,long_Y)
     A1 = X*A_M[0][0] + Y*A_M[1][0]
     A2 = X*A_M[0][1] + Y*A_M[1][1]
-    #Box the Moirè unit cell
-#    s3 = np.sqrt(3)
-#    def line(x,y0,q):
-#        return y0+q*x
-#    xx14 = np.linspace(-1/2,0,100)
-#    xx23 = np.linspace(0,1/2,100)
-#    pars = [[(1/s3,1/s3),(-1/s3,-1/s3)],
-#            [(1/s3,-1/s3),(-1/s3,1/s3)]]
-    #Plot the arrows
-    l = 0.02       #length of arrow
-    hw = 0.01       #arrow head width
-    hl = 0.01       #arrow head length
+    #BZ lines parameters
+    x_i,args_i = get_BZ_args(a1_m,a2_m,a12_m)
+    mi,qi = get_l_args(args_i)
+    #Arrows parameters
+    l = np.linalg.norm(a1_m)/40#0.02       #length of arrow
+    hw = l/2#0.01       #arrow head width
+    hl = l/2#0.01       #arrow head length
     facx = gx//20     #plot 1 spin every "fac" of grid
     facy = gy//20     #plot 1 spin every "fac" of grid
-    def inside_UC(a,b):
-
-        return a,b
     phi_ = [phi_1,phi_2]
-    #Plot magnetization patterns -> two different plots
-    fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(20,10))
+    #Figure
+    fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(18,7))
     for ind,ax in enumerate([ax1,ax2]):
         ax.axis('off')
         ax.set_aspect(1.)
-        ax.contour(A1,A2,fun_Phi(long_X,long_Y).T,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(1,))
-        surf = ax.contourf(A1,A2,fun_Phi(long_X,long_Y).T,levels=20)
-#        ax.vlines(1/2,-1/2/s3,1/2/s3,linestyles='dashed',color='r')
-#        ax.vlines(-1/2,-1/2/s3,1/2/s3,linestyles='dashed',color='r')
-#        for i,x in enumerate([xx14,xx23]):
-#            for j in range(2):
-#                ax.plot(x,line(x,*pars[i][j]),linestyle='dashed',color='r')
+        ax.contour(A1.T,A2.T,fun_Phi(long_X,long_Y),levels=[0,],colors=('r',),linestyles=('-',),linewidths=(1,))
+        surf = ax.contourf(A1.T,A2.T,fun_Phi(long_X,long_Y),levels=20)
+        #Box unit cell
+        for i in range(3):
+            for s in [-1,1]:
+                li = line(np.linspace(-x_i[i],x_i[i],100),args_i[i],s)
+                ax.plot(li[:,0],li[:,1],'k',lw=0.7,ls='dashed')
+        #plot small arrows
         for i in range(gx//facx):
             for j in range(gy//facy):
                 x_c = (i*facx)/gx
                 y_c = (j*facy)/gy
                 x = x_c*A_M[0][0] + y_c*A_M[1][0]
                 y = x_c*A_M[0][1] + y_c*A_M[1][1]
-                x,y = inside_UC(x,y)
+                x,y = inside_UC(x,y,mi,qi,a1_m,a2_m,a12_m)
                 phi_fin = phi_[ind][i*facx,j*facy]
                 ax.arrow(x - l/2*np.sin(phi_fin),y - l/2*np.cos(phi_fin),l*np.sin(phi_fin), l*np.cos(phi_fin),head_width=hw,head_length=hl,color='k')
-#        ax.set_xlim(-0.6,0.6)
-#        ax.set_ylim(-0.65,0.65)
+        ax.set_xlim(-a1_m[0]/4*3,a1_m[0]/4*3)
+        ax.set_ylim(-a2_m[1]/4*3,a2_m[1]/4*3)
     plt.suptitle("gamma = "+"{:.4f}".format(gamma),size=20)
+    fig.tight_layout()
     plt.show()
 
 def plot_phis(phi,txt_title='mah'):
@@ -540,7 +600,7 @@ def plot_phis(phi,txt_title='mah'):
     col = 3 if nn>=3 else nn
     for i in range(nn):
         ax = fig.add_subplot(nn//3+1,col,i+1,projection='3d')
-        surf = ax.plot_surface(X, Y, phi[i].T, cmap=cm.coolwarm,
+        surf = ax.plot_surface(X.T, Y.T, phi[i], cmap=cm.coolwarm,
                    linewidth=0, antialiased=False)
         fig.colorbar(surf, shrink=0.5, aspect=5)
     plt.show()
@@ -565,8 +625,8 @@ def plot_Phi(Phi,a1_m,a2_m,title=''):
     fig, ax = plt.subplots(figsize=(10,10))
     ax.axis('off')
     ax.set_aspect(1.)
-    ax.contour(A1,A2,Phi.T,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(0.5))
-    surf = ax.contourf(A1,A2,Phi.T,levels=20)
+    ax.contour(A1.T,A2.T,Phi,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(0.5))
+    surf = ax.contourf(A1.T,A2.T,Phi,levels=20)
     plt.show()
 
 def extend(phi,nn):

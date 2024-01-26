@@ -37,8 +37,10 @@ if 0:   #plot interpolated interlayer DFT data
 #Lattice directions -> small a denotes a vector, capital A denotes a distance
 
 #Lattice-1 and lattice-2
-l1,l2,a1_m,a2_m = fs.compute_lattices()
-print("|a_1|=",np.linalg.norm(a1_m),", |a_1|=",np.linalg.norm(a2_m))
+l1,l2,a1,a2 = fs.compute_lattices()
+a1_m = a1 if a1[0]>a2[0] else a2
+a2_m = a2 if a1[0]>a2[0] else a1
+print("|a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.norm(a2_m))
 
 if disp:   #Plot Moirè pattern
     fig,ax = plt.subplots(figsize=(20,20))
@@ -85,7 +87,7 @@ for i in tqdm(range(xpts)):
         #Find value of I[d] and assign it to J[x]
         J[i,j] = fun_I(S1,S2)
 #Smooth
-J = fs.smooth(J,2)
+J = fs.smooth(J,2,(a1_m,a2_m))[0]
 
 if disp:#input("Print found interlayer interaction? (y/N)")=='y':
    fs.plot_Phi(J,a1_m,a2_m)
