@@ -5,16 +5,19 @@ import h5py
 from pathlib import Path
 from time import time
 
+"""Remember to adjust max_gridsize
+"""
+max_gridsize = 100
 t0 = time()
 machine = fs.get_machine(os.getcwd())
 
-ind = int(sys.argv[1])*100
+ind = int(sys.argv[1])*100  #so each ind takes all gammas of a different parameter of Moire
 input_type,moire_type,moire_pars,gamma = fs.get_parameters(ind)
 Phi_fn = fs.get_Phi_fn(moire_type,moire_pars,machine)
 with h5py.File(Phi_fn,'r') as f:
     a1_m = np.copy(f['a1_m'])
     a2_m = np.copy(f['a2_m'])
-gridx,gridy = fs.get_gridsize(200,a1_m,a2_m)
+gridx,gridy = fs.get_gridsize(max_gridsize,a1_m,a2_m)
 #
 hdf5_fn = fs.get_hdf5_fn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine)
 #Remove it if it already exists
