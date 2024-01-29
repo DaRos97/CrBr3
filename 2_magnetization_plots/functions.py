@@ -6,38 +6,13 @@ from matplotlib import cm
 plt.rcParams.update({"text.usetex": True,})
 s_ = 20
 import random
+import os
+import h5py
 
 #Physical parameters
 rho_phys = {'DFT':1.4,'exp':1.7} #     (meV)       #CHECK
 d_phys = {'DFT':0.18,'exp':0.09} #     (meV)       #CHECK
 
-#Interlayer potential which depends on Moirè pattern
-#moire_type = 'general'
-moire_type = 'uniaxial'
-#moire_type = 'biaxial'
-#moire_type = 'shear'
-
-moire_pars = {
-        'general':{
-            'e_xx':0.1,
-            'e_yy':0.3,
-            'e_xy':0.15,
-            },
-        'uniaxial':{
-            'eps':0.2,
-            'ni':0.5,
-            'phi':1,
-            },
-        'biaxial':{
-            'eps':0.1,
-            },
-        'shear':{
-            'e_xy':0.1,
-            'phi':0,
-            },
-
-        'theta':0.,
-        }
 
 #Triangular lattice
 a1 = np.array([1,0])
@@ -74,16 +49,19 @@ def compute_solution(gamma,args_m):
     #Variables for storing best solution
     min_E = 1e10
     result = np.zeros((2,gridx,gridy))
-    for ind_in_pt in range(args_m['n_initial_pts']):
+    for ind_in_pt in range(0,args_m['n_initial_pts']):
         E = []  #list of energies for the while loop
         if args_m['disp']:
             print("Starting minimization step ",str(ind_in_pt))
         #Initial condition -> just constant
-        fs = ((ind_in_pt-1)//8)/4 if ind_in_pt<64 else random.random()
-        fa = ((ind_in_pt-1)%8)/4 if ind_in_pt<64 else random.random()
+        fs = (ind_in_pt//8)/4 if ind_in_pt<64 else random.random()
+        fa = (ind_in_pt%8)/4 if ind_in_pt<64 else random.random()
         #Compute first state and energy
         phi = initial_point(fs,fa,gridx,gridy)
         E.append(compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,rg))
+        if 0:
+            print("Initial energy: ",E[0])
+            plot_magnetization(phi,Phi,A_M,"Initial condition with f1: "+"{:.4f}".format((fs+fa)/2)+", f2: "+"{:.4f}".format((fs-fa)/2)+" (times 2*pi)")
         #Initiate learning rate and minimization loop
         step = 1        #initial step
         lr = args_m['learn_rate']
@@ -107,6 +85,7 @@ def compute_solution(gamma,args_m):
                     result = np.copy(phi)
                 break
             if E[0]>E[1]:    #worse solution
+                print("Go back")
                 phi[0] -= learn_rate*dHs
                 phi[1] -= learn_rate*dHa
                 del E[0]
@@ -125,7 +104,7 @@ def compute_solution(gamma,args_m):
         if args_m['disp']:
             print("Minimum energy at ",E[0])
             #plot_phis(phi,'phi_s and phi_a')
-            plot_magnetization(phi,Phi,gamma,A_M)
+            plot_magnetization(phi,Phi,A_M,"final configuration with energy "+"{:.4f}".format(E[0]))
     return result
 
 def compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,rg):
@@ -149,10 +128,8 @@ def compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,rg):
     a1_m, a2_m = A_M
     grad_2 = []
     gx,gy = phi[0].shape
-    xx = np.linspace(0,1,gx,endpoint=False)
-    yy = np.linspace(0,1,gy,endpoint=False)
-#    xx = np.linspace(0,np.linalg.norm(A_M[0]),gx,endpoint=False)
-#    yy = np.linspace(0,np.linalg.norm(A_M[1]),gy,endpoint=False)
+    xx = np.linspace(0,np.linalg.norm(a1_m),gx,endpoint=False)
+    yy = np.linspace(0,np.linalg.norm(a2_m),gy,endpoint=False)
     for i in range(2):
         #Interpolate phase
         fun = smooth(phi[i],rg,A_M)[1]
@@ -189,10 +166,8 @@ def grad_H(phi,tt,Phi,gamma,rho,anisotropy,A_M,rg):
     """
     a1_m, a2_m = A_M
     gx,gy = phi[0].shape
-    xx = np.linspace(0,1,gx,endpoint=False)
-    yy = np.linspace(0,1,gy,endpoint=False)
-#    xx = np.linspace(0,np.linalg.norm(A_M[0]),gx,endpoint=False)
-#    yy = np.linspace(0,np.linalg.norm(A_M[1]),gy,endpoint=False)
+    xx = np.linspace(0,np.linalg.norm(a1_m),gx,endpoint=False)
+    yy = np.linspace(0,np.linalg.norm(a2_m),gy,endpoint=False)
     tt_phi = phi[0] if tt == 's' else phi[1]
     fun = smooth(tt_phi,rg,A_M)[1]
     d_phi11 = smooth(fun.partial_derivative(2,0)(xx,yy),rg,A_M)[0]
@@ -229,7 +204,7 @@ def initial_point(fs,fa,gx,gy):
     """
     phi_s = np.ones((gx,gy))*2*np.pi*fs
     phi_a = np.ones((gx,gy))*2*np.pi*fa
-    return [phi_s, phi_a]
+    return np.array([phi_s, phi_a])
 
 def check_energies(list_E):
     """ Checks wether the last nn energies in the list_E are within lim distance to each other.
@@ -254,7 +229,7 @@ def check_energies(list_E):
             return False
     return True
 #
-def compute_lattices():
+def compute_lattices(moire_type,moire_pars):
     """Compute the 2 honeycomb lattices with lattice lengths A_1/A_2 and a twist angle theta.
 
     Parameters
@@ -310,7 +285,7 @@ def compute_lattices():
         a2_m[0] = 2*np.pi/(b2_m[0]-b2_m[1]*b1_m[0]/b1_m[1])
         a2_m[1] = -a2_m[0]*b1_m[0]/b1_m[1]
     #
-    A_M = np.linalg.norm(a2_m)
+    A_M = max(np.linalg.norm(a1_m),np.linalg.norm(a2_m))
     n_x = n_y = 5       #number of moirè lenths to include in l1,l2
     xxx = int(n_x*A_M)
     yyy = int(n_y*A_M)
@@ -328,7 +303,6 @@ def compute_lattices():
             l1[i,j,1] = l1[i,j,0] + offset_sublattice_1
             l2[i,j,0] = (i-n_x//2*A_M)*a1_2+(j-n_y//2*A_M)*a2_2
             l2[i,j,1] = l2[i,j,0] + offset_sublattice_2
-
     return l1,l2,a1_m,a2_m
 
 def find_closest(lattice,site,UC_):
@@ -398,10 +372,8 @@ def smooth(phi,rg,A_M):
         for j in range(-rg,rg+1):
             smooth_phi += np.roll(np.roll(phi,i,axis=0),j,axis=1)
     smooth_phi /= (1+2*rg)**2
-    xx = np.linspace(0,1,gx,endpoint=False)
-    yy = np.linspace(0,1,gy,endpoint=False)
-#    xx = np.linspace(0,np.linalg.norm(A_M[0]),gridx,endpoint=False)
-#    yy = np.linspace(0,np.linalg.norm(A_M[1]),gridy,endpoint=False)
+    xx = np.linspace(0,np.linalg.norm(A_M[0]),gx,endpoint=False)
+    yy = np.linspace(0,np.linalg.norm(A_M[1]),gy,endpoint=False)
     fun = RBS(xx,yy,smooth_phi)
     return smooth_phi,fun
 
@@ -436,7 +408,7 @@ def get_dft_data(machine):
         y = "{:.5f}".format(data[i,1])
         ind1 = S_txt.index(x)
         ind2 = S_txt.index(y)
-        I[ind1,ind2] = -(data[i,2]-data[i,3])/2
+        I[ind1,ind2] = -(data[i,2]-data[i,3])
     #
     np.save(data_fn,I)
     return I
@@ -446,11 +418,11 @@ def dist_xy(x,y):
 
 def inside_UC(a,b,mi,qi,a1_m,a2_m,a12_m):
     x = np.array([a,b])
-    if dist_xy(x,a2_m)<np.linalg.norm(x) and dist_xy(x,a2_m)<dist_xy(x,a12_m):
+    if dist_xy(x,a2_m)<=np.linalg.norm(x) and dist_xy(x,a2_m)<=dist_xy(x,a12_m):
         return a-a2_m[0],b-a2_m[1]
-    elif dist_xy(x,a1_m)<np.linalg.norm(x) and dist_xy(x,a1_m)<dist_xy(x,a12_m):
+    elif dist_xy(x,a1_m)<=np.linalg.norm(x) and dist_xy(x,a1_m)<=dist_xy(x,a12_m):
         return a-a1_m[0],b-a1_m[1]
-    elif dist_xy(x,a12_m)<np.linalg.norm(x):# and dist_xy(x,a1_m)<dist_xy(x,a12_m):
+    elif dist_xy(x,a12_m)<=np.linalg.norm(x):
         return a-a1_m[0]-a2_m[0],b-a1_m[1]-a2_m[1]
     else:
         return a,b
@@ -505,7 +477,7 @@ def get_l_args(args_i):
         qi.append(args_i[i][3] - mi[i]*args_i[i][2])
     return mi,qi
 
-def plot_magnetization(phi,Phi,gamma,A_M,save=False,tt=''):
+def plot_magnetization(phi,Phi,A_M,title=''):
     """Plots the magnetization values in the Moirè unit cell, with a background given by the
     interlayer potential. The two images correspond to the 2 layers. Magnetization is in x-z
     plane while the layers are in x-y plane.
@@ -532,13 +504,12 @@ def plot_magnetization(phi,Phi,gamma,A_M,save=False,tt=''):
     XX = np.linspace(-nn//2,nn//2+1,nn*gx,endpoint=False)
     YY = np.linspace(-nn//2,nn//2+1,nn*gy,endpoint=False)
     big_Phi = extend(Phi,nn)
-    fun_Phi = RBS(XX,YY,big_Phi)
     #Single layer phases
     phi_1 = (phi[0]+phi[1])/2
     phi_2 = (phi[0]-phi[1])/2
     #Background -> interlayer coupling
-    long_X = np.linspace(-nn//2,nn//2,nn//2*gx,endpoint=False)
-    long_Y = np.linspace(-nn//2,nn//2,nn//2*gy,endpoint=False)
+    long_X = np.linspace(-nn//2,nn//2,nn*gx,endpoint=False)
+    long_Y = np.linspace(-nn//2,nn//2,nn*gy,endpoint=False)
     X,Y = np.meshgrid(long_X,long_Y)
     A1 = X*A_M[0][0] + Y*A_M[1][0]
     A2 = X*A_M[0][1] + Y*A_M[1][1]
@@ -557,8 +528,10 @@ def plot_magnetization(phi,Phi,gamma,A_M,save=False,tt=''):
     for ind,ax in enumerate([ax1,ax2]):
         ax.axis('off')
         ax.set_aspect(1.)
-        ax.contour(A1.T,A2.T,fun_Phi(long_X,long_Y),levels=[0,],colors=('r',),linestyles=('-',),linewidths=(1,))
-        surf = ax.contourf(A1.T,A2.T,fun_Phi(long_X,long_Y),levels=20)
+        ax.contour(A1,A2,big_Phi.T,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(1,))
+        surf = ax.contourf(A1,A2,big_Phi.T,levels=20)
+        ax.arrow(0,0,a1_m[0],a1_m[1])
+        ax.arrow(0,0,a2_m[0],a2_m[1])
         #Box unit cell
         for i in range(3):
             for s in [-1,1]:
@@ -576,7 +549,7 @@ def plot_magnetization(phi,Phi,gamma,A_M,save=False,tt=''):
                 ax.arrow(x - l/2*np.sin(phi_fin),y - l/2*np.cos(phi_fin),l*np.sin(phi_fin), l*np.cos(phi_fin),head_width=hw,head_length=hl,color='k')
         ax.set_xlim(-a1_m[0]/4*3,a1_m[0]/4*3)
         ax.set_ylim(-a2_m[1]/4*3,a2_m[1]/4*3)
-    plt.suptitle("gamma = "+"{:.4f}".format(gamma),size=20)
+    fig.suptitle(title,size=20)
     fig.tight_layout()
     plt.show()
 
@@ -627,6 +600,8 @@ def plot_Phi(Phi,a1_m,a2_m,title=''):
     ax.set_aspect(1.)
     ax.contour(A1.T,A2.T,Phi,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(0.5))
     surf = ax.contourf(A1.T,A2.T,Phi,levels=20)
+    ax.arrow(0,0,a1_m[0],a1_m[1])
+    ax.arrow(0,0,a2_m[0],a2_m[1])
     plt.show()
 
 def extend(phi,nn):
@@ -660,7 +635,22 @@ def reshape_Phi(phi,xp,yp):
     #X,Y = np.meshgrid(linx,liny)
     return fun(linx,liny)
 
-def get_sol_fn(gamma,machine):
+def get_sol_dn(machine):
+    """Computes the directory name where to save the interlayer potential.
+
+    Parameters
+    ----------
+    cluster: bool, optional
+        Wether we are in the cluster or not (default is 'loc').
+
+    Returns
+    -------
+    string
+        The directory name.
+    """
+    return get_home_dn(machine)+'results/'
+
+def get_sol_fn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
     """Computes the filename of the interlayer coupling.
 
     Parameters
@@ -673,7 +663,7 @@ def get_sol_fn(gamma,machine):
     string
         The name of the .npy file containing the interlayer coupling.
     """
-    return get_Phi_dn(machine) + 'sol_'+"{:.4f}".format(gamma)+'_'+moire_type+'_'+general_fn([*moire_pars[moire_type].values()],'.hdf5')
+    return get_sol_dn(machine) + 'sol_'+input_type+'_'+str(gridx)+'x'+str(gridy)+'_'+"{:.4f}".format(gamma)+'_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'.py'
 
 def get_Phi_dn(machine):
     """Computes the directory name where to save the interlayer potential.
@@ -690,7 +680,7 @@ def get_Phi_dn(machine):
     """
     return get_home_dn(machine)+'Phi_values/'
 
-def get_Phi_fn(machine):
+def get_Phi_fn(moire_type,moire_pars,machine):
     """Computes the filename of the interlayer coupling.
 
     Parameters
@@ -703,27 +693,26 @@ def get_Phi_fn(machine):
     string
         The name of the .npy file containing the interlayer coupling.
     """
-    return get_Phi_dn(machine) + 'Phi_'+moire_type+'_'+general_fn([*moire_pars[moire_type].values()],'.hdf5')
+    return get_Phi_dn(machine) + 'Phi_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'.hdf5'
 
-def general_fn(pars,extension):
+def moire_pars_fn(dic):
     """Generates a filename with the parameters formatted accordingly and a given extension.
 
     """
     fn = ''
-    for i,p in enumerate(pars):
-        if type(p)==type('string'):
+    for k in dic.keys():
+        fn += k+':'
+        if type(dic[k])==type('string'):
             fn += p
-        elif type(p)==type(1):
-            fn += str(p)
-        elif type(p)==type(1.1):
-            fn += "{:.4f}".format(p)
+        elif type(dic[k])==type(1) or type(dic[k])==np.int64:
+            fn += str(dic[k])
+        elif type(dic[k])==type(1.1) or type(dic[k])==np.float64:
+            fn += "{:.4f}".format(dic[k])
         else:
-            print("Parameter ",p," has unknown data type ",type(p))
+            print("Parameter ",dic[k]," has unknown data type ",type(dic[k]))
             exit()
-        if not i==len(pars)-1:
-            fn += '_'
-    fn += extension
-    return fn
+        fn += '_'
+    return fn[:-1]
 
 def get_home_dn(machine):
     if machine == 'loc':
@@ -772,3 +761,135 @@ def R_z(t):
     R[1,0] = np.sin(t)
     R[1,1] = np.cos(t)
     return R
+
+def Moire(args):
+    """The Moire script as a function
+    """
+    disp,moire_type,moire_pars = args
+    #
+    machine = get_machine(os.getcwd())
+    xpts = ypts = 200 #if machine == 'loc' else 400
+    moire_potential_fn = get_Phi_fn(moire_type,moire_pars,machine)
+    if Path(moire_potential_fn).is_file():
+        print("Already computed interlayer coupling..")
+        if disp:
+            with h5py.File(moire_potential_fn,'r') as f:
+                J = f['Phi']
+                a1_m = f['a1_m']
+                a2_m = f['a2_m']
+                plot_Phi(J,a1_m,a2_m)
+        return 0
+    I = get_dft_data(machine)
+    #Interpolate interlayer DFT data
+    pts = I.shape[0]
+    big_I = extend(I,5)
+    S_array = np.linspace(-2,3,5*pts,endpoint=False)
+    fun_I = RBS(S_array,S_array,big_I)
+
+    #Lattice-1 and lattice-2
+    l1_t,l2_t,a1_t,a2_t = compute_lattices(moire_type,moire_pars)
+    if a1_t[0]>a2_t[0]:
+        a1_m = a1_t
+        a2_m = a2_t
+        l1 = l1_t
+        l2 = l2_t
+    else:
+        a1_m = a2_t
+        a2_m = a1_t
+        l1 = l2_t
+        l2 = l1_t
+
+    if disp:   #Plot Moirè pattern
+        fig,ax = plt.subplots(figsize=(20,20))
+        ax.set_aspect('equal')
+        #
+        sss = max(np.linalg.norm(a1_m),np.linalg.norm(a2_m))
+        for n in range(2):      #sublattice index
+            for y in range(l1.shape[1]):
+                ax.scatter(l1[:,y,n,0],l1[:,y,n,1],color='b',s=sss/50)
+                ax.scatter(l2[:,y,n,0],l2[:,y,n,1],color='r',s=sss/50)
+
+        ax.arrow(0,0,a1_m[0],a1_m[1],color='k',lw=2,head_width=0.5)
+        ax.arrow(0,0,a2_m[0],a2_m[1],color='k',lw=2,head_width=0.5)
+        ax.axis('off')
+        plt.show()
+#        exit()
+
+    #Compute interlayer energy by evaluating the local stacking of the two layers
+    J = np.zeros((xpts,ypts))
+    X = np.linspace(0,1,xpts,endpoint=False)
+    Y = np.linspace(0,1,ypts,endpoint=False)
+    for i in range(xpts):
+        for j in range(ypts):     #Cycle over all considered points in Moirè unit cell
+            site = X[i]*a1_m + Y[j]*a2_m    #x and y components of consider point
+            x1,y1,UC = find_closest(l1,site,'nan')
+            x2,y2,UC = find_closest(l2,site,UC)
+            if i==j and 0:   #plot two lattices, chosen site and coloured closest sites
+                plt.figure(figsize=(10,10))
+                plt.gca().set_aspect('equal')
+                for n in range(2):  #lattices
+                    for y in range(l1.shape[1]):
+                        plt.scatter(l1[:,y,n,0],l1[:,y,n,1],color='b',s=3)
+                        plt.scatter(l2[:,y,n,0],l2[:,y,n,1],color='r',s=3)
+                plt.scatter(l1[x1,y1,UC,0],l1[x1,y1,UC,1],color='g',s=15)
+                plt.scatter(l2[x2,y2,UC,0],l2[x2,y2,UC,1],color='m',s=15)
+                plt.scatter(site[0],site[1],color='b',s=20)
+                plt.show()
+                exit()
+            #Find displacement
+            displacement = l1[x1,y1,UC] - l2[x2,y2,UC]
+            S1 = displacement[0]+displacement[1]/np.sqrt(3)
+            S2 = 2*displacement[1]/np.sqrt(3)
+            #Find value of I[d] and assign it to J[x]
+            J[i,j] = fun_I(S1,S2)
+    J = smooth(J,2,(a1_m,a2_m))[0]
+    #
+    if disp:
+       plot_Phi(J,a1_m,a2_m)
+    if (disp and input("Save? (y/N)")=='y') or not disp:
+        with h5py.File(moire_potential_fn,'w') as f:
+            f.create_dataset('Phi',data=J)
+            f.create_dataset('a1_m',data=a1_m)
+            f.create_dataset('a2_m',data=a2_m)
+            f.create_dataset('l1',data=l1)
+            f.create_dataset('l2',data=l2)
+
+def get_parameters(ind):
+    input_types = ['DFT','exp']
+    moire_types = ['uniaxial','biaxial','shear']
+    #
+    epss = [0.1,0.05,0.04]
+    lep = len(epss)
+    nis = [1,0.7,0.5,0.3]
+    lni = len(nis)
+    gammas = np.linspace(0,3,100)
+    lga = len(gammas)
+    #
+    iit = ind//(lep*lni*lga)
+    iep = (ind%(lep*lni*lga)) // (lni*lga)
+    ini = ((ind%(lep*lni*lga)) % (lni*lga)) // lga
+    iga = ((ind%(lep*lni*lga)) % (lni*lga)) % lga
+    #
+    moire_pars = {
+        'general':{
+            'e_xx':0.1,
+            'e_yy':0.3,
+            'e_xy':0.15,
+            },
+        'uniaxial':{
+            'eps':epss[iep],
+            'ni':nis[ini],
+            'phi':0,
+            },
+        'biaxial':{
+            'eps':0.05,
+            },
+        'shear':{
+            'e_xy':0.05,
+            'phi':0,
+            },
+        'theta':0.,
+        }
+    imt = 0
+    print("Computing index ",ind," of ",len(input_types)*lep*lni*lga)
+    return (input_types[iit],moire_types[imt],moire_pars,gammas[iga])
