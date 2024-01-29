@@ -30,16 +30,7 @@ print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.
 print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
 #
 max_grid = 200 
-factor_grid = 100
-gridx = int(np.linalg.norm(a1_m)*factor_grid)+1 #make it relative to length of a1_m
-gridy = int(np.linalg.norm(a2_m)*factor_grid)+1 #make it relative to length of a2_m
-l_g = np.array([gridx,gridy])
-if gridx > max_grid or gridy > max_grid:
-    i_m = np.argmax(l_g)
-    l_g[i_m] = max_grid
-    n_m = [np.linalg.norm(a1_m),np.linalg.norm(a2_m)]
-    l_g[1-i_m] = max_grid/n_m[i_m]*n_m[1-i_m]
-gridx,gridy = l_g
+gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
 print("Grid size: ",gridx,gridy)
 
 #Compute Phi over new grid parameters

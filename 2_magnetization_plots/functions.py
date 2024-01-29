@@ -635,8 +635,16 @@ def reshape_Phi(phi,xp,yp):
     #X,Y = np.meshgrid(linx,liny)
     return fun(linx,liny)
 
-def get_sol_dn(machine):
-    """Computes the directory name where to save the interlayer potential.
+def get_gridsize(max_grid,a1_m,a2_m):
+    l_g = np.zeros(2,dtype=int)
+    n_m = np.array([np.linalg.norm(a1_m),np.linalg.norm(a2_m)])
+    i_m = np.argmax(n_m)
+    l_g[i_m] = max_grid
+    l_g[1-i_m] = int(max_grid/n_m[i_m]*n_m[1-i_m])
+    return l_g
+
+def get_sol_dn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
+    """Computes the filename of the interlayer coupling.
 
     Parameters
     ----------
@@ -646,9 +654,12 @@ def get_sol_dn(machine):
     Returns
     -------
     string
-        The directory name.
+        The name of the .npy file containing the interlayer coupling.
     """
-    return get_home_dn(machine)+'results/'
+    return get_home_dn(machine) + 'results/'+ input_type+'_'+str(gridx)+'x'+str(gridy)+'_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'/'
+
+def get_hdf5_fn(ind,machine):
+    return get_sol_dn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine)+'result.hdf5'
 
 def get_sol_fn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
     """Computes the filename of the interlayer coupling.
@@ -663,7 +674,7 @@ def get_sol_fn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
     string
         The name of the .npy file containing the interlayer coupling.
     """
-    return get_sol_dn(machine) + 'sol_'+input_type+'_'+str(gridx)+'x'+str(gridy)+'_'+"{:.4f}".format(gamma)+'_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'.py'
+    return get_sol_dn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine)+'sol_'+"{:.4f}".format(gamma)+'.npy'
 
 def get_Phi_dn(machine):
     """Computes the directory name where to save the interlayer potential.
@@ -860,7 +871,7 @@ def get_parameters(ind):
     #
     epss = [0.1,0.05,0.04]
     lep = len(epss)
-    nis = [1,0.7,0.5,0.3]
+    nis = [1.,0.7,0.5,0.3]
     lni = len(nis)
     gammas = np.linspace(0,3,100)
     lga = len(gammas)
@@ -879,7 +890,7 @@ def get_parameters(ind):
         'uniaxial':{
             'eps':epss[iep],
             'ni':nis[ini],
-            'phi':0,
+            'phi':0.,
             },
         'biaxial':{
             'eps':0.05,
