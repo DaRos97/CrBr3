@@ -18,3 +18,7 @@ Remotely (cluster), results/ contains folders with the same name of the moire pa
 ## Bao
     - uniaxial, e=0.1, n=1, max_grid = 200, in_pt = 100, gamma from 0 to 3 (100 pts)
     - uniaxial, e=0.05, n=1, max_grid = 100, in_pt = 32, gamma from 0 to 3 (100 pts)
+    - uniaxial, e=0.04, n=1, max_grid = 100, in_pt = 32, gamma from 0 to 3 (100 pts) (here just changed the Phi filename, but not good yet)
+
+# Problems
+- Read of Phi files gets corrupted when launching many different gamma pts for the same parameters.
