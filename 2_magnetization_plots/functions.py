@@ -656,7 +656,11 @@ def get_sol_dn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
     string
         The name of the .npy file containing the interlayer coupling.
     """
-    return get_home_dn(machine) + 'results/'+ input_type+'_'+str(gridx)+'x'+str(gridy)+'_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'/'
+    res = get_home_dn(machine) + 'results/'
+    if machine == 'loc':
+        return res + 'hdf5/'
+    else:
+        return res + input_type+'_'+str(gridx)+'x'+str(gridy)+'_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'/'
 
 def get_hdf5_fn(ind,machine):
     return get_sol_dn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine)+'result.hdf5'
@@ -704,7 +708,37 @@ def get_Phi_fn(moire_type,moire_pars,machine):
     string
         The name of the .npy file containing the interlayer coupling.
     """
-    return get_Phi_dn(machine) + 'Phi_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'.hdf5'
+    return get_Phi_dn(machine) + 'Phi_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'.npy'
+
+def get_AM_fn(moire_type,moire_pars,machine):
+    """Computes the filename of the interlayer coupling.
+
+    Parameters
+    ----------
+    cluster: bool, optional
+        Wether we are in the cluster or not (default is 'loc').
+
+    Returns
+    -------
+    string
+        The name of the .npy file containing the interlayer coupling.
+    """
+    return get_Phi_dn(machine) + 'AM_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'.npy'
+
+def get_ll_fn(moire_type,moire_pars,machine):
+    """Computes the filename of the interlayer coupling.
+
+    Parameters
+    ----------
+    cluster: bool, optional
+        Wether we are in the cluster or not (default is 'loc').
+
+    Returns
+    -------
+    string
+        The name of the .npy file containing the interlayer coupling.
+    """
+    return get_Phi_dn(machine) + 'lattices_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'.npy'
 
 def moire_pars_fn(dic):
     """Generates a filename with the parameters formatted accordingly and a given extension.
@@ -858,12 +892,9 @@ def Moire(args):
     if disp:
        plot_Phi(J,a1_m,a2_m)
     if (disp and input("Save? (y/N)")=='y') or not disp:
-        with h5py.File(moire_potential_fn,'w') as f:
-            f.create_dataset('Phi',data=J)
-            f.create_dataset('a1_m',data=a1_m)
-            f.create_dataset('a2_m',data=a2_m)
-            f.create_dataset('l1',data=l1)
-            f.create_dataset('l2',data=l2)
+        np.save(moire_potential_fn,J)
+        np.save(get_AM_fn(moire_type,moire_pars,machine),np.array([a1_m,a2_m]))
+        np.save(get_ll_fn(moire_type,moire_pars,machine),np.array([l1,l2]))
 
 def get_parameters(ind):
     input_types = ['DFT','exp']
@@ -907,5 +938,26 @@ def get_parameters(ind):
 
 def check_directory(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
     sol_dn = get_sol_dn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine)
-    if not Path(sol_dn).is_dir():
+    if not Path(sol_dn).is_dir() and not machine == 'loc':
         os.system('mkdir '+sol_dn)
+
+def compute_magnetization(phi):
+    """Computes the total magnetization of the 2 layers (max is 2), given phi which contains symmetric and antisymmetric phases.
+
+
+    Parameters
+    ----------
+    phi: 2-tuple
+        Symmetric and Anti-Symmetric phases.
+
+    Returns
+    -------
+    float
+        Total magnetization along z of the spin configuration.
+    """
+    gx,gy = phi[0].shape
+    #Single layer phases
+    phi_1 = (phi[0]+phi[1])/2
+    phi_2 = (phi[0]-phi[1])/2
+    total_magnetization = np.sum(np.cos(phi_1))/gx/gy + np.sum(np.cos(phi_2))/gx/gy
+    return total_magnetization
