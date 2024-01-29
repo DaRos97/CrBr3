@@ -14,7 +14,6 @@ machine = fs.get_machine(os.getcwd())
 #Maybe define elsewhere the gamma range to consider
 input_type,moire_type,moire_pars,gamma = fs.get_parameters(int(sys.argv[1]))
 print("Computing with ",input_type," values, moire with ",moire_type," strain of ",moire_pars[moire_type]," and gamma: ",gamma)
-
 #Check if Phi already computed
 Phi_fn = fs.get_Phi_fn(moire_type,moire_pars,machine)
 if not Path(Phi_fn).is_file():
@@ -44,7 +43,7 @@ if not Path(solution_fn).is_file():
             'grid':             (gridx,gridy),
             'learn_rate':       -1e-2,                      #Needs to be negative
             'pts_per_fit':      2,                          #Maybe can be related to gridx/gridy
-            'n_initial_pts':    100 if Full else 32,                         #64 fixed initial states: n*pi/2 (s and a, n=0..7) + 36 random states
+            'n_initial_pts':    64 if Full else 32,                         #64 fixed initial states: n*pi/2 (s and a, n=0..7) + 36 random states
             'maxiter':          1e5, 
             'machine':          machine, 
             'disp':             machine=='loc',

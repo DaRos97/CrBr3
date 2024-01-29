@@ -662,7 +662,7 @@ def get_sol_dn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
     else:
         return res + input_type+'_'+str(gridx)+'x'+str(gridy)+'_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'/'
 
-def get_hdf5_fn(ind,machine):
+def get_hdf5_fn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
     return get_sol_dn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine)+'result.hdf5'
 
 def get_sol_fn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
