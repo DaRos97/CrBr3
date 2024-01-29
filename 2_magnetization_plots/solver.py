@@ -8,7 +8,7 @@ Check energy, grad_H and smooth -> derivatives might be wrong
 Put grid relative to moire size.
 Define moire lattice and gamma wrt cluster input.
 """
-full = False
+Full = False
 machine = fs.get_machine(os.getcwd())
 
 #Maybe define elsewhere the gamma range to consider
@@ -22,7 +22,7 @@ if not Path(Phi_fn).is_file():
     args_Moire = (machine=='loc',moire_type,moire_pars)
     fs.Moire(args_Moire)
 Phi = np.load(Phi_fn)
-a1_m,a2_m = np.load(get_AM_fn(moire_type,moire_pars,machine))
+a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
 
 print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.norm(a2_m))
 print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
@@ -44,7 +44,7 @@ if not Path(solution_fn).is_file():
             'grid':             (gridx,gridy),
             'learn_rate':       -1e-2,                      #Needs to be negative
             'pts_per_fit':      2,                          #Maybe can be related to gridx/gridy
-            'n_initial_pts':    100 if full else 32,                         #64 fixed initial states: n*pi/2 (s and a, n=0..7) + 36 random states
+            'n_initial_pts':    100 if Full else 32,                         #64 fixed initial states: n*pi/2 (s and a, n=0..7) + 36 random states
             'maxiter':          1e5, 
             'machine':          machine, 
             'disp':             machine=='loc',
