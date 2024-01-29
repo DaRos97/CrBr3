@@ -904,3 +904,8 @@ def get_parameters(ind):
     imt = 0
     print("Computing index ",ind," of ",len(input_types)*lep*lni*lga)
     return (input_types[iit],moire_types[imt],moire_pars,gammas[iga])
+
+def check_directory(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
+    sol_dn = get_sol_dn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine)
+    if not Path(sol_dn).is_dir():
+        os.system('mkdir '+sol_dn)

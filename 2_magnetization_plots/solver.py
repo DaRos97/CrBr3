@@ -36,6 +36,7 @@ print("Grid size: ",gridx,gridy)
 #Compute Phi over new grid parameters
 Phi = fs.reshape_Phi(Phi,gridx,gridy)
 
+fs.check_directory(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine)
 solution_fn = fs.get_sol_fn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine)
 if not Path(solution_fn).is_file():
     print("Computing magnetization...")
