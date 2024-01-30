@@ -20,6 +20,8 @@ Remotely (cluster), results/ contains folders with the same name of the moire pa
 # Computing
 ## Bao
     - uniaxial, e=0.1, n=1, max_grid = 200, in_pt = 64, gamma from 0 to 3 (100 pts)
+## Ygg
+    - uniaxial, e=0.1, n=1, max_grid = 100, in_pt = 32, gamma from 0 to 3 (100 pts)
 
 When finished the order is: compute condense_result.py, copy with ./bao.sh, plot with plot_result.py
 

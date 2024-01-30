@@ -643,6 +643,42 @@ def get_gridsize(max_grid,a1_m,a2_m):
     l_g[1-i_m] = int(max_grid/n_m[i_m]*n_m[1-i_m])
     return l_g
 
+def get_fig_dn(machine):
+    """Computes the directory name where to save the interlayer potential.
+
+    Parameters
+    ----------
+    cluster: bool, optional
+        Wether we are in the cluster or not (default is 'loc').
+
+    Returns
+    -------
+    string
+        The directory name.
+    """
+    return get_home_dn(machine)+'results/figures/'
+
+def get_fig_fn(title,machine):
+    return get_fig_dn(machine) + title +'.png'
+
+def get_hdf5_dn(machine):
+    """Computes the directory name where to save the interlayer potential.
+
+    Parameters
+    ----------
+    cluster: bool, optional
+        Wether we are in the cluster or not (default is 'loc').
+
+    Returns
+    -------
+    string
+        The directory name.
+    """
+    return get_home_dn(machine)+'results/hdf5/'
+
+def get_hdf5_fn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
+    return get_hdf5_dn(machine) + input_type+'_'+str(gridx)+'x'+str(gridy)+'_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'.hdf5'
+
 def get_sol_dn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
     """Computes the filename of the interlayer coupling.
 
@@ -657,13 +693,7 @@ def get_sol_dn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
         The name of the .npy file containing the interlayer coupling.
     """
     res = get_home_dn(machine) + 'results/'
-    if machine == 'loc':
-        return res + 'hdf5/'
-    else:
-        return res + input_type+'_'+str(gridx)+'x'+str(gridy)+'_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'/'
-
-def get_hdf5_fn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
-    return get_sol_dn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine)+'result.hdf5'
+    return res + input_type+'_'+str(gridx)+'x'+str(gridy)+'_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'/'
 
 def get_sol_fn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
     """Computes the filename of the interlayer coupling.
@@ -892,6 +922,9 @@ def Moire(args):
     if disp:
        plot_Phi(J,a1_m,a2_m)
     if (disp and input("Save? (y/N)")=='y') or not disp:
+        Phi_dn = get_Phi_dn(machine)
+        if not machine == 'loc' and Path(Phi_dn).is_dir():
+            os.system('mkdir '+Phi_dn)
         np.save(moire_potential_fn,J)
         np.save(get_AM_fn(moire_type,moire_pars,machine),np.array([a1_m,a2_m]))
         np.save(get_ll_fn(moire_type,moire_pars,machine),np.array([l1,l2]))
@@ -937,9 +970,23 @@ def get_parameters(ind):
     return (input_types[iit],moire_types[imt],moire_pars,gammas[iga])
 
 def check_directory(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
-    sol_dn = get_sol_dn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine)
-    if not Path(sol_dn).is_dir() and not machine == 'loc':
-        os.system('mkdir '+sol_dn)
+    if not machine == 'loc':
+        #Results dir
+        res_dn = get_home_dn(machine) + 'results/'
+        if not Path(res_dn).is_dir():
+            os.system('mkdir '+res_dn)
+        #.npy solution dir
+        sol_dn = get_sol_dn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine)
+        if not Path(sol_dn).is_dir():
+            os.system('mkdir '+sol_dn)
+        #.hdf5 dir
+        hdf5_dn = get_hdf5_dn(machine)
+        if not Path(hdf5_dn).is_dir():
+            os.system('mkdir '+hdf5_dn)
+        #figures dir
+        fig_dn = get_fig_dn(machine)
+        if not Path(fig_dn).is_dir():
+            os.system('mkdir '+fig_dn)
 
 def compute_magnetization(phi):
     """Computes the total magnetization of the 2 layers (max is 2), given phi which contains symmetric and antisymmetric phases.
@@ -961,3 +1008,35 @@ def compute_magnetization(phi):
     phi_2 = (phi[0]-phi[1])/2
     total_magnetization = np.sum(np.cos(phi_1))/gx/gy + np.sum(np.cos(phi_2))/gx/gy
     return total_magnetization
+
+def compute_mp(hdf5_fn,machine):
+    """Compute the magnetization plot.
+
+    """
+    #Open and read h5py File
+    with h5py.File(hdf5_fn,'r') as f:
+        M = []
+        for k in f.keys():
+            gamma = float(k[4:])
+            M.append([gamma,compute_magnetization(f[k])])
+    M = np.array(M) 
+    fig = plt.figure(figsize=(20,20))
+    plt.plot(M[:,0],M[:,1],'r*-')
+    plt.xlabel(r'$\gamma$',size=s_)
+    plt.ylabel(r'$M$',size=s_)
+    title = hdf5_fn[len(hdf5_fn)-hdf5_fn[::-1].index('/'):-5]
+    plt.title(title)
+    if machine == 'loc':
+        plt.show()
+    else:
+        plt.savefig(get_fig_fn(title,machine))
+        plt.close()
+
+
+
+
+
+
+
+
+

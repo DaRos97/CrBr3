@@ -13,7 +13,7 @@ machine = fs.get_machine(os.getcwd())
 
 ind = int(sys.argv[1])*100  #so each ind takes all gammas of a different parameter of Moire
 input_type,moire_type,moire_pars,gamma = fs.get_parameters(ind)
-print("Computing with ",input_type," values, moire with ",moire_type," strain of ",moire_pars[moire_type]," and gamma: ",gamma)
+print("Condensig result of: ",input_type," values, moire with ",moire_type," strain of ",moire_pars[moire_type]," and gamma: ",gamma)
 
 Phi_fn = fs.get_Phi_fn(moire_type,moire_pars,machine)
 a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
@@ -33,11 +33,12 @@ with h5py.File(hdf5_fn,'a') as f:
     for filename in Path(dn_sol).iterdir():
         fn = str(filename)
         ds_name = fn[len(fn)-fn[::-1].index('/'):-4]
-        #if ds_name not in f.keys():
-        try:
+        if ds_name[:3]=='sol':
             f.create_dataset(ds_name,data=np.load(filename))
-        except:
-            print(fn," not working")
+
+#Compute magnetization plot
+if 1:
+    fs.compute_mp(hdf5_fn,machine)
 
 print('Time taken: ',time()-t0)
 
