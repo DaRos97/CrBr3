@@ -14,7 +14,7 @@
 #SBATCH --array=0-99
 
 
-#SBATCH --output=out.out
-#SBATCH --error=out.err
+#SBATCH --output=bash_scripts/out.out
+#SBATCH --error=bash_scripts/out.err
 
-srun qjob.qsub $SLURM_ARRAY_TASK_ID
+srun $HOME/2_magnetization_plots/bash_scripts/qjob.qsub $SLURM_ARRAY_TASK_ID

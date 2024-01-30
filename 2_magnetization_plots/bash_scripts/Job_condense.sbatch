@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=mp
+#SBATCH --job-name=c
 
 # #SBATCH --partition=shared-cpu
 # #SBATCH --time=00:30:00
@@ -13,7 +13,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --array=0-11
 
-#SBATCH --output=out.out
-#SBATCH --error=out.err
+#SBATCH --output=bash_scripts/Out.out
+#SBATCH --error=bash_scripts/Out.err
 
-srun qjob.qsub $SLURM_ARRAY_TASK_ID
+srun $HOME/2_magnetization_plots/bash_scripts/Qjob.qsub $SLURM_ARRAY_TASK_ID
