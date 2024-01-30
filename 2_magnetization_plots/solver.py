@@ -44,9 +44,9 @@ if not Path(solution_fn).is_file():
             'args_moire':       (Phi,(a1_m,a2_m)),
             'args_phys':        (fs.rho_phys[input_type],fs.d_phys[input_type]),
             'grid':             (gridx,gridy),
-            'learn_rate':       -1e-2,                      #Needs to be negative
+            'learn_rate':       -1e-3,                      #Needs to be negative
             'pts_per_fit':      2,                          #Maybe can be related to gridx/gridy
-            'n_initial_pts':    64 if Full else 32,                         #64 fixed initial states: n*pi/2 (s and a, n=0..7) + 36 random states
+            'n_initial_pts':    2,                         #64 fixed initial states: n*pi/2 (s and a, n=0..7) + 36 random states
             'maxiter':          1e5, 
             'machine':          machine, 
             'disp':             machine=='loc',
