@@ -13,9 +13,9 @@ max_gridsize = 200
 t0 = time()
 machine = fs.get_machine(os.getcwd())
 
-type_computation = 'MP' if machine=='loc' else sys.argv[2]
+type_computation = 'PD' if machine=='loc' else sys.argv[2]
 
-ind = int(sys.argv[1])*225      #one index every 225 for 15x15 PD -> like this sys.argv[1] from 0 to 11
+ind = int(sys.argv[1])      #one index every 225 for 15x15 PD -> like this sys.argv[1] from 0 to 11
 moire_type,moire_pars = fs.get_moire_pars(ind)
 print("Condensing PD for Moire with ",moire_type," strain of args ",moire_pars[moire_type])
 

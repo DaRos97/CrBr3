@@ -17,19 +17,26 @@ results/phase_diagram_data/moire_specs(type,eps,ni,gx,gy)/gamma/ one directory f
 # Computed 
 ## Bao
     0 - DFT/exp, uniaxial, all e and n, max_grid = 100, in_pt = 2, gamma from 0 to 3 (100 pts) -> lr -1e-3
+    1 - DFT, uniaxial, e=0.1, n=1, max_grid = 200, in_pt = 5, gamma from 0 to 3 (100 pts) -> lr -1e-2 (also t-a). Missing 5pts (13,20,21,33,35)
 ## Ygg
     0 - DFT/exp, uniaxial, all e and n, max_grid = 200, in_pt = 2, gamma from 0 to 3 (100 pts) -> lr -1e-2
+    1 - PD 15x15 for all e-n, gamma = 0. Full=True -> too long to get resources -> only e=0.1 with many missing
 
 # Computing
 ## Bao
-    - DFT, uniaxial, e=0.1, n=1, max_grid = 200, in_pt = 5, gamma from 0 to 3 (100 pts) -> lr -1e-2 (also t-a)
+    - DFT, e=0.05, ni=1 and 0.3, max_grid=200, lr = -1e-3.
+    - PD e=0.05, ni=1 and 0.3, max_grid=200, lr = -1e-3.
 ## Ygg
-    - PD 15x15 for all e-n, gamma = 0. Full=True -> too long to get resources.
 
 # Problems
 
 # Comments
-The perturbative solution is of no use in this case, but a solution which has the t-s shape is good starting point.
+The perturbative solution is of no use in this case, but a solution which has the Phi shape is good starting point.
 If phi_s starts at 0, it stays there for all evolution->we can make it go faster because there is no need to compute dHs.
 
 # To try
+Evidence:
+    Solution sometimes seems t-a but just because the phi_s is very rough. In real t-a you can see the domes of phase 0 and pi.
+Solution:
+    1 - try to end minimization at the minimum dH instead of the converging minimum energy
+    2 - higher number of grid points in relation with rg_fit

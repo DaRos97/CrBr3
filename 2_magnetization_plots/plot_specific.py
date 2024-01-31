@@ -3,11 +3,7 @@ import functions as fs
 import sys, os, h5py
 from pathlib import Path
 
-"""
-Here we mainly change fns and dns in order to compute the phase diagram at various anisotropy/rho.
-"""
-
-Full = True     #determines precision of calculation
+Full = True
 machine = fs.get_machine(os.getcwd())
 
 type_computation = 'PD' if machine=='loc' else sys.argv[2]
@@ -41,37 +37,23 @@ print("Grid size: ",gridx,gridy)
 #Compute Phi over new grid parameters
 Phi = fs.reshape_Phi(Phi,gridx,gridy)
 
-#Check directories for the results exist
-fs.check_directory(moire_type,moire_pars,gridx,gridy,gamma,machine)
+#Extract solution
+hdf5_fn = fs.get_hdf5_fn(moire_type,moire_pars,gridx,gridy,machine)
 
-solution_fn = fs.get_sol_fn(moire_type,moire_pars,gridx,gridy,gamma,rho,anisotropy,machine)
-if not Path(solution_fn).is_file():
-    print("Computing magnetization...")
-    args_minimization = {
-            'args_moire':       (Phi,(a1_m,a2_m)),
-            'args_phys':        (gamma,rho,anisotropy),
-            'grid':             (gridx,gridy),
-            'learn_rate':       -1e-2,                      #Needs to be negative
-            'pts_per_fit':      2,                          #Maybe can be related to gridx/gridy
-            'n_initial_pts':    2,                         #64 fixed initial states: n*pi/2 (s and a, n=0..7) + 36 random states
-            'maxiter':          1e5, 
-            'machine':          machine, 
-            'disp':             machine=='loc',
-            }
-    phi = fs.compute_solution(args_minimization)
-    np.save(solution_fn,phi)
-else:
-    print("Already computed")
-
-
-
-
-
-
-
-
-
-
-
+gamma_str = "{:.4f}".format(gamma)
+rho_str = "{:.5f}".format(rho)
+ani_str = "{:.5f}".format(anisotropy)
+with h5py.File(hdf5_fn,'r') as f:
+    for k in f.keys():
+        gamma = k[-6:]            #-6 fixed by the fact that gamma is saved .4f
+        if gamma == gamma_str:
+            for p in f[k].keys():
+                rho = p[:7]      #7 fixed by the fact that rho is saved .5f 
+                ani = p[-7:]      #7 fixed by the fact that rho is saved .5f 
+                if rho==rho_str and ani==ani_str:
+                    solution = np.copy(f[k][p])
+                    break
+#fs.plot_magnetization(solution,Phi,(a1_m,a2_m),rho_str+'_'+ani_str)
+fs.plot_phis(solution,(a1_m,a2_m),rho_str+'_'+ani_str)
 
 

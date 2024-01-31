@@ -1086,25 +1086,6 @@ def check_directory(moire_type,moire_pars,gx,gy,gamma,machine):
     if not Path(fig_dn).is_dir():
         os.system('mkdir '+fig_dn)
 
-def compute_order(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
-    phi_s,phi_a = phi
-    gx,gy = phi_s.shape
-    E = compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
-    E0 = -2*gamma - anisotropy - Phi.sum()/Phi.shape[0]/Phi.shape[1]
-    if E-E0 > 1e-4:       #Solution collinear was not tried for some reason
-        col = 0
-    elif abs(E-E0) < 1e-4:  #collinear
-        col = 1
-    elif abs(np.max(np.cos(phi_s))-np.min(np.cos(phi_s))) < 0.2:    #t-s (all possible)
-        #twisted-s seen by considering a nearly constant cos(phi_s)
-        if abs(np.sum(phi_s)/gx/gy) < 0.2 or abs(np.sum(phi_s)/gx/gy-2*np.pi) < 0.2:    #t-s2
-            col = 3
-        else:           #t-s1
-            col = 2
-    else:    #twisted-a
-        col = 4
-    return col
-
 def compute_magnetization(phi):
     """Computes the total magnetization of the 2 layers (max is 2), given phi which contains symmetric and antisymmetric phases.
 
@@ -1157,6 +1138,25 @@ def compute_MPs(moire_type,moire_pars,gx,gy,rho_str,ani_str,machine):
     plt.savefig(get_fig_mp_fn(moire_type,moire_pars,gx,gy,rho_str,ani_str,machine))
     plt.close()
 
+def compute_order(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
+    phi_s,phi_a = phi
+    gx,gy = phi_s.shape
+    E = compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
+    E0 = -2*gamma - anisotropy - Phi.sum()/Phi.shape[0]/Phi.shape[1]
+    if E-E0 > 1e-4:       #Solution collinear was not tried for some reason
+        col = 0
+    elif abs(E-E0) < 1e-2:  #collinear
+        col = 1
+    elif abs(np.max(np.cos(phi_s))-np.min(np.cos(phi_s))) < 0.1:    #t-s (all possible)
+        #twisted-s seen by considering a nearly constant cos(phi_s)
+        if np.max(np.cos(phi_s)) > 0:   #t-s1
+            col = 2
+        else:           #t-s2
+            col = 3
+    else:    #twisted-a
+        col = 4
+    return col
+
 def compute_PDs(moire_type,moire_pars,gx,gy,gamma_str,machine):
     """Compute the magnetization plot.
 
@@ -1180,14 +1180,26 @@ def compute_PDs(moire_type,moire_pars,gx,gy,gamma_str,machine):
                     ani = float(p[-7:])      #7 fixed by the fact that rho is saved .5f 
                     order = compute_order(f[k][p],Phi,float(gamma),rho,ani,A_M,M_transf,2)
                     data[gamma][i] = np.array([rho,ani,order])
-    colors = np.array(['k','y','b','orange','r'])
+    colors = np.array(['k','y','b','m','r'])
     for gamma in data.keys():
         ccc = np.asarray(data[gamma][:,2],dtype=int)
         plt.figure()
         plt.scatter(data[gamma][:,0],data[gamma][:,1],color=colors[ccc],marker='o')
+        r_d = rho_phys['DFT']
+        r_e = rho_phys['exp']
+        d_d = d_phys['DFT']
+        d_e = d_phys['exp']
+        plt.hlines(d_e,r_d,r_e,color='b')
+        plt.hlines(d_d,r_d,r_e,color='b')
+        plt.vlines(r_e,d_e,d_d,color='b')
+        plt.vlines(r_d,d_e,d_d,color='b')
+        plt.xticks([1,r_d,r_e,3] ,['1',r'$\rho_{DFT}$',r'$\rho_{exp}$','3'])
+        plt.yticks([0,d_e,d_d,0.4] ,['0',r'$d_{exp}$',r'$d_{DFT}$','0.4'])
         plt.xlabel('rho')
         plt.ylabel('anisotropy')
         plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" and gamma = "+gamma)
+        plt.show()
+        exit()
         plt.savefig(get_fig_pd_fn(moire_type,moire_pars,gx,gy,gamma,machine))
         plt.close()
 
