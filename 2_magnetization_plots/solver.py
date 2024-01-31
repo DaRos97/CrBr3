@@ -9,7 +9,7 @@ Put grid relative to moire size.
 Define moire lattice and gamma wrt cluster input.
 """
 
-Full = False
+Full = True
 machine = fs.get_machine(os.getcwd())
 
 #Maybe define elsewhere the gamma range to consider
@@ -44,7 +44,7 @@ if not Path(solution_fn).is_file():
             'args_moire':       (Phi,(a1_m,a2_m)),
             'args_phys':        (fs.rho_phys[input_type],fs.d_phys[input_type]),
             'grid':             (gridx,gridy),
-            'learn_rate':       -1e-3,                      #Needs to be negative
+            'learn_rate':       -1e-2 if Full else -1e-3,                      #Needs to be negative
             'pts_per_fit':      2,                          #Maybe can be related to gridx/gridy
             'n_initial_pts':    2,                         #64 fixed initial states: n*pi/2 (s and a, n=0..7) + 36 random states
             'maxiter':          1e5, 

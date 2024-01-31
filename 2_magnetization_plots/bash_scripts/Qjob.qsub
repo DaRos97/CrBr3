@@ -6,6 +6,6 @@ ERROR_FILE=c_${1}.err
 
 ml load GCCcore/11.2.0 Python/3.9.6
 source $HOME/basEnv/bin/activate
-cd $HOME/2_magnetization_plot/
+cd $HOME/2_magnetization_plots/
 
 python condense_result.py $1 >$SCRATCH_DIR/$OUTPUT_FILE 2> $SCRATCH_DIR/$ERROR_FILE

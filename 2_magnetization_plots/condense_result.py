@@ -22,7 +22,7 @@ gridx,gridy = fs.get_gridsize(max_gridsize,a1_m,a2_m)
 hdf5_fn = fs.get_hdf5_fn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine)
 
 #Remove it if it already exists
-if 0:#not cluster == 'loc':
+if 1:#not cluster == 'loc':
     if Path(hdf5_fn).is_file():
         os.system('rm '+hdf5_fn)
 

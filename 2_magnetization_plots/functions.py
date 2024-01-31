@@ -21,9 +21,46 @@ d = np.array([0,1/np.sqrt(3)])  #vector connecting the two sublattices
 b1 = np.array([1,1/np.sqrt(3)])*2*np.pi
 b2 = np.array([0,2/np.sqrt(3)])*2*np.pi
 
-def custom_in_pt(Phi,gx,gy,A_M,ind):
-    res = (np.sign(Phi)-1)*np.pi/ind
-    return np.array([np.zeros((gx,gy)),res])
+def const_in_pt(fs,fa,gx,gy):
+    """Computes the initial point for the minimization. The possibilities are for now
+    either twisted-s -> ans=0, or constant -> ans=1
+
+    Parameters
+    ----------
+    Phi : np.ndarray
+        Interlayer coupling of size (grid,grid)
+    pars : 3-tuple
+        Parameters alpha, beta and gamma.
+    fs : float
+        Random number between 0 and 1 to set inisial condition for symmetric phase.
+    fa : float
+        Random number between 0 and 1 to set inisial condition for a-symmetric phase.
+    ans : int
+        Index to chose the ansatz of the initial point.
+
+    Returns
+    -------
+    List
+        Symmetric and antisymmetric phases at each position (grid,grid) of the Moirè unit cell.
+    """
+    phi_s = np.ones((gx,gy))*2*np.pi*fs
+    phi_a = np.ones((gx,gy))*2*np.pi*fa
+    return np.array([phi_s, phi_a])
+
+def ts1(Phi,gx,gy):
+    res = (np.sign(Phi)-1)*np.pi/2
+    return np.array([np.ones((gx,gy))*0,res])
+
+def ts2(Phi,gx,gy):
+    res = (np.sign(Phi)-1)*np.pi/2
+    return np.array([np.ones((gx,gy))*np.pi,res])
+
+def ta(Phi,gx,gy):
+    re_s = -(np.sign(Phi)-1)*np.pi/2
+    re_a = (np.sign(Phi)-1)*np.pi/2
+    return np.array([re_s,re_a])
+
+custom_in_pt = (ts1,ts2,ta)
 
 def compute_solution(gamma,args_m):
     """Computes the magnetization pattern by performing a gradient descent from random 
@@ -60,20 +97,19 @@ def compute_solution(gamma,args_m):
     #Variables for storing best solution
     min_E = 1e10
     result = np.zeros((2,gx,gy))
-    for ind_in_pt in range(-2,args_m['n_initial_pts']):
+    for ind_in_pt in range(-3,args_m['n_initial_pts']):
         E = []  #list of energies for the while loop
         if args_m['disp']:
             print("Starting minimization step ",str(ind_in_pt))
         #Initial condition
         if ind_in_pt < 0:
-            phi = custom_in_pt(Phi,gx,gy,A_M,abs(ind_in_pt))
+            phi = custom_in_pt[ind_in_pt+3](Phi,gx,gy)
         else:
             list_ff = ((0,0),(0.25,0.25))
-            fs,fs = list_ff[ind_in_pt]
-#            fs = (ind_in_pt//8)/4 if ind_in_pt<64 else random.random()
-#            fa = (ind_in_pt%8)/4 if ind_in_pt<64 else random.random()
-            phi = initial_point(fs,fa,gx,gy)
+            fs,fa = list_ff[ind_in_pt]
+            phi = const_in_pt(fs,fa,gx,gy)
         E.append(compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg))
+        plot_magnetization(phi,Phi,A_M,"initial condition "+"{:.4f}".format(E[0]))
         #Initiate learning rate and minimization loop
         step = 1        #initial step
         lr = args_m['learn_rate']
@@ -99,7 +135,7 @@ def compute_solution(gamma,args_m):
                     phi[0] -= learn_rate*dHs
                     phi[1] -= learn_rate*dHa
             if args_m['disp']:
-                print("energy step ",step," is ",E[0]," with dH = ",np.sum(np.absolute(dHa)+np.absolute(dHs)))
+                print("energy step ",step," is ","{:.9f}".format(E[0])," with dH = ","{:.3f}".format(np.sum(np.absolute(dHa)+np.absolute(dHs))))
             if check_energies(E):   #stable energy
                 if E[0]<min_E:
                     min_E = E[0]
@@ -187,32 +223,6 @@ def grad_H(phi,tt,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
         return -rho/2*lapl + anisotropy*np.sin(phi[0])*np.cos(phi[1]) + gamma*np.cos(phi[1]/2)*np.sin(phi[0]/2)
     elif tt=='a':
         return -rho/2*lapl + anisotropy*np.cos(phi[0])*np.sin(phi[1]) + Phi*np.sin(phi[1]) + gamma*np.cos(phi[0]/2)*np.sin(phi[1]/2)
-
-def initial_point(fs,fa,gx,gy):
-    """Computes the initial point for the minimization. The possibilities are for now
-    either twisted-s -> ans=0, or constant -> ans=1
-
-    Parameters
-    ----------
-    Phi : np.ndarray
-        Interlayer coupling of size (grid,grid)
-    pars : 3-tuple
-        Parameters alpha, beta and gamma.
-    fs : float
-        Random number between 0 and 1 to set inisial condition for symmetric phase.
-    fa : float
-        Random number between 0 and 1 to set inisial condition for a-symmetric phase.
-    ans : int
-        Index to chose the ansatz of the initial point.
-
-    Returns
-    -------
-    List
-        Symmetric and antisymmetric phases at each position (grid,grid) of the Moirè unit cell.
-    """
-    phi_s = np.ones((gx,gy))*2*np.pi*fs
-    phi_a = np.ones((gx,gy))*2*np.pi*fa
-    return np.array([phi_s, phi_a])
 
 def check_energies(list_E):
     """ Checks wether the last nn energies in the list_E are within lim distance to each other.
@@ -1024,8 +1034,9 @@ def compute_mp(hdf5_fn,machine):
     with h5py.File(hdf5_fn,'r') as f:
         M = []
         for k in f.keys():
-            gamma = float(k[4:])
-            M.append([gamma,compute_magnetization(f[k])])
+            if k[:3]=='sol':
+                gamma = float(k[4:])
+                M.append([gamma,compute_magnetization(f[k])])
     M = np.array(M) 
     fig = plt.figure(figsize=(20,20))
     plt.plot(M[:,0],M[:,1],'r*-')
