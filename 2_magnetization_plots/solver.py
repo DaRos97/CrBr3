@@ -4,17 +4,24 @@ import sys, os, h5py
 from pathlib import Path
 
 """
-Check energy, grad_H and smooth -> derivatives might be wrong
-Put grid relative to moire size.
-Define moire lattice and gamma wrt cluster input.
+Here we mainly change fns and dns in order to compute the phase diagram at various anisotropy/rho.
 """
 
-Full = True
+Full = False     #determines precision of calculation
 machine = fs.get_machine(os.getcwd())
 
-#Maybe define elsewhere the gamma range to consider
-input_type,moire_type,moire_pars,gamma = fs.get_parameters(int(sys.argv[1]))
-print("Computing with ",input_type," values, moire with ",moire_type," strain of ",moire_pars[moire_type]," and gamma: ",gamma)
+type_computation = 'MP' if machine=='loc' else sys.argv[2]
+
+if type_computation == 'PD':
+    moire_type,moire_pars = fs.get_moire_pars(int(sys.argv[1])//225)        #for 15*15 PD
+    gamma,rho,anisotropy = fs.get_phys_pars(int(sys.argv[1])%225)          
+elif type_computation == 'MP':
+    input_type,moire_type,moire_pars,gamma = fs.get_MP_pars(int(sys.argv[1]))
+    rho = fs.rho_phys[input_type]
+    anisotropy = fs.d_phys[input_type]
+
+print("Computing with Moire with ",moire_type," strain of ",moire_pars[moire_type])
+print("Physical parameters are gamma: ","{:.4f}".format(gamma),", rho: ","{:.4f}".format(rho),", anisotropy: ","{:.4f}".format(anisotropy))
 
 #Check if Phi already computed
 Phi_fn = fs.get_Phi_fn(moire_type,moire_pars,machine)
@@ -35,23 +42,23 @@ print("Grid size: ",gridx,gridy)
 Phi = fs.reshape_Phi(Phi,gridx,gridy)
 
 #Check directories for the results exist
-fs.check_directory(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine)
+fs.check_directory(moire_type,moire_pars,gridx,gridy,gamma,machine)
 
-solution_fn = fs.get_sol_fn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine)
+solution_fn = fs.get_sol_fn(moire_type,moire_pars,gridx,gridy,gamma,rho,anisotropy,machine)
 if not Path(solution_fn).is_file():
     print("Computing magnetization...")
     args_minimization = {
             'args_moire':       (Phi,(a1_m,a2_m)),
-            'args_phys':        (fs.rho_phys[input_type],fs.d_phys[input_type]),
+            'args_phys':        (gamma,rho,anisotropy),
             'grid':             (gridx,gridy),
-            'learn_rate':       -1e-2 if Full else -1e-3,                      #Needs to be negative
+            'learn_rate':       -1e-3,                      #Needs to be negative
             'pts_per_fit':      2,                          #Maybe can be related to gridx/gridy
             'n_initial_pts':    2,                         #64 fixed initial states: n*pi/2 (s and a, n=0..7) + 36 random states
             'maxiter':          1e5, 
             'machine':          machine, 
             'disp':             machine=='loc',
             }
-    phi = fs.compute_solution(gamma,args_minimization)
+    phi = fs.compute_solution(args_minimization)
     if not machine == 'loc':
         np.save(solution_fn,phi)
 else:

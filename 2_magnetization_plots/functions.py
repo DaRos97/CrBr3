@@ -10,9 +10,8 @@ import os
 import h5py
 
 #Physical parameters
-rho_phys = {'DFT':1.4,'exp':1.7} #     (meV)       #CHECK
-d_phys = {'DFT':0.18,'exp':0.09} #     (meV)       #CHECK
-
+rho_phys = {'DFT':1.4,'exp':1.7} #     (meV)      
+d_phys = {'DFT':0.18,'exp':0.09} #     (meV)       
 
 #Triangular lattice
 a1 = np.array([1,0])
@@ -62,7 +61,15 @@ def ta(Phi,gx,gy):
 
 custom_in_pt = (ts1,ts2,ta)
 
-def compute_solution(gamma,args_m):
+def get_M_transf(a1_m,a2_m):
+    det = a1_m[0]*a2_m[1]-a2_m[0]*a1_m[1]
+    n1x = a2_m[1]/det
+    n2x = -a1_m[1]/det
+    n1y = -a2_m[0]/det
+    n2y = a1_m[0]/det
+    return (det,n1x,n2x,n1y,n2y)
+
+def compute_solution(args_m):
     """Computes the magnetization pattern by performing a gradient descent from random 
     initial points.
 
@@ -85,13 +92,8 @@ def compute_solution(gamma,args_m):
     """
     Phi,A_M = args_m['args_moire']
     a1_m, a2_m = A_M
-    det = a1_m[0]*a2_m[1]-a2_m[0]*a1_m[1]
-    n1x = a2_m[1]/det
-    n2x = -a1_m[1]/det
-    n1y = -a2_m[0]/det
-    n2y = a1_m[0]/det
-    M_transf = (det,n1x,n2x,n1y,n2y)
-    rho,anisotropy = args_m['args_phys']
+    M_transf = get_M_transf(a1_m,a2_m)
+    gamma,rho,anisotropy = args_m['args_phys']
     gx,gy = args_m['grid']
     rg = args_m['pts_per_fit']
     #Variables for storing best solution
@@ -109,7 +111,8 @@ def compute_solution(gamma,args_m):
             fs,fa = list_ff[ind_in_pt]
             phi = const_in_pt(fs,fa,gx,gy)
         E.append(compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg))
-        plot_magnetization(phi,Phi,A_M,"initial condition "+"{:.4f}".format(E[0]))
+        if args_m['disp']:
+            plot_magnetization(phi,Phi,A_M,"initial condition "+"{:.4f}".format(E[0]))
         #Initiate learning rate and minimization loop
         step = 1        #initial step
         lr = args_m['learn_rate']
@@ -673,10 +676,11 @@ def get_fig_dn(machine):
     string
         The directory name.
     """
-    return get_home_dn(machine)+'results/figures/'
+    return get_res_dn(machine)+'figures/'
 
-def get_fig_fn(title,machine):
-    return get_fig_dn(machine) + title +'.png'
+def get_fig_pd_fn(moire_type,moire_pars,gx,gy,gamma,machine):
+    moire_dn = get_moire_dn(moire_type,moire_pars,gx,gy,machine)[:-1]
+    return get_fig_dn(machine) + 'pd_' + moire_dn[len(moire_dn)-moire_dn[::-1].index('/'):] +'_'+gamma+'.png'
 
 def get_hdf5_dn(machine):
     """Computes the directory name where to save the interlayer potential.
@@ -691,12 +695,34 @@ def get_hdf5_dn(machine):
     string
         The directory name.
     """
-    return get_home_dn(machine)+'results/hdf5/'
+    return get_res_dn(machine)+'hdf5/'
 
-def get_hdf5_fn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
-    return get_hdf5_dn(machine) + input_type+'_'+str(gridx)+'x'+str(gridy)+'_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'.hdf5'
+def get_hdf5_fn(moire_type,moire_pars,gx,gy,machine):
+    moire_dn = get_moire_dn(moire_type,moire_pars,gx,gy,machine)[:-1]
+    return get_hdf5_dn(machine) + moire_dn[len(moire_dn)-moire_dn[::-1].index('/'):] + '.hdf5'
 
-def get_sol_dn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
+def get_pd_dn(machine):
+    """Computes the directory name where to save the interlayer potential.
+
+    Parameters
+    ----------
+    cluster: bool, optional
+        Wether we are in the cluster or not (default is 'loc').
+
+    Returns
+    -------
+    string
+        The directory name.
+    """
+    return get_res_dn(machine) +'phase_diagrams_data/'
+
+def get_moire_dn(moire_type,moire_pars,gx,gy,machine):
+    return get_pd_dn(machine) + moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'_'+str(gx)+'x'+str(gy)+'/'
+
+def get_gamma_dn(moire_type,moire_pars,gx,gy,gamma,machine):
+    return get_moire_dn(moire_type,moire_pars,gx,gy,machine) + 'gamma_'+"{:.4f}".format(gamma)+'/'
+
+def get_sol_fn(moire_type,moire_pars,gx,gy,gamma,rho,anisotropy,machine):
     """Computes the filename of the interlayer coupling.
 
     Parameters
@@ -709,23 +735,7 @@ def get_sol_dn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
     string
         The name of the .npy file containing the interlayer coupling.
     """
-    res = get_home_dn(machine) + 'results/'
-    return res + input_type+'_'+str(gridx)+'x'+str(gridy)+'_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'/'
-
-def get_sol_fn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
-    """Computes the filename of the interlayer coupling.
-
-    Parameters
-    ----------
-    cluster: bool, optional
-        Wether we are in the cluster or not (default is 'loc').
-
-    Returns
-    -------
-    string
-        The name of the .npy file containing the interlayer coupling.
-    """
-    return get_sol_dn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine)+'sol_'+"{:.4f}".format(gamma)+'.npy'
+    return get_gamma_dn(moire_type,moire_pars,gx,gy,gamma,machine)+'sol_'+"{:.5f}".format(rho)+'_'+"{:.5f}".format(anisotropy)+'.npy'
 
 def get_Phi_dn(machine):
     """Computes the directory name where to save the interlayer potential.
@@ -740,7 +750,7 @@ def get_Phi_dn(machine):
     string
         The directory name.
     """
-    return get_home_dn(machine)+'Phi_values/'
+    return get_res_dn(machine) +'Phi_values/'
 
 def get_Phi_fn(moire_type,moire_pars,machine):
     """Computes the filename of the interlayer coupling.
@@ -805,6 +815,21 @@ def moire_pars_fn(dic):
             exit()
         fn += '_'
     return fn[:-1]
+
+def get_res_dn(machine):
+    """Computes the directory name where to save the interlayer potential.
+
+    Parameters
+    ----------
+    cluster: bool, optional
+        Wether we are in the cluster or not (default is 'loc').
+
+    Returns
+    -------
+    string
+        The directory name.
+    """
+    return get_home_dn(machine)+'results/'
 
 def get_home_dn(machine):
     if machine == 'loc':
@@ -937,16 +962,16 @@ def Moire(args):
     J = smooth(J,2,(a1_m,a2_m))[0]
     #
     if disp:
-       plot_Phi(J,a1_m,a2_m)
-    if (disp and input("Save? (y/N)")=='y') or not disp:
-        Phi_dn = get_Phi_dn(machine)
-        if not machine == 'loc' and Path(Phi_dn).is_dir():
-            os.system('mkdir '+Phi_dn)
-        np.save(moire_potential_fn,J)
-        np.save(get_AM_fn(moire_type,moire_pars,machine),np.array([a1_m,a2_m]))
-        np.save(get_ll_fn(moire_type,moire_pars,machine),np.array([l1,l2]))
+        plot_Phi(J,a1_m,a2_m)
+    #Save
+    Phi_dn = get_Phi_dn(machine)
+    if not Path(Phi_dn).is_dir():
+        os.system('mkdir '+Phi_dn)
+    np.save(moire_potential_fn,J)
+    np.save(get_AM_fn(moire_type,moire_pars,machine),np.array([a1_m,a2_m]))
+    np.save(get_ll_fn(moire_type,moire_pars,machine),np.array([l1,l2]))
 
-def get_parameters(ind):
+def get_MP_pars(ind):
     input_types = ['DFT','exp']
     moire_types = ['uniaxial','biaxial','shear']
     #
@@ -986,24 +1011,96 @@ def get_parameters(ind):
     print("Computing index ",ind," of ",len(input_types)*lep*lni*lga)
     return (input_types[iit],moire_types[imt],moire_pars,gammas[iga])
 
-def check_directory(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine):
-    if not machine == 'loc':
-        #Results dir
-        res_dn = get_home_dn(machine) + 'results/'
-        if not Path(res_dn).is_dir():
-            os.system('mkdir '+res_dn)
-        #.npy solution dir
-        sol_dn = get_sol_dn(input_type,moire_type,moire_pars,gamma,gridx,gridy,machine)
-        if not Path(sol_dn).is_dir():
-            os.system('mkdir '+sol_dn)
-        #.hdf5 dir
-        hdf5_dn = get_hdf5_dn(machine)
-        if not Path(hdf5_dn).is_dir():
-            os.system('mkdir '+hdf5_dn)
-        #figures dir
-        fig_dn = get_fig_dn(machine)
-        if not Path(fig_dn).is_dir():
-            os.system('mkdir '+fig_dn)
+def get_moire_pars(ind):
+    moire_types = ['uniaxial','biaxial','shear']
+    #
+    epss = [0.1,0.05,0.04]
+    lep = len(epss)
+    nis = [1.,0.7,0.5,0.3]
+    lni = len(nis)
+    #
+    imt = 0
+    iep = ind // lni
+    ini = ind % lni
+    #
+    moire_pars = {
+        'general':{
+            'e_xx':0.1,
+            'e_yy':0.3,
+            'e_xy':0.15,
+            },
+        'uniaxial':{
+            'eps':epss[iep],
+            'ni':nis[ini],
+            'phi':0.,
+            },
+        'biaxial':{
+            'eps':0.05,
+            },
+        'shear':{
+            'e_xy':0.05,
+            'phi':0,
+            },
+        'theta':0.,
+        }
+    return (moire_types[imt],moire_pars)
+
+def get_phys_pars(ind):
+    gammas = np.linspace(0,3,100,endpoint=False)
+    rhos = np.linspace(1,3,15)
+    anis = np.linspace(0,0.4,15)
+    lg = len(gammas)
+    lr = len(rhos)
+    la = len(anis)
+    ig = ind//(lr*la)
+    ir = (ind%(lr*la)) // la
+    ia = (ind%(lr*la)) % la
+    return (gammas[ig],rhos[ir],anis[ia])
+
+def check_directory(moire_type,moire_pars,gx,gy,gamma,machine):
+    #Results dir
+    res_dn = get_res_dn(machine)
+    if not Path(res_dn).is_dir():
+        os.system('mkdir '+res_dn)
+    #Phase diagrams dir
+    pd_dn = get_pd_dn(machine)
+    if not Path(pd_dn).is_dir():
+        os.system('mkdir '+pd_dn)
+    #Moire dir
+    moire_dn = get_moire_dn(moire_type,moire_pars,gx,gy,machine)
+    if not Path(moire_dn).is_dir():
+        os.system('mkdir '+moire_dn)
+    #gamma dir -> contains the actual .npy results
+    gamma_dn = get_gamma_dn(moire_type,moire_pars,gx,gy,gamma,machine)
+    if not Path(gamma_dn).is_dir():
+        os.system('mkdir '+gamma_dn)
+    #hdf5 dir
+    hdf5_dn = get_hdf5_dn(machine)
+    if not Path(hdf5_dn).is_dir():
+        os.system('mkdir '+hdf5_dn)
+    #figures dir
+    fig_dn = get_fig_dn(machine)
+    if not Path(fig_dn).is_dir():
+        os.system('mkdir '+fig_dn)
+
+def compute_order(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
+    phi_s,phi_a = phi
+    gx,gy = phi_s.shape
+    E = compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
+    E0 = -2*gamma - anisotropy - Phi.sum()/Phi.shape[0]/Phi.shape[1]
+    if E-E0 > 1e-4:       #Solution collinear was not tried for some reason
+        col = 0
+    elif abs(E-E0) < 1e-4:  #collinear
+        col = 1
+    elif abs(np.max(np.cos(phi_s))-np.min(np.cos(phi_s))) < 0.2:    #t-s (all possible)
+        #twisted-s seen by considering a nearly constant cos(phi_s)
+        if abs(np.sum(phi_s)/gx/gy) < 0.2 or abs(np.sum(phi_s)/gx/gy-2*np.pi) < 0.2:    #t-s2
+            col = 3
+        else:           #t-s1
+            col = 2
+    else:    #twisted-a
+        col = 4
+    return col
 
 def compute_magnetization(phi):
     """Computes the total magnetization of the 2 layers (max is 2), given phi which contains symmetric and antisymmetric phases.
@@ -1050,6 +1147,35 @@ def compute_mp(hdf5_fn,machine):
         plt.savefig(get_fig_fn(title,machine))
         plt.close()
 
+def compute_PDs(moire_type,moire_pars,gridx,gridy,machine):
+    """Compute the magnetization plot.
+
+    """
+    hdf5_fn = get_hdf5_fn(moire_type,moire_pars,gridx,gridy,machine)
+    Phi_fn = get_Phi_fn(moire_type,moire_pars,machine)
+    Phi = np.load(get_Phi_fn(moire_type,moire_pars,machine))
+    A_M = np.load(get_AM_fn(moire_type,moire_pars,machine))
+    M_transf = get_M_transf(A_M[0],A_M[1])
+    #Open and read h5py File
+    data = {}
+    with h5py.File(hdf5_fn,'r') as f:
+        for k in f.keys():
+            gamma = k[-6:]            #-6 fixed by the fact that gamma is saved .4f
+            data[gamma] = np.zeros((len(f[gamma].keys()),3))
+            for i,p in enumerate(f[gamma].keys()):
+                rho = float(p[:7])      #7 fixed by the fact that rho is saved .5f 
+                ani = float(p[-7:])      #7 fixed by the fact that rho is saved .5f 
+                order = compute_order(f[gamma][p],Phi,float(gamma),rho,ani,A_M,M_transf,2)
+                data[gamma][i] = np.array([rho,ani,order])
+    colors = ('k','y','b','orange','r')
+    for gamma in data.keys():
+        plt.figure()
+        plt.scatter(data[gamma][:,0],data[gamma][:,1],color=colors[int(data[gamma][:,2])],marker='o')
+        plt.xlabel('rho')
+        plt.ylabel('anisotropy')
+        plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" and gamma = "+gamma)
+        plt.savefig(get_fig_pd_fn(moire_type,moire_pars,gridx,gridy,gamma,machine))
+        plt.close()
 
 
 
