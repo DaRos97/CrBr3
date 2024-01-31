@@ -680,7 +680,11 @@ def get_fig_dn(machine):
 
 def get_fig_pd_fn(moire_type,moire_pars,gx,gy,gamma,machine):
     moire_dn = get_moire_dn(moire_type,moire_pars,gx,gy,machine)[:-1]
-    return get_fig_dn(machine) + 'pd_' + moire_dn[len(moire_dn)-moire_dn[::-1].index('/'):] +'_'+gamma+'.png'
+    return get_fig_dn(machine) + 'PD_' + moire_dn[len(moire_dn)-moire_dn[::-1].index('/'):] +'_'+gamma+'.png'
+
+def get_fig_mp_fn(moire_type,moire_pars,gx,gy,rho,ani,machine):
+    moire_dn = get_moire_dn(moire_type,moire_pars,gx,gy,machine)[:-1]
+    return get_fig_dn(machine) + 'MP_' + moire_dn[len(moire_dn)-moire_dn[::-1].index('/'):] +'_'+rho+'_'+ani+'.png'
 
 def get_hdf5_dn(machine):
     """Computes the directory name where to save the interlayer potential.
@@ -964,6 +968,9 @@ def Moire(args):
     if disp:
         plot_Phi(J,a1_m,a2_m)
     #Save
+    res_dn = get_res_dn(machine)
+    if not Path(res_dn).is_dir():
+        os.system('mkdir '+res_dn)
     Phi_dn = get_Phi_dn(machine)
     if not Path(Phi_dn).is_dir():
         os.system('mkdir '+Phi_dn)
@@ -979,7 +986,7 @@ def get_MP_pars(ind):
     lep = len(epss)
     nis = [1.,0.7,0.5,0.3]
     lni = len(nis)
-    gammas = np.linspace(0,3,100)
+    gammas = np.linspace(0,3,100,endpoint=False)
     lga = len(gammas)
     #
     iit = ind//(lep*lni*lga)
@@ -1058,10 +1065,6 @@ def get_phys_pars(ind):
     return (gammas[ig],rhos[ir],anis[ia])
 
 def check_directory(moire_type,moire_pars,gx,gy,gamma,machine):
-    #Results dir
-    res_dn = get_res_dn(machine)
-    if not Path(res_dn).is_dir():
-        os.system('mkdir '+res_dn)
     #Phase diagrams dir
     pd_dn = get_pd_dn(machine)
     if not Path(pd_dn).is_dir():
@@ -1123,37 +1126,44 @@ def compute_magnetization(phi):
     total_magnetization = np.sum(np.cos(phi_1))/gx/gy + np.sum(np.cos(phi_2))/gx/gy
     return total_magnetization
 
-def compute_mp(hdf5_fn,machine):
+def compute_MPs(moire_type,moire_pars,gx,gy,rho_str,ani_str,machine):
     """Compute the magnetization plot.
 
     """
     #Open and read h5py File
+    hdf5_fn = get_hdf5_fn(moire_type,moire_pars,gx,gy,machine)
+    data = []
+    n = 0
     with h5py.File(hdf5_fn,'r') as f:
-        M = []
         for k in f.keys():
-            if k[:3]=='sol':
-                gamma = float(k[4:])
-                M.append([gamma,compute_magnetization(f[k])])
-    M = np.array(M) 
+            if not k[:5] == 'gamma':
+                continue
+            gamma = k[-6:]            #-6 fixed by the fact that gamma is saved .4f
+            for p in f[k].keys():
+                rho = p[:7]      #7 fixed by the fact that rho is saved .5f 
+                ani = p[-7:]      #7 fixed by the fact that rho is saved .5f 
+                if rho == rho_str and ani == ani_str:
+                    data.append([float(gamma),compute_magnetization(f[k][p])])
+                    n += 1
+    if n == 0:  #No data here for some reason
+        return 0
+    M = np.array(data)
     fig = plt.figure(figsize=(20,20))
+    s_ = 20
     plt.plot(M[:,0],M[:,1],'r*-')
     plt.xlabel(r'$\gamma$',size=s_)
     plt.ylabel(r'$M$',size=s_)
-    title = hdf5_fn[len(hdf5_fn)-hdf5_fn[::-1].index('/'):-5]
-    plt.title(title)
-    if machine == 'loc':
-        plt.show()
-    else:
-        plt.savefig(get_fig_fn(title,machine))
-        plt.close()
+    plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" rho = "+rho_str+", d = "+ani_str)
+    plt.savefig(get_fig_mp_fn(moire_type,moire_pars,gx,gy,rho_str,ani_str,machine))
+    plt.close()
 
-def compute_PDs(moire_type,moire_pars,gridx,gridy,machine):
+def compute_PDs(moire_type,moire_pars,gx,gy,gamma_str,machine):
     """Compute the magnetization plot.
 
     """
-    hdf5_fn = get_hdf5_fn(moire_type,moire_pars,gridx,gridy,machine)
+    hdf5_fn = get_hdf5_fn(moire_type,moire_pars,gx,gy,machine)
     Phi_fn = get_Phi_fn(moire_type,moire_pars,machine)
-    Phi = np.load(get_Phi_fn(moire_type,moire_pars,machine))
+    Phi = reshape_Phi(np.load(get_Phi_fn(moire_type,moire_pars,machine)),gx,gy)
     A_M = np.load(get_AM_fn(moire_type,moire_pars,machine))
     M_transf = get_M_transf(A_M[0],A_M[1])
     #Open and read h5py File
@@ -1161,20 +1171,24 @@ def compute_PDs(moire_type,moire_pars,gridx,gridy,machine):
     with h5py.File(hdf5_fn,'r') as f:
         for k in f.keys():
             gamma = k[-6:]            #-6 fixed by the fact that gamma is saved .4f
-            data[gamma] = np.zeros((len(f[gamma].keys()),3))
-            for i,p in enumerate(f[gamma].keys()):
-                rho = float(p[:7])      #7 fixed by the fact that rho is saved .5f 
-                ani = float(p[-7:])      #7 fixed by the fact that rho is saved .5f 
-                order = compute_order(f[gamma][p],Phi,float(gamma),rho,ani,A_M,M_transf,2)
-                data[gamma][i] = np.array([rho,ani,order])
-    colors = ('k','y','b','orange','r')
+            if gamma == gamma_str:
+                if len(f[k].keys()) == 0:   #No data here
+                    continue
+                data[gamma] = np.zeros((len(f[k].keys()),3))
+                for i,p in enumerate(f[k].keys()):
+                    rho = float(p[:7])      #7 fixed by the fact that rho is saved .5f 
+                    ani = float(p[-7:])      #7 fixed by the fact that rho is saved .5f 
+                    order = compute_order(f[k][p],Phi,float(gamma),rho,ani,A_M,M_transf,2)
+                    data[gamma][i] = np.array([rho,ani,order])
+    colors = np.array(['k','y','b','orange','r'])
     for gamma in data.keys():
+        ccc = np.asarray(data[gamma][:,2],dtype=int)
         plt.figure()
-        plt.scatter(data[gamma][:,0],data[gamma][:,1],color=colors[int(data[gamma][:,2])],marker='o')
+        plt.scatter(data[gamma][:,0],data[gamma][:,1],color=colors[ccc],marker='o')
         plt.xlabel('rho')
         plt.ylabel('anisotropy')
         plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" and gamma = "+gamma)
-        plt.savefig(get_fig_pd_fn(moire_type,moire_pars,gridx,gridy,gamma,machine))
+        plt.savefig(get_fig_pd_fn(moire_type,moire_pars,gx,gy,gamma,machine))
         plt.close()
 
 

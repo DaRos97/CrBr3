@@ -7,7 +7,7 @@ from pathlib import Path
 Here we mainly change fns and dns in order to compute the phase diagram at various anisotropy/rho.
 """
 
-Full = False     #determines precision of calculation
+Full = True     #determines precision of calculation
 machine = fs.get_machine(os.getcwd())
 
 type_computation = 'MP' if machine=='loc' else sys.argv[2]
@@ -59,8 +59,7 @@ if not Path(solution_fn).is_file():
             'disp':             machine=='loc',
             }
     phi = fs.compute_solution(args_minimization)
-    if not machine == 'loc':
-        np.save(solution_fn,phi)
+    np.save(solution_fn,phi)
 else:
     print("Already computed")
 

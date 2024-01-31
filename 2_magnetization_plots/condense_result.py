@@ -13,7 +13,9 @@ max_gridsize = 200
 t0 = time()
 machine = fs.get_machine(os.getcwd())
 
-ind = int(sys.argv[1])      #one index every 225 for 15x15 PD
+type_computation = 'MP' if machine=='loc' else sys.argv[2]
+
+ind = int(sys.argv[1])*225      #one index every 225 for 15x15 PD -> like this sys.argv[1] from 0 to 11
 moire_type,moire_pars = fs.get_moire_pars(ind)
 print("Condensing PD for Moire with ",moire_type," strain of args ",moire_pars[moire_type])
 
@@ -29,21 +31,27 @@ with h5py.File(hdf5_fn,'a') as f:
     #List elements in directory
     moire_dn = fs.get_moire_dn(moire_type,moire_pars,gridx,gridy,machine)
     for element in Path(moire_dn).iterdir():
-        print(element)
         gamma_dn = str(element)
         if gamma_dn[len(gamma_dn)-gamma_dn[::-1].index('/'):-7]=='gamma':   #-7 fixed by the fact that gamma is saved .4f
-            gamma = gamma_dn[-6:]                                    #also here
-            if gamma not in f.keys():
-                f.create_group(gamma)
+            gamma_gn = gamma_dn[len(gamma_dn)-gamma_dn[::-1].index('/'):]        #gn==group name
+            if gamma_gn not in f.keys():
+                f.create_group(gamma_gn)
             for file in Path(gamma_dn+'/').iterdir():
-                print(file)
                 sol = str(file)
-                dataset_name = gamma+'/'+sol[len(sol)-sol[::-1].index('/')+4:-4]
+                dataset_name = gamma_gn+'/'+sol[len(sol)-sol[::-1].index('/')+4:-4]
                 if sol[len(sol)-sol[::-1].index('/'):len(sol)-sol[::-1].index('/')+3]=='sol' and dataset_name not in f.keys():
                     f.create_dataset(dataset_name,data=np.load(sol))
 
-#Compute pd figures
-fs.compute_PDs(moire_type,moire_pars,gridx,gridy,machine)
+if type_computation == 'PD':
+    for gamma in [0.,]:        #can be defined each time
+        fs.compute_PDs(moire_type,moire_pars,gridx,gridy,"{:.4f}".format(gamma),machine)
+if type_computation == 'MP':
+    for input_type in ['DFT','exp']:    #can be defined each time
+        rho = fs.rho_phys[input_type]
+        anisotropy = fs.d_phys[input_type]
+        fs.compute_MPs(moire_type,moire_pars,gridx,gridy,"{:.5f}".format(rho),"{:.5f}".format(anisotropy),machine)
+if type_computation == 'A':
+    pass
 
 print('Time taken: ',time()-t0)
 

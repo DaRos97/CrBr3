@@ -6,7 +6,7 @@
 #SBATCH --time=06:00:00
 
 # #SBATCH --partition=debug-cpu
-# #SBATCH --time=00:10:00
+# #SBATCH --time=00:15:00
 
 
 #SBATCH --ntasks=1
@@ -17,4 +17,4 @@
 #SBATCH --output=bash_scripts/out.out
 #SBATCH --error=bash_scripts/out.err
 
-srun $HOME/2_magnetization_plots/bash_scripts/qjob.qsub $SLURM_ARRAY_TASK_ID
+srun $HOME/2_magnetization_plots/bash_scripts/qjob.qsub $SLURM_ARRAY_TASK_ID $2

@@ -1,11 +1,11 @@
 #!/bin/bash
 
-SCRATCH_DIR=$HOME/scratch/mp/
-OUTPUT_FILE=mp_${1}.out
-ERROR_FILE=mp_${1}.err
+SCRATCH_DIR=$HOME/scratch/${2}/
+OUTPUT_FILE=${1}.out
+ERROR_FILE=${1}.err
 
 ml load GCCcore/11.2.0 Python/3.9.6
 source $HOME/basEnv/bin/activate
 cd $HOME/2_magnetization_plots/
 
-python solver.py $1 >$SCRATCH_DIR/$OUTPUT_FILE 2> $SCRATCH_DIR/$ERROR_FILE
+python solver.py $1 $2 >$SCRATCH_DIR/$OUTPUT_FILE 2> $SCRATCH_DIR/$ERROR_FILE
