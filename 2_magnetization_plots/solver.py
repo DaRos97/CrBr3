@@ -5,7 +5,7 @@ from pathlib import Path
 
 machine = fs.get_machine(os.getcwd())
 
-type_computation = 'MP' if machine=='loc' else sys.argv[2]
+type_computation = 'CO' if machine=='loc' else sys.argv[2]
 
 pd_size = len(fs.rhos)*len(fs.anis)
 if type_computation == 'PD':
@@ -15,6 +15,14 @@ elif type_computation == 'MP':
     input_type,moire_type,moire_pars,gamma = fs.get_MP_pars(int(sys.argv[1]))
     rho = fs.rho_phys[input_type]
     anisotropy = fs.d_phys[input_type]
+elif type_computation == 'CO':
+    input_type = 'DFT'
+    rho = fs.rho_phys[input_type]
+    anisotropy = fs.d_phys[input_type]
+    gamma = fs.gammas[int(sys.argv[1])]
+    moire_type = 'none'
+    moire_pars = {}
+    moire_pars[moire_type] = {'l':0,}
 
 print("Computing with Moire with ",moire_type," strain of ",moire_pars[moire_type])
 print("Physical parameters are gamma: ","{:.4f}".format(gamma),", rho: ","{:.4f}".format(rho),", anisotropy: ","{:.4f}".format(anisotropy))
@@ -34,16 +42,18 @@ if not Path(Phi_fn).is_file():
 #Try a couple of times to load Phi since sometimes it does not work
 try:
     Phi = np.load(Phi_fn)
+    a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
 except:
     print("Phi failed to load the first time")
     try:
         Phi = np.load(Phi_fn)
+        a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
     except:
         print("Phi failed to load the second time")
         print("Trying last time if not goes to error")
         Phi = np.load(Phi_fn)
+        a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
 
-a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
 gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
 precision_pars = (gridx,gridy,LR,AV)
 
@@ -51,7 +61,7 @@ print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.
 print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
 print("Grid size: ",gridx,gridy)
 
-if 0 and machine =='loc':
+if 1 and machine =='loc':
     exit()
 #Compute Phi over new grid parameters
 Phi = fs.reshape_Phi(Phi,gridx,gridy)

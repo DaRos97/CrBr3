@@ -21,6 +21,15 @@ type_computation = 'PD' if machine=='loc' else sys.argv[2]
 
 ind = int(sys.argv[1])      #one index every 225 for 15x15 PD -> like this sys.argv[1] from 0 to 11
 moire_type,moire_pars = fs.get_moire_pars(ind)
+if type_computation == 'CO':
+    input_type = 'DFT'
+    rho = fs.rho_phys[input_type]
+    anisotropy = fs.d_phys[input_type]
+    gamma = fs.gammas[int(sys.argv[1])]
+    moire_type = 'none'
+    moire_pars = {}
+    moire_pars[moire_type] = {'l':0,}
+
 print("Condensing PD for Moire with ",moire_type," strain of args ",moire_pars[moire_type])
 
 Phi_fn = fs.get_Phi_fn(moire_type,moire_pars,machine)
@@ -50,7 +59,7 @@ with h5py.File(hdf5_fn,'a') as f:
 if type_computation == 'PD':
     for gamma in [0.,]:        #can be defined each time
         fs.compute_PDs(moire_type,moire_pars,precision_pars,"{:.4f}".format(gamma),machine)
-if type_computation == 'MP':
+if type_computation in ['CO','MP']:
     for input_type in ['DFT','exp']:    #can be defined each time
         rho = fs.rho_phys[input_type]
         anisotropy = fs.d_phys[input_type]

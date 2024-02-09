@@ -911,7 +911,13 @@ def Moire(args):
     big_I = extend(I,5)
     S_array = np.linspace(-2,3,5*pts,endpoint=False)
     fun_I = RBS(S_array,S_array,big_I)
-
+    if moire_type == 'none':
+        J = np.ones((xpts,ypts))*fun_I(0,0.5)
+        a1_m = a1
+        a2_m = a2
+        np.save(moire_potential_fn,J)
+        np.save(get_AM_fn(moire_type,moire_pars,machine),np.array([a1_m,a2_m]))
+        return 0
     #Lattice-1 and lattice-2
     l1_t,l2_t,a1_t,a2_t = compute_lattices(moire_type,moire_pars)
     if a1_t[0]>a2_t[0]:
