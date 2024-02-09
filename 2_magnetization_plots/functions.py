@@ -1194,10 +1194,8 @@ def compute_PDs(moire_type,moire_pars,precision_pars,gamma_str,machine):
         r_e = rho_phys['exp']
         d_d = d_phys['DFT']
         d_e = d_phys['exp']
-        plt.hlines(d_e,r_d,r_e,color='b')
-        plt.hlines(d_d,r_d,r_e,color='b')
-        plt.vlines(r_e,d_e,d_d,color='b')
-        plt.vlines(r_d,d_e,d_d,color='b')
+        plt.hlines([d_e,d_d],r_d,r_e,color='k',linestyles='dashed',zorder=-1)
+        plt.vlines([r_e,r_d],d_e,d_d,color='k',linestyles='dashed',zorder=-1)
         plt.xticks([rhos[0],r_d,r_e,rhos[-1]] ,['1.1',r'$\rho_{DFT}$',r'$\rho_{exp}$','2'])
         plt.yticks([anis[0],d_e,d_d,anis[-1]] ,['0',r'$d_{exp}$',r'$d_{DFT}$','0.27'])
         plt.xlabel('rho')
