@@ -12,6 +12,9 @@ import h5py
 #Physical parameters
 rho_phys = {'DFT':1.4,'exp':1.7} #     (meV)      
 d_phys = {'DFT':0.18,'exp':0.09} #     (meV)       
+gammas = np.linspace(0,3,100,endpoint=False)
+rhos = np.linspace(1.1,2,13)
+anis = np.linspace(0,0.27,13)
 
 #Triangular lattice
 a1 = np.array([1,0])
@@ -118,12 +121,12 @@ def compute_solution(args_m):
         lr = args_m['learn_rate']
         keep_going = True
         while keep_going:
-            learn_rate = lr*random.random()
+            learn_rate = lr #*random.random()
             #Energy gradients
             dHs = grad_H(phi,'s',Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
             dHa = grad_H(phi,'a',Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
             for lr_i in range(20):
-                learn_rate = lr/(2**lr_i)
+                learn_rate /= 2 #lr/(2**lr_i)
                 if abs(learn_rate) < 1e-7:
                     keep_going = False
                     break
@@ -153,8 +156,8 @@ def compute_solution(args_m):
             step += 1
         if args_m['disp']:
             print("Minimum energy at ",E[0])
-            plot_magnetization(phi,Phi,A_M,"temp with energy "+"{:.4f}".format(E[0]))
-            plot_phis(phi,A_M,'phi_s and phi_a')
+            plot_magnetization(phi,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(E[0]))
+            plot_phis(phi,A_M,'Solution of phi_s (left) and phi_a (right)')
     return result
 
 def compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
@@ -439,11 +442,11 @@ def dist_xy(x,y):
 
 def inside_UC(a,b,mi,qi,a1_m,a2_m,a12_m):
     x = np.array([a,b])
-    if dist_xy(x,a2_m)<=np.linalg.norm(x) and dist_xy(x,a2_m)<=dist_xy(x,a12_m):
+    if dist_xy(x,a2_m)<np.linalg.norm(x) and dist_xy(x,a2_m)<dist_xy(x,a12_m):
         return a-a2_m[0],b-a2_m[1]
-    elif dist_xy(x,a1_m)<=np.linalg.norm(x) and dist_xy(x,a1_m)<=dist_xy(x,a12_m):
+    elif dist_xy(x,a1_m)<np.linalg.norm(x) and dist_xy(x,a1_m)<dist_xy(x,a12_m):
         return a-a1_m[0],b-a1_m[1]
-    elif dist_xy(x,a12_m)<=np.linalg.norm(x):
+    elif dist_xy(x,a12_m)<np.linalg.norm(x):
         return a-a1_m[0]-a2_m[0],b-a1_m[1]-a2_m[1]
     else:
         return a,b
@@ -538,7 +541,7 @@ def plot_magnetization(phi,Phi,A_M,title=''):
     x_i,args_i = get_BZ_args(a1_m,a2_m,a12_m)
     mi,qi = get_l_args(args_i)
     #Arrows parameters
-    l = np.linalg.norm(a1_m)/40#0.02       #length of arrow
+    l = np.linalg.norm(a1_m)/40 if np.linalg.norm(a1_m)>np.linalg.norm(a2_m) else np.linalg.norm(a2_m)/40#0.02       #length of arrow
     hw = l/2#0.01       #arrow head width
     hl = l/2#0.01       #arrow head length
     facx = gx//20     #plot 1 spin every "fac" of grid
@@ -551,6 +554,7 @@ def plot_magnetization(phi,Phi,A_M,title=''):
         ax.set_aspect(1.)
         ax.contour(A1,A2,big_Phi.T,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(1,))
         surf = ax.contourf(A1,A2,big_Phi.T,levels=20)
+        plt.colorbar(surf)
         ax.arrow(0,0,a1_m[0],a1_m[1])
         ax.arrow(0,0,a2_m[0],a2_m[1])
         #Box unit cell
@@ -678,12 +682,12 @@ def get_fig_dn(machine):
     """
     return get_res_dn(machine)+'figures/'
 
-def get_fig_pd_fn(moire_type,moire_pars,gx,gy,gamma,machine):
-    moire_dn = get_moire_dn(moire_type,moire_pars,gx,gy,machine)[:-1]
+def get_fig_pd_fn(moire_type,moire_pars,precision_pars,gamma,machine):
+    moire_dn = get_moire_dn(moire_type,moire_pars,precision_pars,machine)[:-1]
     return get_fig_dn(machine) + 'PD_' + moire_dn[len(moire_dn)-moire_dn[::-1].index('/'):] +'_'+gamma+'.png'
 
-def get_fig_mp_fn(moire_type,moire_pars,gx,gy,rho,ani,machine):
-    moire_dn = get_moire_dn(moire_type,moire_pars,gx,gy,machine)[:-1]
+def get_fig_mp_fn(moire_type,moire_pars,precision_pars,rho,ani,machine):
+    moire_dn = get_moire_dn(moire_type,moire_pars,precision_pars,machine)[:-1]
     return get_fig_dn(machine) + 'MP_' + moire_dn[len(moire_dn)-moire_dn[::-1].index('/'):] +'_'+rho+'_'+ani+'.png'
 
 def get_hdf5_dn(machine):
@@ -701,8 +705,8 @@ def get_hdf5_dn(machine):
     """
     return get_res_dn(machine)+'hdf5/'
 
-def get_hdf5_fn(moire_type,moire_pars,gx,gy,machine):
-    moire_dn = get_moire_dn(moire_type,moire_pars,gx,gy,machine)[:-1]
+def get_hdf5_fn(moire_type,moire_pars,precision_pars,machine):
+    moire_dn = get_moire_dn(moire_type,moire_pars,precision_pars,machine)[:-1]
     return get_hdf5_dn(machine) + moire_dn[len(moire_dn)-moire_dn[::-1].index('/'):] + '.hdf5'
 
 def get_pd_dn(machine):
@@ -720,13 +724,14 @@ def get_pd_dn(machine):
     """
     return get_res_dn(machine) +'phase_diagrams_data/'
 
-def get_moire_dn(moire_type,moire_pars,gx,gy,machine):
-    return get_pd_dn(machine) + moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'_'+str(gx)+'x'+str(gy)+'/'
+def get_moire_dn(moire_type,moire_pars,precision_pars,machine):
+    gx,gy,LR,AV = precision_pars
+    return get_pd_dn(machine) + moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'_'+str(gx)+'x'+str(gy)+'_'+"{:.4f}".format(LR)+'_'+str(AV)+'/'
 
-def get_gamma_dn(moire_type,moire_pars,gx,gy,gamma,machine):
-    return get_moire_dn(moire_type,moire_pars,gx,gy,machine) + 'gamma_'+"{:.4f}".format(gamma)+'/'
+def get_gamma_dn(moire_type,moire_pars,precision_pars,gamma,machine):
+    return get_moire_dn(moire_type,moire_pars,precision_pars,machine) + 'gamma_'+"{:.4f}".format(gamma)+'/'
 
-def get_sol_fn(moire_type,moire_pars,gx,gy,gamma,rho,anisotropy,machine):
+def get_sol_fn(moire_type,moire_pars,precision_pars,gamma,rho,anisotropy,machine):
     """Computes the filename of the interlayer coupling.
 
     Parameters
@@ -739,7 +744,7 @@ def get_sol_fn(moire_type,moire_pars,gx,gy,gamma,rho,anisotropy,machine):
     string
         The name of the .npy file containing the interlayer coupling.
     """
-    return get_gamma_dn(moire_type,moire_pars,gx,gy,gamma,machine)+'sol_'+"{:.5f}".format(rho)+'_'+"{:.5f}".format(anisotropy)+'.npy'
+    return get_gamma_dn(moire_type,moire_pars,precision_pars,gamma,machine)+'sol_'+"{:.5f}".format(rho)+'_'+"{:.5f}".format(anisotropy)+'.npy'
 
 def get_Phi_dn(machine):
     """Computes the directory name where to save the interlayer potential.
@@ -986,7 +991,6 @@ def get_MP_pars(ind):
     lep = len(epss)
     nis = [1.,0.7,0.5,0.3]
     lni = len(nis)
-    gammas = np.linspace(0,3,100,endpoint=False)
     lga = len(gammas)
     #
     iit = ind//(lep*lni*lga)
@@ -1053,9 +1057,6 @@ def get_moire_pars(ind):
     return (moire_types[imt],moire_pars)
 
 def get_phys_pars(ind):
-    gammas = np.linspace(0,3,100,endpoint=False)
-    rhos = np.linspace(1,3,15)
-    anis = np.linspace(0,0.4,15)
     lg = len(gammas)
     lr = len(rhos)
     la = len(anis)
@@ -1064,17 +1065,17 @@ def get_phys_pars(ind):
     ia = (ind%(lr*la)) % la
     return (gammas[ig],rhos[ir],anis[ia])
 
-def check_directory(moire_type,moire_pars,gx,gy,gamma,machine):
+def check_directory(moire_type,moire_pars,precision_pars,gamma,machine):
     #Phase diagrams dir
     pd_dn = get_pd_dn(machine)
     if not Path(pd_dn).is_dir():
         os.system('mkdir '+pd_dn)
     #Moire dir
-    moire_dn = get_moire_dn(moire_type,moire_pars,gx,gy,machine)
+    moire_dn = get_moire_dn(moire_type,moire_pars,precision_pars,machine)
     if not Path(moire_dn).is_dir():
         os.system('mkdir '+moire_dn)
     #gamma dir -> contains the actual .npy results
-    gamma_dn = get_gamma_dn(moire_type,moire_pars,gx,gy,gamma,machine)
+    gamma_dn = get_gamma_dn(moire_type,moire_pars,precision_pars,gamma,machine)
     if not Path(gamma_dn).is_dir():
         os.system('mkdir '+gamma_dn)
     #hdf5 dir
@@ -1107,12 +1108,12 @@ def compute_magnetization(phi):
     total_magnetization = np.sum(np.cos(phi_1))/gx/gy + np.sum(np.cos(phi_2))/gx/gy
     return total_magnetization
 
-def compute_MPs(moire_type,moire_pars,gx,gy,rho_str,ani_str,machine):
+def compute_MPs(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine):
     """Compute the magnetization plot.
 
     """
     #Open and read h5py File
-    hdf5_fn = get_hdf5_fn(moire_type,moire_pars,gx,gy,machine)
+    hdf5_fn = get_hdf5_fn(moire_type,moire_pars,precision_pars,machine)
     data = []
     n = 0
     with h5py.File(hdf5_fn,'r') as f:
@@ -1134,8 +1135,11 @@ def compute_MPs(moire_type,moire_pars,gx,gy,rho_str,ani_str,machine):
     plt.plot(M[:,0],M[:,1],'r*-')
     plt.xlabel(r'$\gamma$',size=s_)
     plt.ylabel(r'$M$',size=s_)
-    plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" rho = "+rho_str+", d = "+ani_str)
-    plt.savefig(get_fig_mp_fn(moire_type,moire_pars,gx,gy,rho_str,ani_str,machine))
+    plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" rho = "+rho_str+", d = "+ani_str+", and precision pars: ",precision_pars) 
+    if machine == 'loc':
+        plt.show()
+        exit()
+    plt.savefig(get_fig_mp_fn(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine))
     plt.close()
 
 def compute_order(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
@@ -1157,11 +1161,12 @@ def compute_order(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
         col = 4
     return col
 
-def compute_PDs(moire_type,moire_pars,gx,gy,gamma_str,machine):
+def compute_PDs(moire_type,moire_pars,precision_pars,gamma_str,machine):
     """Compute the magnetization plot.
 
     """
-    hdf5_fn = get_hdf5_fn(moire_type,moire_pars,gx,gy,machine)
+    gx,gy,LR,AV = precision_pars
+    hdf5_fn = get_hdf5_fn(moire_type,moire_pars,precision_pars,machine)
     Phi_fn = get_Phi_fn(moire_type,moire_pars,machine)
     Phi = reshape_Phi(np.load(get_Phi_fn(moire_type,moire_pars,machine)),gx,gy)
     A_M = np.load(get_AM_fn(moire_type,moire_pars,machine))
@@ -1197,10 +1202,11 @@ def compute_PDs(moire_type,moire_pars,gx,gy,gamma_str,machine):
         plt.yticks([0,d_e,d_d,0.4] ,['0',r'$d_{exp}$',r'$d_{DFT}$','0.4'])
         plt.xlabel('rho')
         plt.ylabel('anisotropy')
-        plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" and gamma = "+gamma)
-        plt.show()
-        exit()
-        plt.savefig(get_fig_pd_fn(moire_type,moire_pars,gx,gy,gamma,machine))
+        plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+", gamma = "+gamma+", and precision pars: ",precision_pars)
+        if machine == 'loc':
+            plt.show()
+            exit()
+        plt.savefig(get_fig_pd_fn(moire_type,moire_pars,precision_pars,gamma,machine))
         plt.close()
 
 
