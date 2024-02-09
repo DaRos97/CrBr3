@@ -5,7 +5,7 @@ from pathlib import Path
 
 machine = fs.get_machine(os.getcwd())
 
-type_computation = 'CO' if machine=='loc' else sys.argv[2]
+type_computation = 'PD' if machine=='loc' else sys.argv[2]
 
 pd_size = len(fs.rhos)*len(fs.anis)
 if type_computation == 'PD':
@@ -26,6 +26,7 @@ elif type_computation == 'CO':
 
 print("Computing with Moire with ",moire_type," strain of ",moire_pars[moire_type])
 print("Physical parameters are gamma: ","{:.4f}".format(gamma),", rho: ","{:.4f}".format(rho),", anisotropy: ","{:.4f}".format(anisotropy))
+
 
 ##############################################################################
 max_grid = 200

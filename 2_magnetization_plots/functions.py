@@ -135,7 +135,6 @@ def compute_solution(args_m):
                 LR /= 2**lr_i
                 if abs(LR) < 1e-7:
                     keep_going = False
-                    print("Too low")
                     break
                 #Update phi
                 phi[0] += LR*dHs
@@ -143,7 +142,6 @@ def compute_solution(args_m):
                 temp_E = compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
                 if temp_E < E[0]:
                     E.insert(0,temp_E)
-                    print(lr_i)
                     break
                 else:
                     phi[0] -= LR*dHs
@@ -796,21 +794,6 @@ def get_AM_fn(moire_type,moire_pars,machine):
     """
     return get_Phi_dn(machine) + 'AM_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'.npy'
 
-def get_ll_fn(moire_type,moire_pars,machine):
-    """Computes the filename of the interlayer coupling.
-
-    Parameters
-    ----------
-    cluster: bool, optional
-        Wether we are in the cluster or not (default is 'loc').
-
-    Returns
-    -------
-    string
-        The name of the .npy file containing the interlayer coupling.
-    """
-    return get_Phi_dn(machine) + 'lattices_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'.npy'
-
 def moire_pars_fn(dic):
     """Generates a filename with the parameters formatted accordingly and a given extension.
 
@@ -992,7 +975,6 @@ def Moire(args):
         os.system('mkdir '+Phi_dn)
     np.save(moire_potential_fn,J)
     np.save(get_AM_fn(moire_type,moire_pars,machine),np.array([a1_m,a2_m]))
-    np.save(get_ll_fn(moire_type,moire_pars,machine),np.array([l1,l2]))
 
 def get_MP_pars(ind):
     input_types = ['DFT','exp']

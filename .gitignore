@@ -1,7 +1,12 @@
 __pycache__/
 /*/__pycache__/
 /*/*/__pycache__/
-/*/results*/
+
+1_initial_pd/results/
 /*/Fit*/
 
 Experiments/
+2_magnetization_plots/results/phase_diagrams_data/
+2_magnetization_plots/results/figures/
+2_magnetization_plots/results/hdf5/
+2_magnetization_plots/results/*0*/
