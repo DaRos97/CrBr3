@@ -7,9 +7,10 @@ machine = fs.get_machine(os.getcwd())
 
 type_computation = 'MP' if machine=='loc' else sys.argv[2]
 
+pd_size = len(fs.rhos)*len(fs.anis)
 if type_computation == 'PD':
-    moire_type,moire_pars = fs.get_moire_pars(int(sys.argv[1])//225)        #for 15*15 PD
-    gamma,rho,anisotropy = fs.get_phys_pars(int(sys.argv[1])%225)          
+    moire_type,moire_pars = fs.get_moire_pars(int(sys.argv[1])//pd_size)        #for 15*15 PD
+    gamma,rho,anisotropy = fs.get_phys_pars(int(sys.argv[1])%pd_size)          
 elif type_computation == 'MP':
     input_type,moire_type,moire_pars,gamma = fs.get_MP_pars(int(sys.argv[1]))
     rho = fs.rho_phys[input_type]
@@ -24,12 +25,13 @@ if not Path(Phi_fn).is_file():
     print("Computing interlayer coupling...")
     args_Moire = (machine=='loc',moire_type,moire_pars)
     fs.Moire(args_Moire)
+
 Phi = np.load(Phi_fn)
 a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
 ###########################
 max_grid = 200
-LR = -1e-2
-AV = 2
+LR = -1e-1
+AV = 3
 ###########################
 gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
 precision_pars = (gridx,gridy,LR,AV)

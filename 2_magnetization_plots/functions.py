@@ -15,7 +15,7 @@ d_phys = {'DFT':0.18,'exp':0.09} #     (meV)
 gammas = np.linspace(0,3,100,endpoint=False)
 rhos = np.linspace(1.1,2,13)
 anis = np.linspace(0,0.27,13)
-epss = [0.1,0.05,0.04,0.03,0.02,0.01]
+epss = [0.05,0.04,0.03,0.02,0.01]
 nis = [1.,0.7,0.5,0.3]
 
 #Triangular lattice

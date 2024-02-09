@@ -25,6 +25,7 @@ results/phase_diagram_data/moire_specs(type,eps,ni,gx,gy)/gamma/ one directory f
     2 - PD, e=0.1, ni=1, max_grid=200 and 300, lr = -1e-2, rg=2.
     2 - PD, e=0.1, ni=0.7, max_grid=200 and 300, lr = -1e-2, rg=3.
     - PDs of e=0.1 & 0.05, ni=1 &0.7 for precision: 200,-1e-1,1    
+    - MP (DFT), e=0.1 & 0.05 & 0.04, ni=1, precision: 200,-1e-1,3
 ## Ygg
     0 - DFT/exp, uniaxial, all e and n, max_grid = 200, in_pt = 2, gamma from 0 to 3 (100 pts) -> lr -1e-2
     1 - PD 15x15 for all e-n, gamma = 0. Full=True -> too long to get resources -> only e=0.1 with many missing
@@ -32,15 +33,21 @@ results/phase_diagram_data/moire_specs(type,eps,ni,gx,gy)/gamma/ one directory f
     - PDs of e=0.1 & 0.05, ni=1 &0.7 for precision: 300,-1e-1,1
     - PDs of e=0.1 & 0.05, ni=1 &0.7 for precision: 300,-1e-1,2
     - PDs of e=0.1 & 0.05, ni=1 &0.7 for precision: 200,-1e-1,3
-
-# Computing
-## Bao
-    - MP (DFT), e=0.1 & 0.05 & 0.04, ni=1, precision: 200,-1e-1,1
-## Ygg
+    - MP (DFT), e=0.1 & 0.05 & 0.04, ni=1, precision: 200,-1e-1,3
     - PDs of e=0.1 & 0.05, ni=1 &0.7 for precision: 300,-1e-1,3
     - PDs of e=0.1 & 0.05, ni=1 &0.7 for precision: 400,-1e-1,1
     - PDs of e=0.1 & 0.05, ni=1 &0.7 for precision: 400,-1e-1,2
     - PDs of e=0.1 & 0.05, ni=1 &0.7 for precision: 400,-1e-1,3
+
+# Computing
+## Bao
+## Ygg
+    - CO (DFT), precision: 200,-1e-1,1
+    - CO (DFT), precision: 200,-1e-1,2
+    - PD of e=0.04 & 0.03, ni=1 &0.7 for precision: 200,1
+    - PD of e=0.04 & 0.03, ni=1 &0.7 for precision: 200,2
+    - PD of e=0.04 & 0.03, ni=1 &0.7 for precision: 300,1
+    - PD of e=0.04 & 0.03, ni=1 &0.7 for precision: 300,2
 
 # Problems
 
