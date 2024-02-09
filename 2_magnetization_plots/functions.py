@@ -1135,7 +1135,7 @@ def compute_MPs(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine):
     plt.plot(M[:,0],M[:,1],'r*-')
     plt.xlabel(r'$\gamma$',size=s_)
     plt.ylabel(r'$M$',size=s_)
-    plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" rho = "+rho_str+", d = "+ani_str+", and precision pars: ",precision_pars) 
+    plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" rho = "+rho_str+", d = "+ani_str+", and precision pars: "+str(precision_pars[0])+'x'+str(precision_pars[1])+'_'+"{:.4f}".format(precision_pars[2])+'_'+str(precision_pars[3])) 
     if machine == 'loc':
         plt.show()
         exit()
@@ -1198,11 +1198,11 @@ def compute_PDs(moire_type,moire_pars,precision_pars,gamma_str,machine):
         plt.hlines(d_d,r_d,r_e,color='b')
         plt.vlines(r_e,d_e,d_d,color='b')
         plt.vlines(r_d,d_e,d_d,color='b')
-        plt.xticks([1,r_d,r_e,3] ,['1',r'$\rho_{DFT}$',r'$\rho_{exp}$','3'])
-        plt.yticks([0,d_e,d_d,0.4] ,['0',r'$d_{exp}$',r'$d_{DFT}$','0.4'])
+        plt.xticks([rhos[0],r_d,r_e,rhos[-1]] ,['1.1',r'$\rho_{DFT}$',r'$\rho_{exp}$','2'])
+        plt.yticks([anis[0],d_e,d_d,anis[-1]] ,['0',r'$d_{exp}$',r'$d_{DFT}$','0.27'])
         plt.xlabel('rho')
         plt.ylabel('anisotropy')
-        plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+", gamma = "+gamma+", and precision pars: ",precision_pars)
+        plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+", gamma = "+gamma+", and precision pars: "+str(precision_pars[0])+'x'+str(precision_pars[1])+'_'+"{:.4f}".format(precision_pars[2])+'_'+str(precision_pars[3]))
         if machine == 'loc':
             plt.show()
             exit()

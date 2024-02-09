@@ -5,7 +5,7 @@ from pathlib import Path
 
 machine = fs.get_machine(os.getcwd())
 
-type_computation = 'PD' if machine=='loc' else sys.argv[2]
+type_computation = 'MP' if machine=='loc' else sys.argv[2]
 
 pd_size = len(fs.rhos)*len(fs.anis)
 if type_computation == 'PD':
@@ -31,7 +31,18 @@ if not Path(Phi_fn).is_file():
     print("Computing interlayer coupling...")
     args_Moire = (machine=='loc',moire_type,moire_pars)
     fs.Moire(args_Moire)
-Phi = np.load(Phi_fn)
+#Try a couple of times to load Phi since sometimes it does not work
+try:
+    Phi = np.load(Phi_fn)
+except:
+    print("Phi failed to load the first time")
+    try:
+        Phi = np.load(Phi_fn)
+    except:
+        print("Phi failed to load the second time")
+        print("Trying last time if not goes to error")
+        Phi = np.load(Phi_fn)
+
 a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
 gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
 precision_pars = (gridx,gridy,LR,AV)
@@ -40,6 +51,8 @@ print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.
 print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
 print("Grid size: ",gridx,gridy)
 
+if 0 and machine =='loc':
+    exit()
 #Compute Phi over new grid parameters
 Phi = fs.reshape_Phi(Phi,gridx,gridy)
 
