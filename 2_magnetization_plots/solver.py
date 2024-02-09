@@ -29,8 +29,8 @@ print("Physical parameters are gamma: ","{:.4f}".format(gamma),", rho: ","{:.4f}
 
 ##############################################################################
 max_grid = 200
-LR = -1e-2
-AV = 2
+LR = -1e-1
+AV = 1
 ##############################################################################
 
 #Check if Phi already computed
@@ -61,7 +61,7 @@ print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.
 print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
 print("Grid size: ",gridx,gridy)
 
-if 1 and machine =='loc':
+if 0 and machine =='loc':
     exit()
 #Compute Phi over new grid parameters
 Phi = fs.reshape_Phi(Phi,gridx,gridy)
@@ -78,10 +78,11 @@ if not Path(solution_fn).is_file():
             'grid':             (gridx,gridy),
             'learn_rate':       LR,                      #Needs to be negative
             'pts_per_fit':      AV,                          #Maybe can be related to gridx/gridy
-            'n_initial_pts':    2,                         #64 fixed initial states: n*pi/2 (s and a, n=0..7) + 36 random states
+            'n_initial_pts':    6,                         #three solution initial states, 4 fixed initial states and n-4 random states
             'maxiter':          1e5, 
             'machine':          machine, 
             'disp':             machine=='loc',
+            'type_comp':        type_computation,
             }
     phi = fs.compute_solution(args_minimization)
     np.save(solution_fn,phi)

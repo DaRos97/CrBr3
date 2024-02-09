@@ -15,6 +15,8 @@ d_phys = {'DFT':0.18,'exp':0.09} #     (meV)
 gammas = np.linspace(0,3,100,endpoint=False)
 rhos = np.linspace(1.1,2,13)
 anis = np.linspace(0,0.27,13)
+epss = [0.1,0.05,0.04,0.03,0.02,0.01]
+nis = [1.,0.7,0.5,0.3]
 
 #Triangular lattice
 a1 = np.array([1,0])
@@ -101,45 +103,51 @@ def compute_solution(args_m):
     rg = args_m['pts_per_fit']
     #Variables for storing best solution
     min_E = 1e10
-    result = np.zeros((2,gx,gy))
-    for ind_in_pt in range(-3,args_m['n_initial_pts']):
-        E = []  #list of energies for the while loop
+    result = np.zeros((1,gx,gy))
+    initial_index = 0 if args_m['type_comp']=='CO' else -3
+    for ind_in_pt in range(initial_index,args_m['n_initial_pts']):
         if args_m['disp']:
             print("Starting minimization step ",str(ind_in_pt))
         #Initial condition
         if ind_in_pt < 0:
             phi = custom_in_pt[ind_in_pt+3](Phi,gx,gy)
-        else:
-            list_ff = ((0,0),(0.25,0.25))
+        elif ind_in_pt < 4:
+            list_ff = ((0,0),(0.5,0.5),(0.5,0),(0,0.5))
             fs,fa = list_ff[ind_in_pt]
             phi = const_in_pt(fs,fa,gx,gy)
-        E.append(compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg))
+        else:
+            fs = random.random()
+            fa = random.random()
+            phi = const_in_pt(fs,fa,gx,gy)
+        E = [compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg), ]
         if args_m['disp']:
             plot_magnetization(phi,Phi,A_M,"initial condition "+"{:.4f}".format(E[0]))
         #Initiate learning rate and minimization loop
         step = 1        #initial step
-        lr = args_m['learn_rate']
+        LR = args_m['learn_rate']
         keep_going = True
         while keep_going:
-            learn_rate = lr #*random.random()
+            LR *= 2
             #Energy gradients
             dHs = grad_H(phi,'s',Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
             dHa = grad_H(phi,'a',Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
             for lr_i in range(20):
-                learn_rate /= 2 #lr/(2**lr_i)
-                if abs(learn_rate) < 1e-7:
+                LR /= 2**lr_i
+                if abs(LR) < 1e-7:
                     keep_going = False
+                    print("Too low")
                     break
                 #Update phi
-                phi[0] += learn_rate*dHs
-                phi[1] += learn_rate*dHa
+                phi[0] += LR*dHs
+                phi[1] += LR*dHa
                 temp_E = compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
                 if temp_E < E[0]:
                     E.insert(0,temp_E)
+                    print(lr_i)
                     break
                 else:
-                    phi[0] -= learn_rate*dHs
-                    phi[1] -= learn_rate*dHa
+                    phi[0] -= LR*dHs
+                    phi[1] -= LR*dHa
             if args_m['disp']:
                 print("energy step ",step," is ","{:.9f}".format(E[0])," with dH = ","{:.3f}".format(np.sum(np.absolute(dHa)+np.absolute(dHs))))
             if check_energies(E):   #stable energy
@@ -148,16 +156,13 @@ def compute_solution(args_m):
                     result = np.copy(phi)
                 break
             if step > args_m['maxiter']:
-                if ind_in_pt == 0:    #If this happens for the first minimization step, save a clearly fake one for later comparison
-                    min_E = 1e8
-                    result[0] = np.ones((gridx,gridy))*20
-                    result[1] = np.ones((gridx,gridy))*20
                 break
             step += 1
         if args_m['disp']:
             print("Minimum energy at ",E[0])
-            plot_magnetization(phi,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(E[0]))
-            plot_phis(phi,A_M,'Solution of phi_s (left) and phi_a (right)')
+            if 0:
+                plot_magnetization(phi,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(E[0]))
+                plot_phis(phi,A_M,'Solution of phi_s (left) and phi_a (right)')
     return result
 
 def compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
@@ -993,9 +998,7 @@ def get_MP_pars(ind):
     input_types = ['DFT','exp']
     moire_types = ['uniaxial','biaxial','shear']
     #
-    epss = [0.1,0.05,0.04]
     lep = len(epss)
-    nis = [1.,0.7,0.5,0.3]
     lni = len(nis)
     lga = len(gammas)
     #
@@ -1031,9 +1034,7 @@ def get_MP_pars(ind):
 def get_moire_pars(ind):
     moire_types = ['uniaxial','biaxial','shear']
     #
-    epss = [0.1,0.05,0.04]
     lep = len(epss)
-    nis = [1.,0.7,0.5,0.3]
     lni = len(nis)
     #
     imt = 0

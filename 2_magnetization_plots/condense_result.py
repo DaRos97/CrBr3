@@ -11,8 +11,8 @@ For each moire dir create a new hdf5, which will contain gamma as dir and (rho,a
 """
 
 max_gridsize = 200
-LR = -1e-2
-AV = 2
+LR = -1e-1
+AV = 1
 
 t0 = time()
 machine = fs.get_machine(os.getcwd())
