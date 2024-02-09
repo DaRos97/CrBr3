@@ -3,10 +3,9 @@ import functions as fs
 import sys, os, h5py
 from pathlib import Path
 
-Full = True
 machine = fs.get_machine(os.getcwd())
 
-type_computation = 'PD' if machine=='loc' else sys.argv[2]
+type_computation = 'MP' if machine=='loc' else sys.argv[2]
 
 if type_computation == 'PD':
     moire_type,moire_pars = fs.get_moire_pars(int(sys.argv[1])//225)        #for 15*15 PD
@@ -27,8 +26,13 @@ if not Path(Phi_fn).is_file():
     fs.Moire(args_Moire)
 Phi = np.load(Phi_fn)
 a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
-max_grid = 200 if Full else 100
+###########################
+max_grid = 200
+LR = -1e-2
+AV = 2
+###########################
 gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
+precision_pars = (gridx,gridy,LR,AV)
 
 print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.norm(a2_m))
 print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
@@ -38,7 +42,7 @@ print("Grid size: ",gridx,gridy)
 Phi = fs.reshape_Phi(Phi,gridx,gridy)
 
 #Extract solution
-hdf5_fn = fs.get_hdf5_fn(moire_type,moire_pars,gridx,gridy,machine)
+hdf5_fn = fs.get_hdf5_fn(moire_type,moire_pars,precision_pars,machine)
 
 gamma_str = "{:.4f}".format(gamma)
 rho_str = "{:.5f}".format(rho)
@@ -53,7 +57,7 @@ with h5py.File(hdf5_fn,'r') as f:
                 if rho==rho_str and ani==ani_str:
                     solution = np.copy(f[k][p])
                     break
-#fs.plot_magnetization(solution,Phi,(a1_m,a2_m),rho_str+'_'+ani_str)
+fs.plot_magnetization(solution,Phi,(a1_m,a2_m),rho_str+'_'+ani_str)
 fs.plot_phis(solution,(a1_m,a2_m),rho_str+'_'+ani_str)
 
 
