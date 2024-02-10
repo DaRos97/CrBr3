@@ -24,7 +24,7 @@ elif type_computation == 'CO':
     moire_pars = {}
     moire_pars[moire_type] = {'l':0,}
 
-print("Computing with Moire with ",moire_type," strain of ",moire_pars[moire_type])
+print("Computing with Moire with ",moire_type," strain of ",moire_pars[moire_type]," and rotation ",moire_pars['theta'])
 print("Physical parameters are gamma: ","{:.4f}".format(gamma),", rho: ","{:.4f}".format(rho),", anisotropy: ","{:.4f}".format(anisotropy))
 
 
@@ -59,10 +59,11 @@ gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
 precision_pars = (gridx,gridy,LR,AV)
 
 print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.norm(a2_m))
+print("Relative angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m))))
 print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
 print("Grid size: ",gridx,gridy)
 
-if 0 and machine =='loc':
+if 1 and machine =='loc':
     exit()
 #Compute Phi over new grid parameters
 Phi = fs.reshape_Phi(Phi,gridx,gridy)

@@ -17,6 +17,7 @@ rhos = np.linspace(1.1,2,13)
 anis = np.linspace(0,0.27,13)
 epss = [0.05,0.04,0.03,0.02,0.01]
 nis = [1.,0.7,0.5,0.3]
+thetas = 0.
 
 #Triangular lattice
 a1 = np.array([1,0])
@@ -333,6 +334,8 @@ def compute_lattices(moire_type,moire_pars):
             l1[i,j,1] = l1[i,j,0] + offset_sublattice_1
             l2[i,j,0] = (i-n_x//2*A_M)*a1_2+(j-n_y//2*A_M)*a2_2
             l2[i,j,1] = l2[i,j,0] + offset_sublattice_2
+    print("Moire lengths: ",np.linalg.norm(a1_m),' ',np.linalg.norm(a2_m))
+    print("Angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m))))
     return l1,l2,a1_m,a2_m
 
 def find_closest(lattice,site,UC_):
@@ -732,7 +735,7 @@ def get_pd_dn(machine):
 
 def get_moire_dn(moire_type,moire_pars,precision_pars,machine):
     gx,gy,LR,AV = precision_pars
-    return get_pd_dn(machine) + moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'_'+str(gx)+'x'+str(gy)+'_'+"{:.4f}".format(LR)+'_'+str(AV)+'/'
+    return get_pd_dn(machine) + moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'_'+"{:.3f}".format(moire_pars['theta'])+'_'+str(gx)+'x'+str(gy)+'_'+"{:.4f}".format(LR)+'_'+str(AV)+'/'
 
 def get_gamma_dn(moire_type,moire_pars,precision_pars,gamma,machine):
     return get_moire_dn(moire_type,moire_pars,precision_pars,machine) + 'gamma_'+"{:.4f}".format(gamma)+'/'
@@ -780,7 +783,7 @@ def get_Phi_fn(moire_type,moire_pars,machine):
     string
         The name of the .npy file containing the interlayer coupling.
     """
-    return get_Phi_dn(machine) + 'Phi_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'.npy'
+    return get_Phi_dn(machine) + 'Phi_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'_'+"{:.3f}".format(moire_pars['theta'])+'.npy'
 
 def get_AM_fn(moire_type,moire_pars,machine):
     """Computes the filename of the interlayer coupling.
@@ -795,7 +798,7 @@ def get_AM_fn(moire_type,moire_pars,machine):
     string
         The name of the .npy file containing the interlayer coupling.
     """
-    return get_Phi_dn(machine) + 'AM_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'.npy'
+    return get_Phi_dn(machine) + 'AM_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'_'+"{:.3f}".format(moire_pars['theta'])+'.npy'
 
 def moire_pars_fn(dic):
     """Generates a filename with the parameters formatted accordingly and a given extension.
@@ -887,15 +890,6 @@ def Moire(args):
     machine = get_machine(os.getcwd())
     xpts = ypts = 200 #if machine == 'loc' else 400
     moire_potential_fn = get_Phi_fn(moire_type,moire_pars,machine)
-    if Path(moire_potential_fn).is_file():
-        print("Already computed interlayer coupling..")
-        if disp:
-            with h5py.File(moire_potential_fn,'r') as f:
-                J = f['Phi']
-                a1_m = f['a1_m']
-                a2_m = f['a2_m']
-                plot_Phi(J,a1_m,a2_m)
-        return 0
     I = get_dft_data(machine)
     #Interpolate interlayer DFT data
     pts = I.shape[0]
@@ -1010,7 +1004,7 @@ def get_MP_pars(ind):
             'e_xy':0.05,
             'phi':0,
             },
-        'theta':0.,
+        'theta':thetas,
         }
     imt = 0
     print("Computing index ",ind," of ",len(input_types)*lep*lni*lga)
@@ -1044,7 +1038,7 @@ def get_moire_pars(ind):
             'e_xy':0.05,
             'phi':0,
             },
-        'theta':0.,
+        'theta':thetas,
         }
     return (moire_types[imt],moire_pars)
 
@@ -1129,7 +1123,7 @@ def compute_MPs(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine):
     plt.plot(M[:,0],M[:,1],'r*-')
     plt.xlabel(r'$\gamma$',size=s_)
     plt.ylabel(r'$M$',size=s_)
-    plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" rho = "+rho_str+", d = "+ani_str+", and precision pars: "+str(precision_pars[0])+'x'+str(precision_pars[1])+'_'+"{:.4f}".format(precision_pars[2])+'_'+str(precision_pars[3])) 
+    plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" theta: "+"{:.3f}".format(moire_pars['theta'])+" rho = "+rho_str+", d = "+ani_str+", and precision pars: "+str(precision_pars[0])+'x'+str(precision_pars[1])+'_'+"{:.4f}".format(precision_pars[2])+'_'+str(precision_pars[3])) 
     if machine == 'loc':
         plt.show()
         exit()
@@ -1194,7 +1188,7 @@ def compute_PDs(moire_type,moire_pars,precision_pars,gamma_str,machine):
         plt.yticks([anis[0],d_e,d_d,anis[-1]] ,['0',r'$d_{exp}$',r'$d_{DFT}$','0.27'])
         plt.xlabel('rho')
         plt.ylabel('anisotropy')
-        plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+", gamma = "+gamma+", and precision pars: "+str(precision_pars[0])+'x'+str(precision_pars[1])+'_'+"{:.4f}".format(precision_pars[2])+'_'+str(precision_pars[3]))
+        plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" theta: "+"{:.3f}".format(moire_pars['theta'])+", gamma = "+gamma+", and precision pars: "+str(precision_pars[0])+'x'+str(precision_pars[1])+'_'+"{:.4f}".format(precision_pars[2])+'_'+str(precision_pars[3]))
         if machine == 'loc':
             plt.show()
             exit()
