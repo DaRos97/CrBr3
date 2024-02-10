@@ -103,7 +103,7 @@ def compute_solution(args_m):
     rg = args_m['pts_per_fit']
     #Variables for storing best solution
     min_E = 1e10
-    result = np.zeros((1,gx,gy))
+    result = np.ones((2,gx,gy))*20
     initial_index = 0 if args_m['type_comp']=='CO' else -3
     for ind_in_pt in range(initial_index,args_m['n_initial_pts']):
         if args_m['disp']:
@@ -161,6 +161,9 @@ def compute_solution(args_m):
             if 0:
                 plot_magnetization(phi,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(E[0]))
                 plot_phis(phi,A_M,'Solution of phi_s (left) and phi_a (right)')
+    if all(result == np.ones((2,gx,gy))*20):
+        print("Not a single converged solution, they all reached max number of iterations")
+        exit()
     return result
 
 def compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
@@ -1091,6 +1094,8 @@ def compute_magnetization(phi):
         Total magnetization along z of the spin configuration.
     """
     gx,gy = phi[0].shape
+    if phi.shape[0]==1:
+        return np.nan
     #Single layer phases
     phi_1 = (phi[0]+phi[1])/2
     phi_2 = (phi[0]-phi[1])/2
