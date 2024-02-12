@@ -10,9 +10,9 @@ Remember to adjust max_gridsze.
 For each moire dir create a new hdf5, which will contain gamma as dir and (rho,ani) as dataset.
 """
 
-max_gridsize = 200
+max_gridsize = 400
 LR = -1e-1
-AV = 1
+AV = 2
 
 t0 = time()
 machine = fs.get_machine(os.getcwd())

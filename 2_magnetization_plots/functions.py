@@ -162,7 +162,7 @@ def compute_solution(args_m):
             if 0:
                 plot_magnetization(phi,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(E[0]))
                 plot_phis(phi,A_M,'Solution of phi_s (left) and phi_a (right)')
-    if all(result == np.ones((2,gx,gy))*20):
+    if (result == np.ones((2,gx,gy))*20).all():
         print("Not a single converged solution, they all reached max number of iterations")
         exit()
     return result
@@ -622,9 +622,11 @@ def plot_Phi(Phi,a1_m,a2_m,title=''):
     title : string, optional (default = '').
         Plot title.
     """
-    gridx,gridy = Phi.shape
-    lx = np.linspace(0,1,gridx)
-    ly = np.linspace(0,1,gridy)
+    gx,gy = Phi.shape
+    nn = 5
+    lx = np.linspace(-nn//2,nn//2+1,gx*nn)
+    ly = np.linspace(-nn//2,nn//2+1,gy*nn)
+    Phi = extend(Phi,nn)
     X,Y = np.meshgrid(lx,ly)
     A1 = X*a1_m[0] + Y*a2_m[0]
     A2 = X*a1_m[1] + Y*a2_m[1]
@@ -633,8 +635,11 @@ def plot_Phi(Phi,a1_m,a2_m,title=''):
     ax.set_aspect(1.)
     ax.contour(A1.T,A2.T,Phi,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(0.5))
     surf = ax.contourf(A1.T,A2.T,Phi,levels=20)
-    ax.arrow(0,0,a1_m[0],a1_m[1])
-    ax.arrow(0,0,a2_m[0],a2_m[1])
+    ax.arrow(0,0,a1_m[0],a1_m[1],head_width=np.linalg.norm(a1_m)/20,fill=True,edgecolor='k',facecolor='k')
+    ax.arrow(0,0,a2_m[0],a2_m[1],head_width=np.linalg.norm(a2_m)/20,fill=True,edgecolor='k',facecolor='k')
+    ax.set_xlim(a2_m[0]*1.5,a1_m[0]*1.5)
+    ax.set_ylim(max([a1_m[1],a2_m[1]])*1.5,-max([a1_m[1],a2_m[1]])*.5)
+    plt.title(title)
     plt.show()
 
 def extend(phi,nn):
@@ -962,7 +967,8 @@ def Moire(args):
     J = smooth(J,2,(a1_m,a2_m))[0]
     #
     if disp:
-        plot_Phi(J,a1_m,a2_m)
+        title = "Strain type : "+moire_type+" with (eps,ni,phi)=("+"{:.2f}".format(moire_pars[moire_type]['eps'])+','+"{:.2f}".format(moire_pars[moire_type]['ni'])+','+"{:.2f}".format(moire_pars[moire_type]['phi'])+'), and theta='+"{:.3f}".format(moire_pars['theta'])
+        plot_Phi(J,a1_m,a2_m,title)
     #Save
     res_dn = get_res_dn(machine)
     if not Path(res_dn).is_dir():
