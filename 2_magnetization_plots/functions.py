@@ -133,14 +133,9 @@ def compute_solution(args_m):
             dHs = grad_H(phi,'s',Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
             dHa = grad_H(phi,'a',Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
             for lr_i in range(20):
-                LR /= 2**lr_i
+                LR /= 2
                 if lr_i == 19:
                     keep_going = False
-                    temp_E = compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
-                    E.insert(0,temp_E)
-                    if E[0]<min_E:
-                        min_E = E[0]
-                        result = np.copy(phi)
                     break
                 #Update phi
                 phi[0] += LR*dHs
