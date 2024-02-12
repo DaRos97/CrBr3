@@ -17,7 +17,7 @@ rhos = np.linspace(1.1,2,13)
 anis = np.linspace(0,0.27,13)
 epss = [0.05,0.04,0.03,0.02,0.01]
 nis = [1.,0.7,0.5,0.3]
-thetas = 0.
+thetas = 0.0
 
 #Triangular lattice
 a1 = np.array([1,0])
@@ -134,8 +134,13 @@ def compute_solution(args_m):
             dHa = grad_H(phi,'a',Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
             for lr_i in range(20):
                 LR /= 2**lr_i
-                if abs(LR) < 1e-7:
+                if lr_i == 19:
                     keep_going = False
+                    temp_E = compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
+                    E.insert(0,temp_E)
+                    if E[0]<min_E:
+                        min_E = E[0]
+                        result = np.copy(phi)
                     break
                 #Update phi
                 phi[0] += LR*dHs
@@ -159,12 +164,13 @@ def compute_solution(args_m):
             step += 1
         if args_m['disp']:
             print("Minimum energy at ",E[0])
-            if 0:
+            if 1:
                 plot_magnetization(phi,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(E[0]))
                 plot_phis(phi,A_M,'Solution of phi_s (left) and phi_a (right)')
     if (result == np.ones((2,gx,gy))*20).all():
         print("Not a single converged solution, they all reached max number of iterations")
         exit()
+    print("mag: ",compute_magnetization(result))
     return result
 
 def compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
@@ -532,15 +538,12 @@ def plot_magnetization(phi,Phi,A_M,title=''):
     gx,gy = phi[0].shape
     a1_m,a2_m = A_M
     a12_m = a1_m+a2_m
-    #Interpolate Phi
-    nn = 5
-    XX = np.linspace(-nn//2,nn//2+1,nn*gx,endpoint=False)
-    YY = np.linspace(-nn//2,nn//2+1,nn*gy,endpoint=False)
-    big_Phi = extend(Phi,nn)
     #Single layer phases
     phi_1 = (phi[0]+phi[1])/2
     phi_2 = (phi[0]-phi[1])/2
     #Background -> interlayer coupling
+    nn = 5
+    big_Phi = extend(Phi,nn)
     long_X = np.linspace(-nn//2,nn//2,nn*gx,endpoint=False)
     long_Y = np.linspace(-nn//2,nn//2,nn*gy,endpoint=False)
     X,Y = np.meshgrid(long_X,long_Y)
@@ -623,23 +626,35 @@ def plot_Phi(Phi,a1_m,a2_m,title=''):
         Plot title.
     """
     gx,gy = Phi.shape
-    nn = 5
-    lx = np.linspace(-nn//2,nn//2+1,gx*nn)
-    ly = np.linspace(-nn//2,nn//2+1,gy*nn)
-    Phi = extend(Phi,nn)
+    nn = 5  #odd
+    lx = np.linspace(-nn//2+1,nn//2+1,gx*nn,endpoint=False)
+    ly = np.linspace(-nn//2+1,nn//2+1,gy*nn,endpoint=False)
+    Phi_ = extend(Phi,nn)
     X,Y = np.meshgrid(lx,ly)
     A1 = X*a1_m[0] + Y*a2_m[0]
     A2 = X*a1_m[1] + Y*a2_m[1]
-    fig, ax = plt.subplots(figsize=(10,10))
+    fig, ax = plt.subplots(figsize=(8,10))
     ax.axis('off')
     ax.set_aspect(1.)
-    ax.contour(A1.T,A2.T,Phi,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(0.5))
-    surf = ax.contourf(A1.T,A2.T,Phi,levels=20)
-    ax.arrow(0,0,a1_m[0],a1_m[1],head_width=np.linalg.norm(a1_m)/20,fill=True,edgecolor='k',facecolor='k')
-    ax.arrow(0,0,a2_m[0],a2_m[1],head_width=np.linalg.norm(a2_m)/20,fill=True,edgecolor='k',facecolor='k')
+    #Interlayer
+    ax.contour(A1,A2,Phi_.T,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(0.5))
+    surf = ax.contourf(A1,A2,Phi_.T,levels=20)
+    #Vectors
+    ax.arrow(0,0,a1_m[0],a1_m[1],head_width=np.linalg.norm(a1_m)/20,fill=True,edgecolor='k',facecolor='k',length_includes_head=True)
+    ax.arrow(0,0,a2_m[0],a2_m[1],head_width=np.linalg.norm(a1_m)/20,fill=True,edgecolor='k',facecolor='k',length_includes_head=True)
+    ax.arrow(a1_m[0],a1_m[1],a2_m[0],a2_m[1],head_width=0,ls='--',edgecolor='r',facecolor='r')
+    ax.arrow(a2_m[0],a2_m[1],a1_m[0],a1_m[1],head_width=0,ls='--',edgecolor='r',facecolor='r')
+    #Limits
     ax.set_xlim(a2_m[0]*1.5,a1_m[0]*1.5)
-    ax.set_ylim(max([a1_m[1],a2_m[1]])*1.5,-max([a1_m[1],a2_m[1]])*.5)
-    plt.title(title)
+    miny = min([a1_m[1],a2_m[1]])*1.25
+    maxy = max([a1_m[1],a2_m[1]])*1.25
+    if miny == 0:
+        miny -= np.linalg.norm(a2_m)/4
+    if maxy == 0:
+        maxy += np.linalg.norm(a2_m)/4
+    ax.set_ylim(miny,maxy)
+#    plt.title(title,size=20)
+    fig.tight_layout()
     plt.show()
 
 def extend(phi,nn):
@@ -967,7 +982,7 @@ def Moire(args):
     J = smooth(J,2,(a1_m,a2_m))[0]
     #
     if disp:
-        title = "Strain type : "+moire_type+" with (eps,ni,phi)=("+"{:.2f}".format(moire_pars[moire_type]['eps'])+','+"{:.2f}".format(moire_pars[moire_type]['ni'])+','+"{:.2f}".format(moire_pars[moire_type]['phi'])+'), and theta='+"{:.3f}".format(moire_pars['theta'])
+        title = ""#"Strain type : "+moire_type+" with (eps,ni,phi)=("+"{:.2f}".format(moire_pars[moire_type]['eps'])+','+"{:.2f}".format(moire_pars[moire_type]['ni'])+','+"{:.2f}".format(moire_pars[moire_type]['phi'])+'), and theta='+"{:.3f}".format(moire_pars['theta'])
         plot_Phi(J,a1_m,a2_m,title)
     #Save
     res_dn = get_res_dn(machine)
@@ -1004,11 +1019,11 @@ def get_MP_pars(ind):
             'phi':0.,
             },
         'biaxial':{
-            'eps':0.05,
+            'eps':0.03,
             },
         'shear':{
-            'e_xy':0.05,
-            'phi':0,
+            'e_xy':0.04,
+            'phi':0.2,
             },
         'theta':thetas,
         }
@@ -1100,7 +1115,7 @@ def compute_magnetization(phi):
     phi_1 = (phi[0]+phi[1])/2
     phi_2 = (phi[0]-phi[1])/2
     total_magnetization = np.sum(np.cos(phi_1))/gx/gy + np.sum(np.cos(phi_2))/gx/gy
-    return total_magnetization
+    return abs(total_magnetization)
 
 def compute_MPs(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine):
     """Compute the magnetization plot.
@@ -1119,7 +1134,7 @@ def compute_MPs(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine):
                 rho = p[:7]      #7 fixed by the fact that rho is saved .5f 
                 ani = p[-7:]      #7 fixed by the fact that rho is saved .5f 
                 if rho == rho_str and ani == ani_str:
-                    data.append([float(gamma),compute_magnetization(f[k][p])])
+                    data.append([float(gamma),abs(compute_magnetization(f[k][p]))])
                     n += 1
     if n == 0:  #No data here for some reason
         return 0
@@ -1194,7 +1209,7 @@ def compute_PDs(moire_type,moire_pars,precision_pars,gamma_str,machine):
         plt.yticks([anis[0],d_e,d_d,anis[-1]] ,['0',r'$d_{exp}$',r'$d_{DFT}$','0.27'])
         plt.xlabel('rho')
         plt.ylabel('anisotropy')
-        plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" theta: "+"{:.3f}".format(moire_pars['theta'])+", gamma = "+gamma+", and precision pars: "+str(precision_pars[0])+'x'+str(precision_pars[1])+'_'+"{:.4f}".format(precision_pars[2])+'_'+str(precision_pars[3]))
+        #plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" theta: "+"{:.3f}".format(moire_pars['theta'])+", gamma = "+gamma+", and precision pars: "+str(precision_pars[0])+'x'+str(precision_pars[1])+'_'+"{:.4f}".format(precision_pars[2])+'_'+str(precision_pars[3]))
         if machine == 'loc':
             plt.show()
             exit()

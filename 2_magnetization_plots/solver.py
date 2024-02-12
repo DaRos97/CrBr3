@@ -5,7 +5,7 @@ from pathlib import Path
 
 machine = fs.get_machine(os.getcwd())
 
-type_computation = 'PD' if machine=='loc' else sys.argv[2]
+type_computation = 'MP' if machine=='loc' else sys.argv[2]
 
 pd_size = len(fs.rhos)*len(fs.anis)
 if type_computation == 'PD':
@@ -15,6 +15,7 @@ elif type_computation == 'MP':
     input_type,moire_type,moire_pars,gamma = fs.get_MP_pars(int(sys.argv[1]))
     rho = fs.rho_phys[input_type]
     anisotropy = fs.d_phys[input_type]
+    print("Input type: ",input_type)
 elif type_computation == 'CO':
     input_type = 'DFT'
     rho = fs.rho_phys[input_type]
@@ -29,7 +30,7 @@ print("Physical parameters are gamma: ","{:.4f}".format(gamma),", rho: ","{:.4f}
 
 
 ##############################################################################
-max_grid = 400
+max_grid = 200
 LR = -1e-1
 AV = 2
 ##############################################################################
@@ -63,7 +64,9 @@ print("Relative angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1
 print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
 print("Grid size: ",gridx,gridy)
 
-if 1 and machine =='loc':
+if 0 and machine =='loc':
+    title = moire_type+" strain with (eps,ni,phi)=("+"{:.2f}".format(moire_pars[moire_type]['eps'])+','+"{:.2f}".format(moire_pars[moire_type]['ni'])+','+"{:.2f}".format(moire_pars[moire_type]['phi'])+'), and theta='+"{:.3f}".format(moire_pars['theta'])
+    fs.plot_Phi(Phi,a1_m,a2_m,title)
     exit()
 #Compute Phi over new grid parameters
 Phi = fs.reshape_Phi(Phi,gridx,gridy)
