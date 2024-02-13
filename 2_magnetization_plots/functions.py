@@ -19,6 +19,8 @@ epss = [0.05,0.04,0.03,0.02,0.01]
 nis = [1.,0.7,0.5,0.3]
 thetas = 0.0
 
+offset_solution = -0.5
+
 #Triangular lattice
 a1 = np.array([1,0])
 a2 = np.array([-1/2,np.sqrt(3)/2])
@@ -53,16 +55,16 @@ def const_in_pt(fs,fa,gx,gy):
     return np.array([phi_s, phi_a])
 
 def ts1(Phi,gx,gy):
-    res = (np.sign(Phi)-1)*np.pi/2
+    res = (np.sign(Phi+offset_solution)-1)*np.pi/2
     return np.array([np.ones((gx,gy))*0,res])
 
 def ts2(Phi,gx,gy):
-    res = (np.sign(Phi)-1)*np.pi/2
+    res = (np.sign(Phi+offset_solution)-1)*np.pi/2
     return np.array([np.ones((gx,gy))*np.pi,res])
 
 def ta(Phi,gx,gy):
-    re_s = -(np.sign(Phi)-1)*np.pi/2
-    re_a = (np.sign(Phi)-1)*np.pi/2
+    re_s = -(np.sign(Phi+offset_solution)-1)*np.pi/2
+    re_a = (np.sign(Phi+offset_solution)-1)*np.pi/2
     return np.array([re_s,re_a])
 
 custom_in_pt = (ts1,ts2,ta)
@@ -106,7 +108,7 @@ def compute_solution(args_m):
     min_E = 1e10
     result = np.ones((2,gx,gy))*20
     initial_index = 0 if args_m['type_comp']=='CO' else -3
-    for ind_in_pt in range(initial_index,args_m['n_initial_pts']):
+    for ind_in_pt in range(-1,5):#initial_index,args_m['n_initial_pts']):
         if args_m['disp']:
             print("Starting minimization step ",str(ind_in_pt))
         #Initial condition
@@ -121,20 +123,21 @@ def compute_solution(args_m):
             fa = random.random()
             phi = const_in_pt(fs,fa,gx,gy)
         E = [compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg), ]
-        if args_m['disp']:
+        if 1 and args_m['disp']: #plot initial considition
             plot_magnetization(phi,Phi,A_M,"initial condition "+"{:.4f}".format(E[0]))
+        print("Initial energy: ",E[0])
         #Initiate learning rate and minimization loop
         step = 1        #initial step
-        LR = args_m['learn_rate']
+        learn_rate = args_m['learn_rate']
         keep_going = True
         while keep_going:
-            LR *= 2
             #Energy gradients
             dHs = grad_H(phi,'s',Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
             dHa = grad_H(phi,'a',Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
-            for lr_i in range(20):
-                LR /= 2
-                if lr_i == 19:
+            for lr_i in range(30):
+                LR = learn_rate/2**lr_i
+                if abs(LR)<1e-7:
+                    print(ind_in_pt," reached too low")
                     keep_going = False
                     break
                 #Update phi
@@ -153,9 +156,11 @@ def compute_solution(args_m):
                 if E[0]<min_E:
                     min_E = E[0]
                     result = np.copy(phi)
-                break
+                    print("index ",ind_in_pt," is new solution")
+                keep_going = False
             if step > args_m['maxiter']:
-                break
+                print(ind_in_pt," reached maxiter")
+                keep_going = False
             step += 1
         if args_m['disp']:
             print("Minimum energy at ",E[0])
@@ -1017,8 +1022,8 @@ def get_MP_pars(ind):
             'eps':0.03,
             },
         'shear':{
-            'e_xy':0.04,
-            'phi':0.2,
+            'e_xy':0.05,
+            'phi':0.,
             },
         'theta':thetas,
         }

@@ -29,9 +29,9 @@ if not Path(Phi_fn).is_file():
 Phi = np.load(Phi_fn)
 a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
 ###########################
-max_grid = 200
+max_grid = 100
 LR = -1e-1
-AV = 3
+AV = 1
 ###########################
 gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
 precision_pars = (gridx,gridy,LR,AV)
@@ -59,7 +59,8 @@ with h5py.File(hdf5_fn,'r') as f:
                 if rho==rho_str and ani==ani_str:
                     solution = np.copy(f[k][p])
                     break
+print(fs.compute_magnetization(solution))
 fs.plot_magnetization(solution,Phi,(a1_m,a2_m),rho_str+'_'+ani_str)
-fs.plot_phis(solution,(a1_m,a2_m),rho_str+'_'+ani_str)
+#fs.plot_phis(solution,(a1_m,a2_m),rho_str+'_'+ani_str)
 
 

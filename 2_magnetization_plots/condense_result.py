@@ -39,22 +39,23 @@ gridx,gridy = fs.get_gridsize(max_gridsize,a1_m,a2_m)
 precision_pars = (gridx,gridy,LR,AV)
 #
 hdf5_fn = fs.get_hdf5_fn(moire_type,moire_pars,precision_pars,machine)
-
-#Open h5py File
-with h5py.File(hdf5_fn,'a') as f:
-    #List elements in directory
-    moire_dn = fs.get_moire_dn(moire_type,moire_pars,precision_pars,machine)
-    for element in Path(moire_dn).iterdir():
-        gamma_dn = str(element)
-        if gamma_dn[len(gamma_dn)-gamma_dn[::-1].index('/'):-7]=='gamma':   #-7 fixed by the fact that gamma is saved .4f
-            gamma_gn = gamma_dn[len(gamma_dn)-gamma_dn[::-1].index('/'):]        #gn==group name
-            if gamma_gn not in f.keys():
-                f.create_group(gamma_gn)
-            for file in Path(gamma_dn+'/').iterdir():
-                sol = str(file)
-                dataset_name = gamma_gn+'/'+sol[len(sol)-sol[::-1].index('/')+4:-4]
-                if sol[len(sol)-sol[::-1].index('/'):len(sol)-sol[::-1].index('/')+3]=='sol' and dataset_name not in f.keys():
-                    f.create_dataset(dataset_name,data=np.load(sol))
+if not (machine=='loc' and Path(hdf5_fn).is_file()):
+    print('aaa')
+    #Open h5py File
+    with h5py.File(hdf5_fn,'a') as f:
+        #List elements in directory
+        moire_dn = fs.get_moire_dn(moire_type,moire_pars,precision_pars,machine)
+        for element in Path(moire_dn).iterdir():
+            gamma_dn = str(element)
+            if gamma_dn[len(gamma_dn)-gamma_dn[::-1].index('/'):-7]=='gamma':   #-7 fixed by the fact that gamma is saved .4f
+                gamma_gn = gamma_dn[len(gamma_dn)-gamma_dn[::-1].index('/'):]        #gn==group name
+                if gamma_gn not in f.keys():
+                    f.create_group(gamma_gn)
+                for file in Path(gamma_dn+'/').iterdir():
+                    sol = str(file)
+                    dataset_name = gamma_gn+'/'+sol[len(sol)-sol[::-1].index('/')+4:-4]
+                    if sol[len(sol)-sol[::-1].index('/'):len(sol)-sol[::-1].index('/')+3]=='sol' and dataset_name not in f.keys():
+                        f.create_dataset(dataset_name,data=np.load(sol))
 
 if type_computation == 'PD':
     for gamma in [0.,]:        #can be defined each time
