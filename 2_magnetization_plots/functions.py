@@ -17,7 +17,7 @@ rhos = np.linspace(1.1,2,13)
 anis = np.linspace(0,0.27,13)
 epss = [0.05,0.04,0.03,0.02,0.01]
 nis = [1.,0.7,0.5,0.3]
-thetas = 0.0
+thetas = np.pi/180*0
 
 offset_solution = -0.5
 
@@ -307,24 +307,22 @@ def compute_lattices(moire_type,moire_pars):
     #
     theta = moire_pars['theta']
     #Moire lattice vectors
-    T = np.matmul(1+strain_tensor/2,R_z(-theta/2)) - np.matmul(1-strain_tensor/2,R_z(theta/2))
-    b1_m = np.matmul(T,b1)  #Moire reciprocal lattice vector 1
-    b2_m = np.matmul(T,b2)
-    #There must be a better way...
-    a1_m = np.array([0,0],dtype=float)
-    if b2_m[1] == 0:
-        a1_m[1] = 2*np.pi/b1_m[1]
-    else:
-        a1_m[0] = 2*np.pi/(b1_m[0]-b1_m[1]*b2_m[0]/b2_m[1])
-        a1_m[1] = -a1_m[0]*b2_m[0]/b2_m[1]
-    a2_m = np.array([0,0],dtype=float)
-    if b1_m[1] == 0:
-        a2_m[1] = 2*np.pi/b2_m[1]
-    else:
-        a2_m[0] = 2*np.pi/(b2_m[0]-b2_m[1]*b1_m[0]/b1_m[1])
-        a2_m[1] = -a2_m[0]*b1_m[0]/b1_m[1]
+    T = np.matmul(np.identity(2)+strain_tensor/2,R_z(-theta/2)) - np.matmul(np.identity(2)-strain_tensor/2,R_z(theta/2))
+    a1_m = np.matmul(np.linalg.inv(T).T,a1)  #Moire reciprocal lattice vector 1
+    a2_m = np.matmul(np.linalg.inv(T).T,a2)
+    n1_m = np.linalg.norm(a1_m)
+    n2_m = np.linalg.norm(a2_m)
+    Np = np.linalg.norm(a1_m+a2_m)
+    Nm = np.linalg.norm(a1_m-a2_m)
+    nnm = min(Np,Nm)
+    if nnm < max(n1_m,n2_m):
+        new_a = a1_m+a2_m if Np<Nm else a1_m-a2_m
+        a1_m = new_a if n1_m>n2_m else a1_m
+        a2_m = new_a if n2_m>n1_m else a2_m
+    n1_m = np.linalg.norm(a1_m)
+    n2_m = np.linalg.norm(a2_m)
     #
-    A_M = max(np.linalg.norm(a1_m),np.linalg.norm(a2_m))
+    A_M = max(n1_m,n2_m)
     n_x = n_y = 5       #number of moirè lenths to include in l1,l2
     xxx = int(n_x*A_M)
     yyy = int(n_y*A_M)
@@ -342,8 +340,8 @@ def compute_lattices(moire_type,moire_pars):
             l1[i,j,1] = l1[i,j,0] + offset_sublattice_1
             l2[i,j,0] = (i-n_x//2*A_M)*a1_2+(j-n_y//2*A_M)*a2_2
             l2[i,j,1] = l2[i,j,0] + offset_sublattice_2
-    print("Moire lengths: ",np.linalg.norm(a1_m),' ',np.linalg.norm(a2_m))
-    print("Angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m))))
+    print("Moire lengths: ",n1_m,' ',n2_m)
+    print("Angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/n1_m,a2_m/n2_m)))
     return l1,l2,a1_m,a2_m
 
 def find_closest(lattice,site,UC_):
@@ -647,13 +645,19 @@ def plot_Phi(Phi,a1_m,a2_m,title=''):
     ax.arrow(a1_m[0],a1_m[1],a2_m[0],a2_m[1],head_width=0,ls='--',edgecolor='r',facecolor='r')
     ax.arrow(a2_m[0],a2_m[1],a1_m[0],a1_m[1],head_width=0,ls='--',edgecolor='r',facecolor='r')
     #Limits
-    ax.set_xlim(a2_m[0]*1.5,a1_m[0]*1.5)
-    miny = min([a1_m[1],a2_m[1]])*1.25
-    maxy = max([a1_m[1],a2_m[1]])*1.25
+    minx = -abs(min([a1_m[0],a2_m[0]])*2)
+    maxx = abs(max([a1_m[0],a2_m[0]])*2)
+    if minx == 0:
+        minx -= abs(maxx)/2
+    if maxx == 0:
+        maxx += abs(minx)/2
+    ax.set_xlim(minx,maxx)
+    miny = -abs(min([a1_m[1],a2_m[1]])*2)
+    maxy = abs(max([a1_m[1],a2_m[1]])*2)
     if miny == 0:
-        miny -= np.linalg.norm(a2_m)/4
+        miny -= abs(maxy)/2
     if maxy == 0:
-        maxy += np.linalg.norm(a2_m)/4
+        maxy += abs(miny)/2
     ax.set_ylim(miny,maxy)
 #    plt.title(title,size=20)
     fig.tight_layout()
@@ -974,7 +978,6 @@ def Moire(args):
                 plt.scatter(l2[x2,y2,UC,0],l2[x2,y2,UC,1],color='m',s=15)
                 plt.scatter(site[0],site[1],color='b',s=20)
                 plt.show()
-                exit()
             #Find displacement
             displacement = l1[x1,y1,UC] - l2[x2,y2,UC]
             S1 = displacement[0]+displacement[1]/np.sqrt(3)
@@ -1018,10 +1021,10 @@ def get_MP_pars(ind):
         'uniaxial':{
             'eps':epss[iep],
             'ni':nis[ini],
-            'phi':0.,
+            'phi':np.pi/180*0,
             },
         'biaxial':{
-            'eps':0.03,
+            'eps':0.05,
             },
         'shear':{
             'e_xy':0.05,
@@ -1030,7 +1033,6 @@ def get_MP_pars(ind):
         'theta':thetas,
         }
     imt = 0
-    print("Computing index ",ind," of ",len(input_types)*lep*lni*lga)
     return (input_types[iit],moire_types[imt],moire_pars,gammas[iga])
 
 def get_moire_pars(ind):
