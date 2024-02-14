@@ -3,6 +3,12 @@ import functions as fs
 import sys, os, h5py
 from pathlib import Path
 
+##############################################################################
+max_grid = 100
+LR = -1e-1
+AV = 1
+##############################################################################
+
 machine = fs.get_machine(os.getcwd())
 
 type_computation = 'MP' if machine=='loc' else sys.argv[2]
@@ -27,13 +33,6 @@ elif type_computation == 'CO':
 
 print("Computing with Moire with ",moire_type," strain of ",moire_pars[moire_type]," and rotation ",moire_pars['theta'])
 print("Physical parameters are gamma: ","{:.4f}".format(gamma),", rho: ","{:.4f}".format(rho),", anisotropy: ","{:.4f}".format(anisotropy))
-
-
-##############################################################################
-max_grid = 100
-LR = -1e-1
-AV = 1
-##############################################################################
 
 #Check if Phi already computed
 Phi_fn = fs.get_Phi_fn(moire_type,moire_pars,machine)

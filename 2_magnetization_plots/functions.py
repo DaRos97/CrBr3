@@ -108,7 +108,7 @@ def compute_solution(args_m):
     min_E = 1e10
     result = np.ones((2,gx,gy))*20
     initial_index = 0 if args_m['type_comp']=='CO' else -3
-    for ind_in_pt in range(-1,5):#initial_index,args_m['n_initial_pts']):
+    for ind_in_pt in range(initial_index,args_m['n_initial_pts']):  #############
         if args_m['disp']:
             print("Starting minimization step ",str(ind_in_pt))
         #Initial condition
@@ -125,7 +125,7 @@ def compute_solution(args_m):
         E = [compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg), ]
         if 1 and args_m['disp']: #plot initial considition
             plot_magnetization(phi,Phi,A_M,"initial condition "+"{:.4f}".format(E[0]))
-        print("Initial energy: ",E[0])
+        print('\n',ind_in_pt," initial energy: ","{:.8f}".format(E[0]))
         #Initiate learning rate and minimization loop
         step = 1        #initial step
         learn_rate = args_m['learn_rate']
@@ -137,7 +137,7 @@ def compute_solution(args_m):
             for lr_i in range(30):
                 LR = learn_rate/2**lr_i
                 if abs(LR)<1e-7:
-                    print(ind_in_pt," reached too low")
+                    print(ind_in_pt," reached too low with final energy ","{:.8f}".format(E[0])," and dH=","{:.3f}".format(np.sum(np.absolute(dHa)+np.absolute(dHs))))
                     keep_going = False
                     break
                 #Update phi
@@ -156,7 +156,9 @@ def compute_solution(args_m):
                 if E[0]<min_E:
                     min_E = E[0]
                     result = np.copy(phi)
-                    print("index ",ind_in_pt," is new solution")
+                    print("\tindex ",ind_in_pt," is new solution wiith energy ","{:.8f}".format(min_E))
+                else:
+                    print(ind_in_pt," higher energy ","{:.8f}".format(E[0]))
                 keep_going = False
             if step > args_m['maxiter']:
                 print(ind_in_pt," reached maxiter")
