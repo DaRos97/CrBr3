@@ -4,9 +4,9 @@ import sys, os, h5py
 from pathlib import Path
 
 ##############################################################################
-max_grid = 100
-LR = -1e-1
-AV = 1
+max_grid = 200
+LR = -1e-2
+AV = 2
 ##############################################################################
 
 machine = fs.get_machine(os.getcwd())
@@ -82,7 +82,7 @@ if not Path(solution_fn).is_file():
             'grid':             (gridx,gridy),
             'learn_rate':       LR,                      #Needs to be negative
             'pts_per_fit':      AV,                          #Maybe can be related to gridx/gridy
-            'n_initial_pts':    6,                         #three solution initial states, 4 fixed initial states and n-4 random states
+            'n_initial_pts':    64,                         #three solution initial states, 4 fixed initial states and n-4 random states
             'maxiter':          1e5, 
             'machine':          machine, 
             'disp':             machine=='loc',

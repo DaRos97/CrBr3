@@ -19,7 +19,7 @@ epss = [0.05,0.04,0.03,0.02,0.01]
 nis = [1.,0.7,0.5,0.3]
 thetas = np.pi/180*0
 
-offset_solution = -0.5
+offset_solution = -0.
 
 #Triangular lattice
 a1 = np.array([1,0])
@@ -114,9 +114,11 @@ def compute_solution(args_m):
         #Initial condition
         if ind_in_pt < 0:
             phi = custom_in_pt[ind_in_pt+3](Phi,gx,gy)
-        elif ind_in_pt < 4:
-            list_ff = ((0,0),(0.5,0.5),(0.5,0),(0,0.5))
-            fs,fa = list_ff[ind_in_pt]
+        elif ind_in_pt < 64:
+            fs = np.pi/4*(ind_in_pt//8)
+            fa = np.pi/4*(ind_in_pt%8)
+#            list_ff = ((0,0),(0.5,0.5),(0.5,0),(0,0.5))
+#            fs,fa = list_ff[ind_in_pt]
             phi = const_in_pt(fs,fa,gx,gy)
         else:
             fs = random.random()
@@ -124,7 +126,7 @@ def compute_solution(args_m):
             phi = const_in_pt(fs,fa,gx,gy)
         E = [compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg), ]
         if 1 and args_m['disp']: #plot initial considition
-            plot_magnetization(phi,Phi,A_M,"initial condition "+"{:.4f}".format(E[0]))
+            plot_magnetization(phi,Phi,A_M,"initial condition "+"{:.4f}".format(E[0]),False)
         print('\n',ind_in_pt," initial energy: ","{:.8f}".format(E[0]))
         #Initiate learning rate and minimization loop
         step = 1        #initial step
@@ -146,6 +148,7 @@ def compute_solution(args_m):
                 temp_E = compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
                 if temp_E < E[0]:
                     E.insert(0,temp_E)
+                    phi = check_phis(phi)
                     break
                 else:
                     phi[0] -= LR*dHs
@@ -166,14 +169,20 @@ def compute_solution(args_m):
             step += 1
         if args_m['disp']:
             print("Minimum energy at ",E[0])
-            if 1:
-                plot_magnetization(phi,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(E[0]))
+            if 0:
+                plot_magnetization(phi,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(E[0]),False)
                 plot_phis(phi,A_M,'Solution of phi_s (left) and phi_a (right)')
     if (result == np.ones((2,gx,gy))*20).all():
-        print("Not a single converged solution, they all reached max number of iterations")
+        print("Not a single converged solution, they all reached max number of iterations or too low")
         exit()
     print("mag: ",compute_magnetization(result))
     return result
+
+def check_phis(phi):
+    phi = np.mod(phi,2*np.pi)
+    phi = np.where(phi < - np.pi/2, phi + 2 * np.pi, phi)
+    phi = np.where(phi > 2*np.pi - np.pi/2, phi - 2 * np.pi, phi)
+    return phi
 
 def compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
     """Computes the energy of the system.
@@ -516,7 +525,7 @@ def get_l_args(args_i):
         qi.append(args_i[i][3] - mi[i]*args_i[i][2])
     return mi,qi
 
-def plot_magnetization(phi,Phi,A_M,title=''):
+def plot_magnetization(phi,Phi,A_M,title='',save=False):
     """Plots the magnetization values in the Moirè unit cell, with a background given by the
     interlayer potential. The two images correspond to the 2 layers. Magnetization is in x-z
     plane while the layers are in x-y plane.
@@ -588,7 +597,10 @@ def plot_magnetization(phi,Phi,A_M,title=''):
         ax.set_ylim(-abs(a2_m[1])/4*3,abs(a2_m[1])/4*3)
     fig.suptitle(title,size=20)
     fig.tight_layout()
-    plt.show()
+    if save:
+        plt.savefig('results/temp/'+title+'.png')
+    else:
+        plt.show()
 
 def plot_phis(phi,A_M,txt_title='mah'):
     """Plot the phases phi_1 and phi_2 in a 3D graph
