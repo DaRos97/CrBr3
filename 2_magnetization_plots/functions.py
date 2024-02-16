@@ -19,7 +19,9 @@ epss = [0.05,0.04,0.03,0.02,0.01]
 nis = [1.,0.7,0.5,0.3]
 thetas = np.pi/180*0
 
-offset_solution = -0.
+offset_solution = -0.5
+NNNN = 21
+lr_list = np.logspace(-5,1,num=NNNN)
 
 #Triangular lattice
 a1 = np.array([1,0])
@@ -50,8 +52,8 @@ def const_in_pt(fs,fa,gx,gy):
     List
         Symmetric and antisymmetric phases at each position (grid,grid) of the Moirè unit cell.
     """
-    phi_s = np.ones((gx,gy))*2*np.pi*fs
-    phi_a = np.ones((gx,gy))*2*np.pi*fa
+    phi_s = np.ones((gx,gy))*fs
+    phi_a = np.ones((gx,gy))*fa
     return np.array([phi_s, phi_a])
 
 def ts1(Phi,gx,gy):
@@ -112,68 +114,82 @@ def compute_solution(args_m):
         if args_m['disp']:
             print("Starting minimization step ",str(ind_in_pt))
         #Initial condition
-        if ind_in_pt < 0:
+        if ind_in_pt < 0:   #t-s and t-a
             phi = custom_in_pt[ind_in_pt+3](Phi,gx,gy)
-        elif ind_in_pt < 64:
-            fs = np.pi/4*(ind_in_pt//8)
-            fa = np.pi/4*(ind_in_pt%8)
-#            list_ff = ((0,0),(0.5,0.5),(0.5,0),(0,0.5))
-#            fs,fa = list_ff[ind_in_pt]
+        elif ind_in_pt < 25:    #constant specific
+            fs = np.pi/4*(ind_in_pt//5)
+            fa = np.pi/4*(ind_in_pt%5)
             phi = const_in_pt(fs,fa,gx,gy)
-        else:
-            fs = random.random()
-            fa = random.random()
+        else:   #constant random
+            fs = random.random()*2*np.pi
+            fa = random.random()*2*np.pi
             phi = const_in_pt(fs,fa,gx,gy)
-        E = [compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg), ]
-        if 1 and args_m['disp']: #plot initial considition
+        if 0 and args_m['disp']: #plot initial condition
             plot_magnetization(phi,Phi,A_M,"initial condition "+"{:.4f}".format(E[0]),False)
+        #First energy evaluation
+        E = [compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg), ]
         print('\n',ind_in_pt," initial energy: ","{:.8f}".format(E[0]))
-        #Initiate learning rate and minimization loop
+        #Initialize learning rate and minimization loop
         step = 1        #initial step
-        learn_rate = args_m['learn_rate']
         keep_going = True
         while keep_going:
             #Energy gradients
             dHs = grad_H(phi,'s',Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
             dHa = grad_H(phi,'a',Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
-            for lr_i in range(30):
-                LR = learn_rate/2**lr_i
-                if abs(LR)<1e-7:
-                    print(ind_in_pt," reached too low with final energy ","{:.8f}".format(E[0])," and dH=","{:.3f}".format(np.sum(np.absolute(dHa)+np.absolute(dHs))))
-                    keep_going = False
-                    break
-                #Update phi
-                phi[0] += LR*dHs
-                phi[1] += LR*dHa
-                temp_E = compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
-                if temp_E < E[0]:
-                    E.insert(0,temp_E)
-                    phi = check_phis(phi)
-                    break
-                else:
-                    phi[0] -= LR*dHs
-                    phi[1] -= LR*dHa
-            if args_m['disp']:
-                print("energy step ",step," is ","{:.9f}".format(E[0])," with dH = ","{:.3f}".format(np.sum(np.absolute(dHa)+np.absolute(dHs))))
-            if check_energies(E):   #stable energy
+            dH = np.array([dHs,dHa])
+            #Compute energy in all points of LR
+            list_E = []
+            list_phi = []
+            for lr_i in range(NNNN):
+                LR_ = lr_list[lr_i]
+                temp_E = compute_energy(phi-LR_*dH,Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
+                list_phi.append(np.copy(phi-LR_*dH))
+                list_E.append(np.array([LR_,temp_E]))
+            list_E = np.array(list_E)
+            #Check the minimum of energies wrt LR
+            amin = np.argmin(list_E[:,1])
+            if list_E[amin,1] < E[0]:
+                if 0:   #Plot energies
+                    plt.plot(list_E[:,0],list_E[:,1],'*k')
+                    plt.plot(list_E[amin,0],list_E[amin,1],'*r')
+                    plt.hlines(E[0],lr_list[0],lr_list[-1],ls='--')
+                    plt.xscale('log')
+                    plt.title('some below, min at LR='+"{:.6f}".format(list_E[amin,0]))
+                    plt.show()
+                E.insert(0,list_E[amin,1])
+                phi = np.copy(list_phi[amin])
+                if 0 and args_m['disp']:
+                    print("energy step ",step," is ","{:.9f}".format(E[0])," with dH = ","{:.3f}".format(np.sum(np.absolute(dHa)+np.absolute(dHs))))
+            else:
+                print("none LR was lower in energy -> exit")
+                if 0:   #Plot energies
+                    plt.plot(list_E[:,0],list_E[:,1],'*k')
+                    plt.plot(list_E[amin,0],list_E[amin,1],'*r')
+                    plt.hlines(E[0],lr_list[0],lr_list[-1],ls='--')
+                    plt.xscale('log')
+                    plt.title('all above')
+                    plt.show()
+                keep_going = False
+            #Check if energy converged to a constant value
+            if check_energies(E):
                 if E[0]<min_E:
                     min_E = E[0]
                     result = np.copy(phi)
-                    print("\tindex ",ind_in_pt," is new solution wiith energy ","{:.8f}".format(min_E))
+                    print("\tindex ",ind_in_pt," is new solution with energy ","{:.8f}".format(min_E))
                 else:
-                    print(ind_in_pt," higher energy ","{:.8f}".format(E[0]))
+                    print(ind_in_pt," at higher energy: ","{:.8f}".format(E[0]))
                 keep_going = False
             if step > args_m['maxiter']:
                 print(ind_in_pt," reached maxiter")
                 keep_going = False
             step += 1
         if args_m['disp']:
-            print("Minimum energy at ",E[0])
             if 0:
+                print("Minimum energy at ",E[0])
                 plot_magnetization(phi,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(E[0]),False)
                 plot_phis(phi,A_M,'Solution of phi_s (left) and phi_a (right)')
     if (result == np.ones((2,gx,gy))*20).all():
-        print("Not a single converged solution, they all reached max number of iterations or too low")
+        print("Not a single converged solution, they all reached max number of iterations or too low LR")
         exit()
     print("mag: ",compute_magnetization(result))
     return result
@@ -268,10 +284,10 @@ def check_energies(list_E):
         True if last nn energies are within lim distance b/w each other, False otherwise.
     
     """
-    nn = 5
+    nn = 3
     if len(list_E) <= nn:
         return False
-    lim = 1e-8
+    lim = 1e-6
     for i in range(nn):
         if abs(list_E[i]-list_E[i+1]) > lim:
             return False
@@ -772,8 +788,8 @@ def get_pd_dn(machine):
     return get_res_dn(machine) +'phase_diagrams_data/'
 
 def get_moire_dn(moire_type,moire_pars,precision_pars,machine):
-    gx,gy,LR,AV = precision_pars
-    return get_pd_dn(machine) + moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'_'+"{:.3f}".format(moire_pars['theta'])+'_'+str(gx)+'x'+str(gy)+'_'+"{:.4f}".format(LR)+'_'+str(AV)+'/'
+    gx,gy,AV = precision_pars
+    return get_pd_dn(machine) + moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'_'+"{:.3f}".format(moire_pars['theta'])+'_'+str(gx)+'x'+str(gy)+'_'+str(AV)+'/'
 
 def get_gamma_dn(moire_type,moire_pars,precision_pars,gamma,machine):
     return get_moire_dn(moire_type,moire_pars,precision_pars,machine) + 'gamma_'+"{:.4f}".format(gamma)+'/'
@@ -1190,7 +1206,7 @@ def compute_PDs(moire_type,moire_pars,precision_pars,gamma_str,machine):
     """Compute the magnetization plot.
 
     """
-    gx,gy,LR,AV = precision_pars
+    gx,gy,AV = precision_pars
     hdf5_fn = get_hdf5_fn(moire_type,moire_pars,precision_pars,machine)
     Phi_fn = get_Phi_fn(moire_type,moire_pars,machine)
     Phi = reshape_Phi(np.load(get_Phi_fn(moire_type,moire_pars,machine)),gx,gy)

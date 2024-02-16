@@ -10,14 +10,13 @@ Remember to adjust max_gridsze.
 For each moire dir create a new hdf5, which will contain gamma as dir and (rho,ani) as dataset.
 """
 
-max_gridsize = 400
-LR = -1e-1
-AV = 2
+max_gridsize = 100
+AV = 1
 
 t0 = time()
 machine = fs.get_machine(os.getcwd())
 
-type_computation = 'PD' if machine=='loc' else sys.argv[2]
+type_computation = 'MP' if machine=='loc' else sys.argv[2]
 
 ind = int(sys.argv[1])      #one index every 225 for 15x15 PD -> like this sys.argv[1] from 0 to 11
 moire_type,moire_pars = fs.get_moire_pars(ind)
@@ -36,11 +35,10 @@ Phi_fn = fs.get_Phi_fn(moire_type,moire_pars,machine)
 Phi = np.load(fs.get_Phi_fn(moire_type,moire_pars,machine))
 a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
 gridx,gridy = fs.get_gridsize(max_gridsize,a1_m,a2_m)
-precision_pars = (gridx,gridy,LR,AV)
+precision_pars = (gridx,gridy,AV)
 #
 hdf5_fn = fs.get_hdf5_fn(moire_type,moire_pars,precision_pars,machine)
 if not (machine=='loc' and Path(hdf5_fn).is_file()):
-    print('aaa')
     #Open h5py File
     with h5py.File(hdf5_fn,'a') as f:
         #List elements in directory

@@ -5,8 +5,7 @@ from pathlib import Path
 
 ##############################################################################
 max_grid = 200
-LR = -1e-2
-AV = 2
+AV = 1
 ##############################################################################
 
 machine = fs.get_machine(os.getcwd())
@@ -56,7 +55,7 @@ except:
         a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
 
 gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
-precision_pars = (gridx,gridy,LR,AV)
+precision_pars = (gridx,gridy,AV)
 
 print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.norm(a2_m))
 print("Relative angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m))))
@@ -80,9 +79,8 @@ if not Path(solution_fn).is_file():
             'args_moire':       (Phi,(a1_m,a2_m)),
             'args_phys':        (gamma,rho,anisotropy),
             'grid':             (gridx,gridy),
-            'learn_rate':       LR,                      #Needs to be negative
             'pts_per_fit':      AV,                          #Maybe can be related to gridx/gridy
-            'n_initial_pts':    64,                         #three solution initial states, 4 fixed initial states and n-4 random states
+            'n_initial_pts':    0,                         #three solution initial states, 25 constant initial states and n-25 random states
             'maxiter':          1e5, 
             'machine':          machine, 
             'disp':             machine=='loc',
