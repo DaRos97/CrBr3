@@ -19,7 +19,7 @@ epss = [0.05,0.04,0.03,0.02,0.01]
 nis = [1.,0.7,0.5,0.3]
 thetas = np.pi/180*0
 
-offset_solution = -0.5
+offset_solution = -0.
 NNNN = 21
 lr_list = np.logspace(-5,1,num=NNNN)
 
@@ -1176,7 +1176,7 @@ def compute_MPs(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine):
     plt.plot(M[:,0],M[:,1],'r*-')
     plt.xlabel(r'$\gamma$',size=s_)
     plt.ylabel(r'$M$',size=s_)
-    plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" theta: "+"{:.3f}".format(moire_pars['theta'])+" rho = "+rho_str+", d = "+ani_str+", and precision pars: "+str(precision_pars[0])+'x'+str(precision_pars[1])+'_'+"{:.4f}".format(precision_pars[2])+'_'+str(precision_pars[3])) 
+    plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" theta: "+"{:.3f}".format(moire_pars['theta'])+" rho = "+rho_str+", d = "+ani_str+", and precision pars: "+str(precision_pars[0])+'x'+str(precision_pars[1])+'_'+str(precision_pars[2]))
     if machine == 'loc':
         plt.show()
         exit()
