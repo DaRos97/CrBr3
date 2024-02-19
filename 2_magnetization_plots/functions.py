@@ -125,10 +125,10 @@ def compute_solution(args_m):
             fs = random.random()*2*np.pi
             fa = random.random()*2*np.pi
             phi = const_in_pt(fs,fa,gx,gy)
-        if 0 and args_m['disp']: #plot initial condition
-            plot_magnetization(phi,Phi,A_M,"initial condition "+"{:.4f}".format(E[0]),False)
         #First energy evaluation
         E = [compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg), ]
+        if 0 and args_m['disp']: #plot initial condition
+            plot_magnetization(phi,Phi,A_M,"initial condition "+"{:.4f}".format(E[0]),False)
         print('\n',ind_in_pt," initial energy: ","{:.8f}".format(E[0]))
         #Initialize learning rate and minimization loop
         step = 1        #initial step
@@ -159,8 +159,8 @@ def compute_solution(args_m):
                     plt.show()
                 E.insert(0,list_E[amin,1])
                 phi = np.copy(list_phi[amin])
-                if 0 and args_m['disp']:
-                    print("energy step ",step," is ","{:.9f}".format(E[0])," with dH = ","{:.3f}".format(np.sum(np.absolute(dHa)+np.absolute(dHs))))
+                if 1 and args_m['disp']:
+                    print("energy step ",step," is ","{:.9f}".format(E[0])," with dH = ","{:.3f}".format(np.sum(np.absolute(dH))))
             else:
                 print("none LR was lower in energy -> exit")
                 if 0:   #Plot energies
@@ -582,8 +582,8 @@ def plot_magnetization(phi,Phi,A_M,title='',save=False):
     l = np.linalg.norm(a1_m)/40 if np.linalg.norm(a1_m)>np.linalg.norm(a2_m) else np.linalg.norm(a2_m)/40#0.02       #length of arrow
     hw = l/2#0.01       #arrow head width
     hl = l/2#0.01       #arrow head length
-    facx = gx//30     #plot 1 spin every "fac" of grid
-    facy = gy//30     #plot 1 spin every "fac" of grid
+    facx = gx//10     #plot 1 spin every "fac" of grid
+    facy = gy//10     #plot 1 spin every "fac" of grid
     phi_ = [phi_1,phi_2]
     #Figure
     fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(18,7))
