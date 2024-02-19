@@ -12,7 +12,8 @@ import h5py
 #Physical parameters
 rho_phys = {'DFT':1.4,'exp':1.7} #     (meV)      
 d_phys = {'DFT':0.18,'exp':0.09} #     (meV)       
-gammas = np.linspace(0,3,100,endpoint=False)
+#gammas = np.linspace(0,3,100,endpoint=False)
+gammas = np.linspace(0,6,500,endpoint=False)
 rhos = np.linspace(1.1,2,13)
 anis = np.linspace(0,0.27,13)
 epss = [0.05,0.04,0.03,0.02,0.01]
@@ -581,8 +582,8 @@ def plot_magnetization(phi,Phi,A_M,title='',save=False):
     l = np.linalg.norm(a1_m)/40 if np.linalg.norm(a1_m)>np.linalg.norm(a2_m) else np.linalg.norm(a2_m)/40#0.02       #length of arrow
     hw = l/2#0.01       #arrow head width
     hl = l/2#0.01       #arrow head length
-    facx = gx//20     #plot 1 spin every "fac" of grid
-    facy = gy//20     #plot 1 spin every "fac" of grid
+    facx = gx//30     #plot 1 spin every "fac" of grid
+    facy = gy//30     #plot 1 spin every "fac" of grid
     phi_ = [phi_1,phi_2]
     #Figure
     fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(18,7))
@@ -666,7 +667,8 @@ def plot_Phi(Phi,a1_m,a2_m,title=''):
     ax.set_aspect(1.)
     #Interlayer
     ax.contour(A1,A2,Phi_.T,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(0.5))
-    surf = ax.contourf(A1,A2,Phi_.T,levels=20)
+    surf = ax.contourf(A1,A2,Phi_.T,levels=100)
+    plt.colorbar(surf)
     #Vectors
     ax.arrow(0,0,a1_m[0],a1_m[1],head_width=np.linalg.norm(a1_m)/20,fill=True,edgecolor='k',facecolor='k',length_includes_head=True)
     ax.arrow(0,0,a2_m[0],a2_m[1],head_width=np.linalg.norm(a1_m)/20,fill=True,edgecolor='k',facecolor='k',length_includes_head=True)
@@ -862,7 +864,7 @@ def moire_pars_fn(dic):
     for k in dic.keys():
         fn += k+':'
         if type(dic[k])==type('string'):
-            fn += p
+            fn += dic[k]
         elif type(dic[k])==type(1) or type(dic[k])==np.int64:
             fn += str(dic[k])
         elif type(dic[k])==type(1.1) or type(dic[k])==np.float64:
@@ -950,8 +952,15 @@ def Moire(args):
     big_I = extend(I,5)
     S_array = np.linspace(-2,3,5*pts,endpoint=False)
     fun_I = RBS(S_array,S_array,big_I)
-    if moire_type == 'none':
-        J = np.ones((xpts,ypts))*fun_I(0,0.5)
+    #Case of constant interlayer -> AA and M case
+    if moire_type == 'const':
+        if moire_pars[moire_type]['place'] == 'M':
+            lin = np.linspace(0,1,200)
+            const_value = np.min(fun_I(lin,lin))
+        else:
+            lin = np.linspace(-0.1,0.1,200)
+            const_value = np.min(fun_I(lin,lin))
+        J = np.ones((xpts,ypts))*const_value
         a1_m = a1
         a2_m = a2
         np.save(moire_potential_fn,J)
@@ -1182,6 +1191,43 @@ def compute_MPs(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine):
         exit()
     plt.savefig(get_fig_mp_fn(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine))
     plt.close()
+
+def compute_MPs_new(list_pars,rho_str,ani_str,machine):
+    """Compute the magnetization plots.
+
+    """
+    fig = plt.figure(figsize=(20,20))
+    colors = ['r','b','g','y']
+    ind = [27,31,32,32]
+    for iii in range(len(list_pars)):
+        moire_type,moire_pars,precision_pars,txt_name = list_pars[iii]
+        #Open and read h5py File
+        hdf5_fn = get_hdf5_fn(moire_type,moire_pars,precision_pars,machine)
+        data = []
+        n = 0
+        with h5py.File(hdf5_fn,'r') as f:
+            for k in f.keys():
+                if not k[:5] == 'gamma':
+                    continue
+                gamma = k[-6:]            #-6 fixed by the fact that gamma is saved .4f
+                for p in f[k].keys():
+                    rho = p[:7]      #7 fixed by the fact that rho is saved .5f 
+                    ani = p[-7:]      #7 fixed by the fact that rho is saved .5f 
+                    if rho == rho_str and ani == ani_str:
+                        data.append([float(gamma),abs(compute_magnetization(f[k][p]))])
+                        n += 1
+        if n == 0:  #No data here for some reason
+            return 0
+        M = np.array(data)
+        s_ = 20
+        plt.plot(M[:,0],M[:,1],'-',color=colors[iii],marker='*',label=txt_name)
+        plt.scatter(M[ind[iii],0],M[ind[iii],1],s=200,facecolors='none',edgecolors=colors[iii],zorder=10)
+    plt.xlabel(r'$\gamma$',size=s_)
+    plt.ylabel(r'$M$',size=s_)
+    plt.legend(fontsize=s_)
+    plt.title("rho = "+rho_str+", d = "+ani_str,size=s_+5)
+    plt.show()
+    exit()
 
 def compute_order(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
     phi_s,phi_a = phi

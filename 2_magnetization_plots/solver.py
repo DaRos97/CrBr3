@@ -4,13 +4,13 @@ import sys, os, h5py
 from pathlib import Path
 
 ##############################################################################
-max_grid = 200
+max_grid = 150
 AV = 1
 ##############################################################################
 
 machine = fs.get_machine(os.getcwd())
 
-type_computation = 'MP' if machine=='loc' else sys.argv[2]
+type_computation = 'CO' if machine=='loc' else sys.argv[2]
 
 pd_size = len(fs.rhos)*len(fs.anis)
 if type_computation == 'PD':
@@ -25,10 +25,14 @@ elif type_computation == 'CO':
     input_type = 'DFT'
     rho = fs.rho_phys[input_type]
     anisotropy = fs.d_phys[input_type]
-    gamma = fs.gammas[int(sys.argv[1])]
-    moire_type = 'none'
+    #Two cases: AA and M
+    list_interlayer = ['AA','M']
+    place_interlayer = list_interlayer[int(sys.argv[1])//len(fs.gammas)]
+    gamma = fs.gammas[int(sys.argv[1])%len(fs.gammas)]
+    moire_type = 'const'
     moire_pars = {}
-    moire_pars[moire_type] = {'l':0,}
+    moire_pars[moire_type] = {'place':place_interlayer,}
+    moire_pars['theta'] = 0.
 
 print("Computing with Moire with ",moire_type," strain of ",moire_pars[moire_type]," and rotation ",moire_pars['theta'])
 print("Physical parameters are gamma: ","{:.4f}".format(gamma),", rho: ","{:.4f}".format(rho),", anisotropy: ","{:.4f}".format(anisotropy))
@@ -80,7 +84,7 @@ if not Path(solution_fn).is_file():
             'args_phys':        (gamma,rho,anisotropy),
             'grid':             (gridx,gridy),
             'pts_per_fit':      AV,                          #Maybe can be related to gridx/gridy
-            'n_initial_pts':    0,                         #three solution initial states, 25 constant initial states and n-25 random states
+            'n_initial_pts':    10,                         #three solution initial states, 25 constant initial states and n-25 random states
             'maxiter':          1e5, 
             'machine':          machine, 
             'disp':             machine=='loc',

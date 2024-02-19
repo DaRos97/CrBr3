@@ -5,6 +5,11 @@ from pathlib import Path
 
 machine = fs.get_machine(os.getcwd())
 
+###########################
+max_grid = 150
+AV = 1
+###########################
+
 type_computation = 'MP' if machine=='loc' else sys.argv[2]
 
 pd_size = len(fs.rhos)*len(fs.anis)
@@ -28,13 +33,8 @@ if not Path(Phi_fn).is_file():
 
 Phi = np.load(Phi_fn)
 a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
-###########################
-max_grid = 100
-LR = -1e-1
-AV = 1
-###########################
 gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
-precision_pars = (gridx,gridy,LR,AV)
+precision_pars = (gridx,gridy,AV)
 
 print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.norm(a2_m))
 print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
@@ -59,8 +59,10 @@ with h5py.File(hdf5_fn,'r') as f:
                 if rho==rho_str and ani==ani_str:
                     solution = np.copy(f[k][p])
                     break
-print(fs.compute_magnetization(solution))
-fs.plot_magnetization(solution,Phi,(a1_m,a2_m),rho_str+'_'+ani_str)
-#fs.plot_phis(solution,(a1_m,a2_m),rho_str+'_'+ani_str)
+mag = fs.compute_magnetization(solution)
+print(mag)
+title = 'Mag_'+gamma_str+'_'+str(AV)+'_'+"{:.4f}".format(mag)
+fs.plot_magnetization(solution,Phi,(a1_m,a2_m),title,False)
+fs.plot_phis(solution,(a1_m,a2_m),title)
 
 
