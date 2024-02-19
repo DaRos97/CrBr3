@@ -15,9 +15,9 @@ type_computation = 'CO' if machine=='loc' else sys.argv[2]
 pd_size = len(fs.rhos)*len(fs.anis)
 if type_computation == 'PD':
     moire_type,moire_pars = fs.get_moire_pars(int(sys.argv[1])//pd_size)
-    gamma,rho,anisotropy = fs.get_phys_pars(int(sys.argv[1])%pd_size)          
+    gamma,rho,anisotropy = fs.get_phys_pars(int(sys.argv[1])%pd_size,'MPs')          
 elif type_computation == 'MP':
-    input_type,moire_type,moire_pars,gamma = fs.get_MP_pars(int(sys.argv[1]))
+    input_type,moire_type,moire_pars,gamma = fs.get_MP_pars(int(sys.argv[1]),'MPs')
     rho = fs.rho_phys[input_type]
     anisotropy = fs.d_phys[input_type]
     print("Input type: ",input_type)
@@ -27,8 +27,8 @@ elif type_computation == 'CO':
     anisotropy = fs.d_phys[input_type]
     #Two cases: AA and M
     list_interlayer = ['AA','M']
-    place_interlayer = list_interlayer[int(sys.argv[1])//len(fs.gammas)]
-    gamma = fs.gammas[int(sys.argv[1])%len(fs.gammas)]
+    place_interlayer = list_interlayer[int(sys.argv[1])//len(fs.gammas[place_interlayer])]
+    gamma = fs.gammas[place_interlayer][int(sys.argv[1])%len(fs.gammas[place_interlayer])]
     moire_type = 'const'
     moire_pars = {}
     moire_pars[moire_type] = {'place':place_interlayer,}
@@ -84,7 +84,7 @@ if not Path(solution_fn).is_file():
             'args_phys':        (gamma,rho,anisotropy),
             'grid':             (gridx,gridy),
             'pts_per_fit':      AV,                          #Maybe can be related to gridx/gridy
-            'n_initial_pts':    10,                         #three solution initial states, 25 constant initial states and n-25 random states
+            'n_initial_pts':    25,                         #three solution initial states, 25 constant initial states and n-25 random states
             'maxiter':          1e5, 
             'machine':          machine, 
             'disp':             machine=='loc',

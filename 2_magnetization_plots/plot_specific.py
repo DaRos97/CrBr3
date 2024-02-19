@@ -10,7 +10,7 @@ max_grid = 150
 AV = 1
 ###########################
 
-type_computation = 'MP' if machine=='loc' else sys.argv[2]
+type_computation = 'CO' if machine=='loc' else sys.argv[2]
 
 pd_size = len(fs.rhos)*len(fs.anis)
 if type_computation == 'PD':
@@ -20,6 +20,18 @@ elif type_computation == 'MP':
     input_type,moire_type,moire_pars,gamma = fs.get_MP_pars(int(sys.argv[1]))
     rho = fs.rho_phys[input_type]
     anisotropy = fs.d_phys[input_type]
+elif type_computation == 'CO':
+    input_type = 'DFT'
+    rho = fs.rho_phys[input_type]
+    anisotropy = fs.d_phys[input_type]
+    #Two cases: AA and M
+    list_interlayer = ['AA','M']
+    place_interlayer = list_interlayer[int(sys.argv[1])//len(fs.gammas)]
+    gamma = fs.gammas[int(sys.argv[1])%len(fs.gammas)]
+    moire_type = 'const'
+    moire_pars = {}
+    moire_pars[moire_type] = {'place':place_interlayer,}
+    moire_pars['theta'] = 0.
 
 print("Computing with Moire with ",moire_type," strain of ",moire_pars[moire_type])
 print("Physical parameters are gamma: ","{:.4f}".format(gamma),", rho: ","{:.4f}".format(rho),", anisotropy: ","{:.4f}".format(anisotropy))
@@ -63,6 +75,6 @@ mag = fs.compute_magnetization(solution)
 print(mag)
 title = 'Mag_'+gamma_str+'_'+str(AV)+'_'+"{:.4f}".format(mag)
 fs.plot_magnetization(solution,Phi,(a1_m,a2_m),title,False)
-fs.plot_phis(solution,(a1_m,a2_m),title)
+#fs.plot_phis(solution,(a1_m,a2_m),title)
 
 

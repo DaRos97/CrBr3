@@ -12,8 +12,14 @@ import h5py
 #Physical parameters
 rho_phys = {'DFT':1.4,'exp':1.7} #     (meV)      
 d_phys = {'DFT':0.18,'exp':0.09} #     (meV)       
+gammas = {  'MPs':np.linspace(0,3,100,endpoint=False), 
+            'MPl':np.linspace(0,6,500,endpoint=False),
+            'AA':np.linspace(0,1,100,endpoint=False),
+            'M':np.linspace(0,5,100,endpoint=False),
+            }
 #gammas = np.linspace(0,3,100,endpoint=False)
-gammas = np.linspace(0,6,500,endpoint=False)
+#gammas = np.linspace(0,6,500,endpoint=False)
+#gammas = np.linspace(0,10,100,endpoint=False)
 rhos = np.linspace(1.1,2,13)
 anis = np.linspace(0,0.27,13)
 epss = [0.05,0.04,0.03,0.02,0.01]
@@ -1036,13 +1042,13 @@ def Moire(args):
     np.save(moire_potential_fn,J)
     np.save(get_AM_fn(moire_type,moire_pars,machine),np.array([a1_m,a2_m]))
 
-def get_MP_pars(ind):
+def get_MP_pars(ind,type_gamma):
     input_types = ['DFT','exp']
     moire_types = ['uniaxial','biaxial','shear']
     #
     lep = len(epss)
     lni = len(nis)
-    lga = len(gammas)
+    lga = len(gammas[type_gamma])
     #
     iit = ind//(lep*lni*lga)
     iep = (ind%(lep*lni*lga)) // (lni*lga)
@@ -1070,7 +1076,7 @@ def get_MP_pars(ind):
         'theta':thetas,
         }
     imt = 0
-    return (input_types[iit],moire_types[imt],moire_pars,gammas[iga])
+    return (input_types[iit],moire_types[imt],moire_pars,gammas[type_gamma][iga])
 
 def get_moire_pars(ind):
     moire_types = ['uniaxial','biaxial','shear']
@@ -1104,14 +1110,14 @@ def get_moire_pars(ind):
         }
     return (moire_types[imt],moire_pars)
 
-def get_phys_pars(ind):
-    lg = len(gammas)
+def get_phys_pars(ind,type_gamma):
+    lg = len(gammas[type_gamma])
     lr = len(rhos)
     la = len(anis)
     ig = ind//(lr*la)
     ir = (ind%(lr*la)) // la
     ia = (ind%(lr*la)) % la
-    return (gammas[ig],rhos[ir],anis[ia])
+    return (gammas[type_gamma][ig],rhos[ir],anis[ia])
 
 def check_directory(moire_type,moire_pars,precision_pars,gamma,machine):
     #Phase diagrams dir
