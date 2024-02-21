@@ -10,12 +10,12 @@ import os
 import h5py
 
 #Physical parameters
-rho_phys = {'DFT':1.4,'exp':1.7} #     (meV)      
+rho_phys = {'DFT':0,'exp':1.7} #     (meV)      
 d_phys = {'DFT':0.0709,'exp':0.09} #     (meV)       
 gammas = {  'MPs':np.linspace(0,3,100,endpoint=False), 
             'MPl':np.linspace(0,6,500,endpoint=False),
-            'AA':np.linspace(0,1,100,endpoint=False),
-            'M':np.linspace(0,5,100,endpoint=False),
+            'AA':np.linspace(0,0.5,100,endpoint=False),
+            'M':np.linspace(0,0.5,100,endpoint=False),
             }
 rhos = np.linspace(1.1,2,13)
 anis = np.linspace(0,0.27,13)
@@ -1190,8 +1190,8 @@ def compute_MPs(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine):
     M = np.array(data)
     fig = plt.figure(figsize=(20,20))
     s_ = 20
-    plt.plot(M[:,0],M[:,1],'r*-')
-    plt.xlabel(r'$\gamma$',size=s_)
+    plt.plot(M[:,0]*3/2/0.607/2,M[:,1],'r*-')
+    plt.xlabel(r'$h_\bot(T)$',size=s_)
     plt.ylabel(r'$M$',size=s_)
     plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" theta: "+"{:.3f}".format(moire_pars['theta'])+" rho = "+rho_str+", d = "+ani_str+", and precision pars: "+str(precision_pars[0])+'x'+str(precision_pars[1])+'_'+str(precision_pars[2]))
     if machine == 'loc':

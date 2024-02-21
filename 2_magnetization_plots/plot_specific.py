@@ -26,8 +26,8 @@ elif type_computation == 'CO':
     anisotropy = fs.d_phys[input_type]
     #Two cases: AA and M
     list_interlayer = ['AA','M']
-    place_interlayer = list_interlayer[int(sys.argv[1])//len(fs.gammas)]
-    gamma = fs.gammas[int(sys.argv[1])%len(fs.gammas)]
+    place_interlayer = list_interlayer[int(sys.argv[1])//len(fs.gammas['M'])]
+    gamma = fs.gammas[place_interlayer][int(sys.argv[1])%len(fs.gammas['M'])]
     moire_type = 'const'
     moire_pars = {}
     moire_pars[moire_type] = {'place':place_interlayer,}
@@ -63,8 +63,8 @@ rho_str = "{:.5f}".format(rho)
 ani_str = "{:.5f}".format(anisotropy)
 with h5py.File(hdf5_fn,'r') as f:
     for k in f.keys():
-        gamma = k[-6:]            #-6 fixed by the fact that gamma is saved .4f
-        if gamma == gamma_str:
+        gamma_ = k[-6:]            #-6 fixed by the fact that gamma is saved .4f
+        if gamma_ == gamma_str:
             for p in f[k].keys():
                 rho = p[:7]      #7 fixed by the fact that rho is saved .5f 
                 ani = p[-7:]      #7 fixed by the fact that rho is saved .5f 
@@ -74,7 +74,7 @@ with h5py.File(hdf5_fn,'r') as f:
 mag = fs.compute_magnetization(solution)
 print(mag)
 title = 'Mag_'+gamma_str+'_'+str(AV)+'_'+"{:.4f}".format(mag)
-fs.plot_magnetization(solution,Phi,(a1_m,a2_m),title,False)
+fs.plot_magnetization(solution,Phi,(a1_m,a2_m),gamma*3/2/0.607,False)
 #fs.plot_phis(solution,(a1_m,a2_m),title)
 
 

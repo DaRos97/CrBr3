@@ -47,7 +47,7 @@ if not Path(Phi_fn).is_file():
 Phi,a1_m,a2_m = fs.load_Moire(Phi_fn,fs.get_AM_fn(moire_type,moire_pars,machine))
 
 #######
-Phi /= 2*S**2
+Phi /= 2*(S**2)
 ####### 
 gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
 precision_pars = (gridx,gridy,AV)
