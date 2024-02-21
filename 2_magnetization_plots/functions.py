@@ -11,15 +11,12 @@ import h5py
 
 #Physical parameters
 rho_phys = {'DFT':1.4,'exp':1.7} #     (meV)      
-d_phys = {'DFT':0.18,'exp':0.09} #     (meV)       
+d_phys = {'DFT':0.0709,'exp':0.09} #     (meV)       
 gammas = {  'MPs':np.linspace(0,3,100,endpoint=False), 
             'MPl':np.linspace(0,6,500,endpoint=False),
             'AA':np.linspace(0,1,100,endpoint=False),
             'M':np.linspace(0,5,100,endpoint=False),
             }
-#gammas = np.linspace(0,3,100,endpoint=False)
-#gammas = np.linspace(0,6,500,endpoint=False)
-#gammas = np.linspace(0,10,100,endpoint=False)
 rhos = np.linspace(1.1,2,13)
 anis = np.linspace(0,0.27,13)
 epss = [0.05,0.04,0.03,0.02,0.01]
@@ -680,6 +677,12 @@ def plot_Phi(Phi,a1_m,a2_m,title=''):
     ax.arrow(0,0,a2_m[0],a2_m[1],head_width=np.linalg.norm(a1_m)/20,fill=True,edgecolor='k',facecolor='k',length_includes_head=True)
     ax.arrow(a1_m[0],a1_m[1],a2_m[0],a2_m[1],head_width=0,ls='--',edgecolor='r',facecolor='r')
     ax.arrow(a2_m[0],a2_m[1],a1_m[0],a1_m[1],head_width=0,ls='--',edgecolor='r',facecolor='r')
+    if 0:
+        #Scatter High symmetry points
+        plt.scatter(0,0,color='r',marker='o',s=20)
+        plt.scatter(1/3,0,color='r',marker='o',s=20)
+        plt.scatter(1/3,1/np.sqrt(3),color='r',marker='o',s=20)
+        plt.scatter(-1/6,1/2/np.sqrt(3),color='r',marker='o',s=20)
     #Limits
     minx = -abs(min([a1_m[0],a2_m[0]])*2)
     maxx = abs(max([a1_m[0],a2_m[0]])*2)
@@ -698,6 +701,7 @@ def plot_Phi(Phi,a1_m,a2_m,title=''):
 #    plt.title(title,size=20)
     fig.tight_layout()
     plt.show()
+    exit()
 
 def extend(phi,nn):
     """Extend the domain of phi from 0,A_M to -A_M,2*A_M by copying it periodically.
@@ -961,11 +965,9 @@ def Moire(args):
     #Case of constant interlayer -> AA and M case
     if moire_type == 'const':
         if moire_pars[moire_type]['place'] == 'M':
-            lin = np.linspace(0,1,200)
-            const_value = np.min(fun_I(lin,lin))
+            const_value = fun_I(1/3,0)
         else:
-            lin = np.linspace(-0.1,0.1,200)
-            const_value = np.min(fun_I(lin,lin))
+            const_value = fun_I(0,0)
         J = np.ones((xpts,ypts))*const_value
         a1_m = a1
         a2_m = a2
@@ -974,6 +976,7 @@ def Moire(args):
         return 0
     #Lattice-1 and lattice-2
     l1_t,l2_t,a1_t,a2_t = compute_lattices(moire_type,moire_pars)
+    #Chose moire vectors 1 and 2 depending on x component
     if a1_t[0]>a2_t[0]:
         a1_m = a1_t
         a2_m = a2_t
@@ -984,7 +987,6 @@ def Moire(args):
         a2_m = a1_t
         l1 = l2_t
         l2 = l1_t
-
     if disp:   #Plot Moirè pattern
         fig,ax = plt.subplots(figsize=(20,20))
         ax.set_aspect('equal')
@@ -1300,7 +1302,15 @@ def compute_PDs(moire_type,moire_pars,precision_pars,gamma_str,machine):
         plt.savefig(get_fig_pd_fn(moire_type,moire_pars,precision_pars,gamma,machine))
         plt.close()
 
-
+def load_Moire(Phi_fn,AM_fn):
+    for i in range(200):
+        try:
+            Phi = np.load(Phi_fn)
+            a1_m,a2_m = np.load(AM_fn)
+            return Phi,a1_m,a2_m
+        except:
+            print(i," let's try again")
+    exit()
 
 
 

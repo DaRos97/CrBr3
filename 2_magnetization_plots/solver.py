@@ -7,7 +7,7 @@ from pathlib import Path
 max_grid = 150
 AV = 1
 ##############################################################################
-
+S = 3/2
 machine = fs.get_machine(os.getcwd())
 
 type_computation = 'CO' if machine=='loc' else sys.argv[2]
@@ -27,8 +27,8 @@ elif type_computation == 'CO':
     anisotropy = fs.d_phys[input_type]
     #Two cases: AA and M
     list_interlayer = ['AA','M']
-    place_interlayer = list_interlayer[int(sys.argv[1])//len(fs.gammas[place_interlayer])]
-    gamma = fs.gammas[place_interlayer][int(sys.argv[1])%len(fs.gammas[place_interlayer])]
+    place_interlayer = list_interlayer[int(sys.argv[1])//len(fs.gammas['M'])]
+    gamma = fs.gammas[place_interlayer][int(sys.argv[1])%len(fs.gammas['M'])]
     moire_type = 'const'
     moire_pars = {}
     moire_pars[moire_type] = {'place':place_interlayer,}
@@ -44,20 +44,11 @@ if not Path(Phi_fn).is_file():
     args_Moire = (machine=='loc',moire_type,moire_pars)
     fs.Moire(args_Moire)
 #Try a couple of times to load Phi since sometimes it does not work
-try:
-    Phi = np.load(Phi_fn)
-    a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
-except:
-    print("Phi failed to load the first time")
-    try:
-        Phi = np.load(Phi_fn)
-        a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
-    except:
-        print("Phi failed to load the second time")
-        print("Trying last time if not goes to error")
-        Phi = np.load(Phi_fn)
-        a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
+Phi,a1_m,a2_m = fs.load_Moire(Phi_fn,fs.get_AM_fn(moire_type,moire_pars,machine))
 
+#######
+Phi /= 2*S**2
+####### 
 gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
 precision_pars = (gridx,gridy,AV)
 
