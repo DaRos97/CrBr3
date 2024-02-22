@@ -10,20 +10,20 @@ import os
 import h5py
 
 #Physical parameters
-rho_phys = {'DFT':0,'exp':1.7} #     (meV)      
+rho_phys = {'DFT':1.4,'exp':1.7} #     (meV)      
 d_phys = {'DFT':0.0709,'exp':0.09} #     (meV)       
-gammas = {  'MPs':np.linspace(0,3,100,endpoint=False), 
+gammas = {  'MPs':np.linspace(0,1,100,endpoint=False), 
             'MPl':np.linspace(0,6,500,endpoint=False),
             'AA':np.linspace(0,0.5,100,endpoint=False),
             'M':np.linspace(0,0.5,100,endpoint=False),
             }
 rhos = np.linspace(1.1,2,13)
-anis = np.linspace(0,0.27,13)
-epss = [0.05,0.04,0.03,0.02,0.01]
-nis = [1.,0.7,0.5,0.3]
+anis = np.linspace(0,0.2,13)
+epss = [0.05,0.03,0.01,0.005]
+nis = [1.,0.5,0.3]
 thetas = np.pi/180*0
 
-offset_solution = -0.
+offset_solution = -0.3
 NNNN = 21
 lr_list = np.logspace(-5,1,num=NNNN)
 
@@ -701,7 +701,6 @@ def plot_Phi(Phi,a1_m,a2_m,title=''):
 #    plt.title(title,size=20)
     fig.tight_layout()
     plt.show()
-    exit()
 
 def extend(phi,nn):
     """Extend the domain of phi from 0,A_M to -A_M,2*A_M by copying it periodically.

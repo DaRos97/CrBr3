@@ -10,7 +10,7 @@ AV = 1
 S = 3/2
 machine = fs.get_machine(os.getcwd())
 
-type_computation = 'CO' if machine=='loc' else sys.argv[2]
+type_computation = 'MP' if machine=='loc' else sys.argv[2]
 
 pd_size = len(fs.rhos)*len(fs.anis)
 if type_computation == 'PD':
