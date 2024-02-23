@@ -10,12 +10,11 @@ AV = 1
 S = 3/2
 machine = fs.get_machine(os.getcwd())
 
-type_computation = 'MP' if machine=='loc' else sys.argv[2]
+type_computation = 'PD' if machine=='loc' else sys.argv[2]
 
-pd_size = len(fs.rhos)*len(fs.anis)
 if type_computation == 'PD':
-    moire_type,moire_pars = fs.get_moire_pars(int(sys.argv[1])//pd_size)
-    gamma,rho,anisotropy = fs.get_phys_pars(int(sys.argv[1])%pd_size,'MPs')          
+    moire_type,moire_pars = fs.get_moire_pars(int(sys.argv[1]))
+    gamma,rho,anisotropy = fs.get_phys_pars(int(sys.argv[1]),'MPs')          
 elif type_computation == 'MP':
     input_type,moire_type,moire_pars,gamma = fs.get_MP_pars(int(sys.argv[1]),'MPs')
     rho = fs.rho_phys[input_type]
@@ -45,10 +44,10 @@ if not Path(Phi_fn).is_file():
     fs.Moire(args_Moire)
 #Try a couple of times to load Phi since sometimes it does not work
 Phi,a1_m,a2_m = fs.load_Moire(Phi_fn,fs.get_AM_fn(moire_type,moire_pars,machine))
-
 #######
 Phi /= 2*(S**2)
 ####### 
+
 gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
 precision_pars = (gridx,gridy,AV)
 

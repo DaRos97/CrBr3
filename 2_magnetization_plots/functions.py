@@ -11,14 +11,14 @@ import h5py
 
 #Physical parameters
 rho_phys = {'DFT':1.4,'exp':1.7} #     (meV)      
-d_phys = {'DFT':0.0709,'exp':0.09} #     (meV)       
-gammas = {  'MPs':np.linspace(0,1,100,endpoint=False), 
+d_phys = {'DFT':0.0709,'exp':0.09} #     (meV)       0.0709
+gammas = {  'MPs':np.linspace(0,2,100,endpoint=False), 
             'MPl':np.linspace(0,6,500,endpoint=False),
             'AA':np.linspace(0,0.5,100,endpoint=False),
             'M':np.linspace(0,0.5,100,endpoint=False),
             }
-rhos = np.linspace(1.1,2,13)
-anis = np.linspace(0,0.2,13)
+rhos = np.linspace(0.1,10,25)
+anis = [0.01,0.0709,0.10,0.2]
 epss = [0.05,0.03,0.01,0.005]
 nis = [1.,0.5,0.3]
 thetas = np.pi/180*0
@@ -585,8 +585,8 @@ def plot_magnetization(phi,Phi,A_M,title='',save=False):
     l = np.linalg.norm(a1_m)/40 if np.linalg.norm(a1_m)>np.linalg.norm(a2_m) else np.linalg.norm(a2_m)/40#0.02       #length of arrow
     hw = l/2#0.01       #arrow head width
     hl = l/2#0.01       #arrow head length
-    facx = gx//10     #plot 1 spin every "fac" of grid
-    facy = gy//10     #plot 1 spin every "fac" of grid
+    facx = gx//15     #plot 1 spin every "fac" of grid
+    facy = gy//15     #plot 1 spin every "fac" of grid
     phi_ = [phi_1,phi_2]
     #Figure
     fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(18,7))
@@ -1068,7 +1068,7 @@ def get_MP_pars(ind,type_gamma):
             'phi':np.pi/180*0,
             },
         'biaxial':{
-            'eps':0.05,
+            'eps':0.03,
             },
         'shear':{
             'e_xy':0.05,
@@ -1076,7 +1076,7 @@ def get_MP_pars(ind,type_gamma):
             },
         'theta':thetas,
         }
-    imt = 0
+    imt = 1
     return (input_types[iit],moire_types[imt],moire_pars,gammas[type_gamma][iga])
 
 def get_moire_pars(ind):
@@ -1085,9 +1085,9 @@ def get_moire_pars(ind):
     lep = len(epss)
     lni = len(nis)
     #
-    imt = 0
-    iep = ind // lni
-    ini = ind % lni
+    imt = 1
+    iep = 0#ind // lni
+    ini = 0#ind % lni
     #
     moire_pars = {
         'general':{
@@ -1101,7 +1101,7 @@ def get_moire_pars(ind):
             'phi':0.,
             },
         'biaxial':{
-            'eps':0.05,
+            'eps':0.03,
             },
         'shear':{
             'e_xy':0.05,
@@ -1189,7 +1189,7 @@ def compute_MPs(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine):
     M = np.array(data)
     fig = plt.figure(figsize=(20,20))
     s_ = 20
-    plt.plot(M[:,0]*3/2/0.607/2,M[:,1],'r*-')
+    plt.plot(M[:,0]*3/2/0.607,M[:,1],'r*-')
     plt.xlabel(r'$h_\bot(T)$',size=s_)
     plt.ylabel(r'$M$',size=s_)
     plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" theta: "+"{:.3f}".format(moire_pars['theta'])+" rho = "+rho_str+", d = "+ani_str+", and precision pars: "+str(precision_pars[0])+'x'+str(precision_pars[1])+'_'+str(precision_pars[2]))
@@ -1227,9 +1227,9 @@ def compute_MPs_new(list_pars,rho_str,ani_str,machine):
             return 0
         M = np.array(data)
         s_ = 20
-        plt.plot(M[:,0],M[:,1],'-',color=colors[iii],marker='*',label=txt_name)
-        plt.scatter(M[ind[iii],0],M[ind[iii],1],s=200,facecolors='none',edgecolors=colors[iii],zorder=10)
-    plt.xlabel(r'$\gamma$',size=s_)
+        plt.plot(M[:,0]*3/2/0.607,M[:,1],'-',color=colors[iii],marker='*',label=txt_name)
+#        plt.scatter(M[ind[iii],0],M[ind[iii],1],s=200,facecolors='none',edgecolors=colors[iii],zorder=10)
+    plt.xlabel(r'$h_\bot(T)$',size=s_)
     plt.ylabel(r'$M$',size=s_)
     plt.legend(fontsize=s_)
     plt.title("rho = "+rho_str+", d = "+ani_str,size=s_+5)
