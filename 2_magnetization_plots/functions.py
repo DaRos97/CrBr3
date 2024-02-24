@@ -23,7 +23,7 @@ epss = [0.05,0.03,0.01,0.005]
 nis = [1.,0.5,0.3]
 thetas = np.pi/180*0
 
-type_of_calculation = '12'
+type_of_computation = '12'
 
 offset_solution = -0.3
 NNNN = 21
@@ -36,7 +36,7 @@ d = np.array([0,1/np.sqrt(3)])  #vector connecting the two sublattices
 b1 = np.array([1,1/np.sqrt(3)])*2*np.pi
 b2 = np.array([0,2/np.sqrt(3)])*2*np.pi
 
-def const_in_pt(fa,fb,gx,gy):
+def const_in_pt(fA,fB,gx,gy):
     """Computes the initial point for the minimization. The possibilities are for now
     either twisted-s -> ans=0, or constant -> ans=1
 
@@ -58,9 +58,9 @@ def const_in_pt(fa,fb,gx,gy):
     List
         Symmetric and antisymmetric phases at each position (grid,grid) of the Moirè unit cell.
     """
-    phi_a = np.ones((gx,gy))*fa
-    phi_b = np.ones((gx,gy))*fb
-    return np.array([phi_a, phi_b])
+    phi_A = np.ones((gx,gy))*fA
+    phi_B = np.ones((gx,gy))*fB
+    return np.array([phi_A, phi_B])
 
 def ts1_12(Phi,gx,gy):
     phi_1 = (np.sign(Phi+offset_solution)-1)*np.pi/4
@@ -173,7 +173,7 @@ def compute_solution(args_m):
             if list_E[amin,1] < E[0]:
                 E.insert(0,list_E[amin,1])
                 phi = np.copy(list_phi[amin])
-                if 1 and args_m['disp']:
+                if 0 and args_m['disp']:
                     print("energy step ",step," is ","{:.9f}".format(E[0])," with dH = ","{:.3f}".format(np.sum(np.absolute(dH))))
             else:
                 print("none LR was lower in energy -> exit")
@@ -191,11 +191,10 @@ def compute_solution(args_m):
                 print(ind_in_pt," reached maxiter")
                 keep_going = False
             step += 1
-        if args_m['disp']:
-            if 1:
-                print("Minimum energy at ",E[0])
-                plot_magnetization(phi,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(E[0]),False)
-                plot_phis(phi,A_M,'Solution of phi_s (left) and phi_a (right)')
+        if 0 and args_m['disp']:
+            print("Minimum energy at ",E[0])
+            plot_magnetization(phi,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(E[0]),False)
+            plot_phis(phi,A_M,'Solution of phi_A (left) and phi_B (right)')
     if (result == np.ones((2,gx,gy))*20).all():
         print("Not a single converged solution, they all reached max number of iterations or too low LR")
         exit()
@@ -1175,8 +1174,8 @@ def compute_magnetization(phi):
     if phi.shape[0]==1:
         return np.nan
     #Single layer phases
-    phi_1 = (phi[0]+phi[1])/2
-    phi_2 = (phi[0]-phi[1])/2
+    phi_1 = (phi[0]+phi[1])/2 if type_of_computation == 'sa' else phi[0]
+    phi_2 = (phi[0]-phi[1])/2 if type_of_computation == 'sa' else phi[1]
     total_magnetization = np.sum(np.cos(phi_1))/gx/gy + np.sum(np.cos(phi_2))/gx/gy
     return abs(total_magnetization)
 
@@ -1252,17 +1251,17 @@ def compute_MPs_new(list_pars,rho_str,ani_str,machine):
     exit()
 
 def compute_order(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
-    phi_s,phi_a = phi
-    gx,gy = phi_s.shape
+    phi_A,phi_B = phi
+    gx,gy = phi_A.shape
     E = compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
-    E0 = -2*gamma - anisotropy - Phi.sum()/Phi.shape[0]/Phi.shape[1]
+    E0 = -2*gamma - 2*anisotropy - Phi.sum()/Phi.shape[0]/Phi.shape[1]
     if E-E0 > 1e-4:       #Solution collinear was not tried for some reason
         col = 0
     elif abs(E-E0) < 1e-2:  #collinear
         col = 1
-    elif abs(np.max(np.cos(phi_s))-np.min(np.cos(phi_s))) < 0.1:    #t-s (all possible)
+    elif abs(np.max(np.cos(phi_A))-np.min(np.cos(phi_B))) < 0.1:    #t-s (all possible)
         #twisted-s seen by considering a nearly constant cos(phi_s)
-        if np.max(np.cos(phi_s)) > 0:   #t-s1
+        if np.max(np.cos(phi_A)) > 0:   #t-s1
             col = 2
         else:           #t-s2
             col = 3
