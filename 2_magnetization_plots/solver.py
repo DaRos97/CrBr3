@@ -57,8 +57,6 @@ print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape
 print("Grid size: ",gridx,gridy)
 
 if 0 and machine =='loc':
-    title = moire_type+" strain with (eps,ni,phi)=("+"{:.2f}".format(moire_pars[moire_type]['eps'])+','+"{:.2f}".format(moire_pars[moire_type]['ni'])+','+"{:.2f}".format(moire_pars[moire_type]['phi'])+'), and theta='+"{:.3f}".format(moire_pars['theta'])
-    fs.plot_Phi(Phi,a1_m,a2_m,title)
     exit()
 #Compute Phi over new grid parameters
 Phi = fs.reshape_Phi(Phi,gridx,gridy)
