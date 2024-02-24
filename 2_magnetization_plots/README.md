@@ -29,53 +29,23 @@ results/phase_diagram_data/moire_specs(type,eps,ni,gx,gy)/gamma/ one directory f
     3 - MP (DFT), e=0.1 & 0.05 & 0.04, ni=1, precision: 200,-1e-1,3
     #new name (LR)
 ## Ygg
-    0 - PDs of e=0.1 & 0.05, ni=1 &0.7 for precision: 200,-1e-1,2
-    0 - PDs of e=0.1 & 0.05, ni=1 &0.7 for precision: 300,-1e-1,1
-    0 - PDs of e=0.1 & 0.05, ni=1 &0.7 for precision: 300,-1e-1,2
-    0 - PDs of e=0.1 & 0.05, ni=1 &0.7 for precision: 200,-1e-1,3
-    0 - MP (DFT), e=0.1 & 0.05 & 0.04, ni=1, precision: 200,-1e-1,3
-    0 - PDs of e=0.1 & 0.05, ni=1 &0.7 for precision: 300,-1e-1,3
-    0 - PDs of e=0.1 & 0.05, ni=1 &0.7 for precision: 400,-1e-1,1
-    0 - PDs of e=0.1 & 0.05, ni=1 &0.7 for precision: 400,-1e-1,2
-    0 - PDs of e=0.1 & 0.05, ni=1 &0.7 for precision: 400,-1e-1,3
-    0 - PD of e=0.04 & 0.03, ni=1 &0.7 for precision: 200,1
-    0 - PD of e=0.04 & 0.03, ni=1 &0.7 for precision: 200,2
-    0 - PD of e=0.04 & 0.03, ni=1 &0.7 for precision: 300,1
-    0 - PD of e=0.04 & 0.03, ni=1 &0.7 for precision: 300,2
-    0 - CO (DFT), precision: 200,-1e-1,1
-    0 - CO (DFT), precision: 200,-1e-1,2
-    #For meeting -> new name (theta)
-    1 - MP (0.05,1), (100,1e-1,2) -> no random
-    1 - MP (0.05,1), (200,1e-1,0-1-2-3-4-5) -> no random
-    1 - MP (0.05,1), (300,1e-1,1-2-3) -> no random
-    1 - MP (0.05,1), (400,1e-1,1-2-3) -> no random
-    1 - MP (0.05,1), (150,1e-2,1-2) -> defined solutions + 64 fixed solutions (no random) -> not finished low field
-    #New name (LR)
-    - MP (0.05,1), (100,1-4) -> new method. Only neg in pts (t-s1, t-s2 and t-a)
-    - MP (0.05,1), (200,1-4) -> new method. Only neg in pts (t-s1, t-s2 and t-a)
+    0 - CO AA&M d=0.07-0.1-0.2    150,1   25 const solutions, rho=0
+    0 - PD (0.03,1), (rho,d):(1.1%2,0%0.2), 13x13
+    0 - MP (0.05-0.03-0.01-0.005,1-0.5-0.3), g:(0%3,100) (d,rho) = (0.0709,1.4) (no 0.005,0.3)
+    0 - MP (0.05-0.03-0.01-0.005,1-0.5-0.3), g:(0%3,100) (d,rho) = (0.1,1.4) (no 0.005,0.3)
+    0 - MP (0.05-0.03-0.01-0.005,1-0.5-0.3), g:(0%3,100) (d,rho) = (0.2,1.4) (no 0.005,0.3)
 
 # Computing
 ## Bao
 ## Ygg
-    - MP (0.05,1), (150,1) -> new method. Neg + 10 constant solutions
-    - MP (0.05,1), (150,2) -> new method. Neg + 10 constant solutions
-    - MP (0.05,1), (150,3) -> new method. Neg + 10 constant solutions
-    - MP (0.05,1), (150,4) -> new method. Neg + 10 constant solutions
-
-    - MP (0.05,1), (160,1) -> new method. Neg + 25 constant solutions
-    - MP (0.05,1), (160,2) -> new method. Neg + 25 constant solutions
-    - MP (0.05,1), (160,3) -> new method. Neg + 25 constant solutions
-    - MP (0.05,1), (160,4) -> new method. Neg + 25 constant solutions
-
+All in (150,1,25 sol)
+    - PD rho:(0.1,10,25), d:(0.01,0.07,0.1,0.2), g:(0,2,100)
 # To do
-    - After this set of calculations, see if 300,3 is still good -> if not other tests
-    - Compute MP for all eps,ni (20 combinations) -> in DFT values
-    - Compute PD for corners (eps=0.05&0.01, ni=1&0.3) -> see if all the same (so no need to compute them all)
-    - Take one MP and do many steps close to flip(kink) and flop(jump) as well as for large gamma (to see if it is sharp)
+
 
 # Comments
 If phi_s starts at 0, it stays there for all evolution->we can make it go faster because there is no need to compute dHs.
-400 max grid size and 2 pts of average seems good. The learn rate is insignificant now.
+Stay for meeting of 19/02 at grid 150 and AV=1.
 
 # Problems
 Some points in the phase diagrams are still oscillating from t-s to t-a

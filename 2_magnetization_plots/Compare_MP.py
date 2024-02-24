@@ -11,7 +11,7 @@ machine = fs.get_machine(os.getcwd())
 
 type_computation = 'MP'
 
-inds = [0,3,16,19]#int(sys.argv[1])
+inds = [0,3,6,9]#int(sys.argv[1])
 input_type = 'DFT'
 list_pars = []
 for ind in inds:

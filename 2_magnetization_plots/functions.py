@@ -232,7 +232,7 @@ def compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
         d_phi1 = smooth(fun.partial_derivative(1,0)(xx,yy),rg,A_M)[0]
         d_phi2 = smooth(fun.partial_derivative(0,1)(xx,yy),rg,A_M)[0]
         grad_2.append( (n1x*d_phi1+n2x*d_phi2)**2+(n1y*d_phi1+n2y*d_phi2)**2 )
-    energy = rho/4*(grad_2[0]+grad_2[1]) - anisotropy*np.cos(phi[1])*np.cos(phi[0]) - Phi*np.cos(phi[1]) - 2*gamma*np.cos(phi[0]/2)*np.cos(phi[1]/2)
+    energy = rho/4*(grad_2[0]+grad_2[1]) - 2*anisotropy*np.cos(phi[1])*np.cos(phi[0]) - Phi*np.cos(phi[1]) - 2*gamma*np.cos(phi[0]/2)*np.cos(phi[1]/2)
     H = energy.sum()/gx/gy
     return H
 
@@ -270,9 +270,9 @@ def grad_H(phi,tt,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
     lapl = (n1x**2+n1y**2)*d_phi11 + 2*(n1x*n2x+n1y*n2y)*d_phi12 + (n2x**2+n2y**2)*d_phi22
     #
     if tt=='s':
-        return -rho/2*lapl + anisotropy*np.sin(phi[0])*np.cos(phi[1]) + gamma*np.cos(phi[1]/2)*np.sin(phi[0]/2)
+        return -rho/2*lapl + 2*anisotropy*np.sin(phi[0])*np.cos(phi[1]) + gamma*np.cos(phi[1]/2)*np.sin(phi[0]/2)
     elif tt=='a':
-        return -rho/2*lapl + anisotropy*np.cos(phi[0])*np.sin(phi[1]) + Phi*np.sin(phi[1]) + gamma*np.cos(phi[0]/2)*np.sin(phi[1]/2)
+        return -rho/2*lapl + 2*anisotropy*np.cos(phi[0])*np.sin(phi[1]) + Phi*np.sin(phi[1]) + gamma*np.cos(phi[0]/2)*np.sin(phi[1]/2)
 
 def check_energies(list_E):
     """ Checks wether the last nn energies in the list_E are within lim distance to each other.

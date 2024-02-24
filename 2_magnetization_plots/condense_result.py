@@ -16,7 +16,7 @@ AV = 1
 t0 = time()
 machine = fs.get_machine(os.getcwd())
 
-type_computation = 'CO' if machine=='loc' else sys.argv[2]
+type_computation = 'MP' if machine=='loc' else sys.argv[2]
 
 ind = int(sys.argv[1])      #one index every 225 for 15x15 PD -> like this sys.argv[1] from 0 to 11
 if type_computation == 'CO':

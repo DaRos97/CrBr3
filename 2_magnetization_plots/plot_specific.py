@@ -10,16 +10,17 @@ max_grid = 150
 AV = 1
 ###########################
 
-type_computation = 'CO' if machine=='loc' else sys.argv[2]
+type_computation = 'MP' if machine=='loc' else sys.argv[2]
 
 pd_size = len(fs.rhos)*len(fs.anis)
 if type_computation == 'PD':
-    moire_type,moire_pars = fs.get_moire_pars(int(sys.argv[1])//pd_size)        #for 15*15 PD
-    gamma,rho,anisotropy = fs.get_phys_pars(int(sys.argv[1])%pd_size)          
+    moire_type,moire_pars = fs.get_moire_pars(int(sys.argv[1])//pd_size)
+    gamma,rho,anisotropy = fs.get_phys_pars(int(sys.argv[1])%pd_size,'MPs')          
 elif type_computation == 'MP':
-    input_type,moire_type,moire_pars,gamma = fs.get_MP_pars(int(sys.argv[1]))
+    input_type,moire_type,moire_pars,gamma = fs.get_MP_pars(int(sys.argv[1]),'MPs')
     rho = fs.rho_phys[input_type]
     anisotropy = fs.d_phys[input_type]
+    print("Input type: ",input_type)
 elif type_computation == 'CO':
     input_type = 'DFT'
     rho = fs.rho_phys[input_type]
@@ -75,6 +76,6 @@ mag = fs.compute_magnetization(solution)
 print(mag)
 title = 'Mag_'+gamma_str+'_'+str(AV)+'_'+"{:.4f}".format(mag)
 fs.plot_magnetization(solution,Phi,(a1_m,a2_m),gamma*3/2/0.607,False)
-#fs.plot_phis(solution,(a1_m,a2_m),title)
+fs.plot_phis(solution,(a1_m,a2_m),title)
 
 
