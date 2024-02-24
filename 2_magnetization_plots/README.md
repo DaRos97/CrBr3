@@ -39,9 +39,11 @@ results/phase_diagram_data/moire_specs(type,eps,ni,gx,gy)/gamma/ one directory f
 ## Bao
 ## Ygg
 All in (150,1,25 sol)
-    - PD rho:(0.1,10,25), d:(0.01,0.07,0.1,0.2), g:(0,2,100)
-# To do
+    - PD rho:(0.1,10,25), d:(0.01,0.07,0.1,0.2), g:(0,2,100)    --> error in d: twice the value --> delet it
 
+# To do
+    - PD rho:(0.1,10,25), d:(0.01,0.07,0.1,0.2), g:(0,2,100) ('12', correct d)
+    - Try some MP with rho different for 1 and 2
 
 # Comments
 If phi_s starts at 0, it stays there for all evolution->we can make it go faster because there is no need to compute dHs.

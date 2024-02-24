@@ -22,6 +22,7 @@ anis = [0.01,0.0709,0.10,0.2]
 epss = [0.05,0.03,0.01,0.005]
 nis = [1.,0.5,0.3]
 thetas = np.pi/180*0
+
 type_of_calculation = '12'
 
 offset_solution = -0.3
@@ -89,9 +90,7 @@ def ta_sa(Phi,gx,gy):
     re_a = (np.sign(Phi+offset_solution)-1)*np.pi/2
     return np.array([re_s,re_a])
 
-custom_in_pt = {'sa': (ts1_sa,ts2_sa,ta_sa),
-                '12': (ts1_12,ts2_12,ta_12)
-                }
+custom_in_pt = {'sa': (ts1_sa,ts2_sa,ta_sa),    '12': (ts1_12,ts2_12,ta_12)}
 
 def get_M_transf(a1_m,a2_m):
     det = a1_m[0]*a2_m[1]-a2_m[0]*a1_m[1]
@@ -147,7 +146,7 @@ def compute_solution(args_m):
             fa = random.random()*2*np.pi
             phi = const_in_pt(fs,fa,gx,gy)
         #First energy evaluation
-        E = [compute_energy[type_of_computation](phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg), ]
+        E = [compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg), ]
         if 0 and args_m['disp']: #plot initial condition
             plot_magnetization(phi,Phi,A_M,"initial condition "+"{:.4f}".format(E[0]),False)
         print('\n',ind_in_pt," initial energy: ","{:.8f}".format(E[0]))
@@ -156,8 +155,8 @@ def compute_solution(args_m):
         keep_going = True
         while keep_going:
             #Energy gradients
-            dHA = grad_H[type_of_computation](phi,'A',Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
-            dHB = grad_H[type_of_computation](phi,'B',Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
+            dHA = grad_H(phi,'A',Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
+            dHB = grad_H(phi,'B',Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
             dH = np.array([dHA,dHB])
             #Compute energy in all points of LR
             list_E = []
@@ -165,7 +164,7 @@ def compute_solution(args_m):
             for lr_i in range(NNNN):
                 LR_ = lr_list[lr_i]
                 phi_new = phi-LR_*dH
-                temp_E = compute_energy[type_of_computation](phi_new,Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
+                temp_E = compute_energy(phi_new,Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
                 list_phi.append(np.copy(phi_new))
                 list_E.append(np.array([LR_,temp_E]))
             list_E = np.array(list_E)
@@ -203,7 +202,7 @@ def compute_solution(args_m):
     print("mag: ",compute_magnetization(result))
     return result
 
-def compute_energy_12(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
+def compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
     """Computes the energy of the system.
 
     Parameters
@@ -231,45 +230,14 @@ def compute_energy_12(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
         d_phi1 = smooth(fun.partial_derivative(1,0)(xx,yy),rg,A_M)[0]
         d_phi2 = smooth(fun.partial_derivative(0,1)(xx,yy),rg,A_M)[0]
         grad_2.append( (n1x*d_phi1+n2x*d_phi2)**2+(n1y*d_phi1+n2y*d_phi2)**2 )
-    energy = rho/2*grad_2[0]+rho/2*grad_2[1] - anisotropy*(np.cos(phi[0])**2+np.cos(phi[1])**2) - Phi*np.cos(phi[0]-phi[1]) - gamma*(np.cos(phi[0])+np.cos(phi[1]))
+    if type_of_computation == '12':
+        energy = rho/2*grad_2[0]+rho/2*grad_2[1] - anisotropy*(np.cos(phi[0])**2+np.cos(phi[1])**2) - Phi*np.cos(phi[0]-phi[1]) - gamma*(np.cos(phi[0])+np.cos(phi[1]))
+    else:
+        energy = rho/4*(grad_2[0]+grad_2[1]) - 2*anisotropy*np.cos(phi[1])*np.cos(phi[0]) - Phi*np.cos(phi[1]) - 2*gamma*np.cos(phi[0]/2)*np.cos(phi[1]/2)
     H = energy.sum()/gx/gy
     return H
 
-def compute_energy_sa(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
-    """Computes the energy of the system.
-
-    Parameters
-    ----------
-    phi: 2-tuple
-        Symmetric and Anti-Symmetric phases.
-    Phi : np.ndarray
-        Interlayer coupling of size (grid,grid)
-    pars : 3-tuple
-        Parameters alpha, beta and gamma.
-
-    Returns
-    -------
-    float
-        Energy density summed over all sites.
-    """
-    a1_m, a2_m = A_M
-    grad_2 = []
-    gx,gy = phi[0].shape
-    xx = np.linspace(0,np.linalg.norm(a1_m),gx,endpoint=False)
-    yy = np.linspace(0,np.linalg.norm(a2_m),gy,endpoint=False)
-    det, n1x, n2x, n1y, n2y = M_transf
-    for i in range(2):
-        fun = smooth(phi[i],rg,A_M)[1]
-        d_phi1 = smooth(fun.partial_derivative(1,0)(xx,yy),rg,A_M)[0]
-        d_phi2 = smooth(fun.partial_derivative(0,1)(xx,yy),rg,A_M)[0]
-        grad_2.append( (n1x*d_phi1+n2x*d_phi2)**2+(n1y*d_phi1+n2y*d_phi2)**2 )
-    energy = rho/4*(grad_2[0]+grad_2[1]) - 2*anisotropy*np.cos(phi[1])*np.cos(phi[0]) - Phi*np.cos(phi[1]) - 2*gamma*np.cos(phi[0]/2)*np.cos(phi[1]/2)
-    H = energy.sum()/gx/gy
-    return H
-
-compute_energy = {'sa': compute_energy_sa,  '12': compute_energy_12}
-
-def grad_H_12(phi,tt,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
+def grad_H(phi,tt,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
     """Computes evolution step dH/d phi.
 
     Parameters
@@ -302,48 +270,13 @@ def grad_H_12(phi,tt,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
     d_phi12 = smooth(fun.partial_derivative(1,1)(xx,yy),rg,A_M)[0]
     det, n1x, n2x, n1y, n2y = M_transf
     lapl = (n1x**2+n1y**2)*d_phi11 + 2*(n1x*n2x+n1y*n2y)*d_phi12 + (n2x**2+n2y**2)*d_phi22
-    return -rho*lapl + anisotropy*np.sin(2*tt_phi) + Phi*np.sin(tt_phi-yy_phi) + gamma*np.sin(tt_phi)
-
-def grad_H_sa(phi,tt,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
-    """Computes evolution step dH/d phi.
-
-    Parameters
-    ----------
-    phi: 2-tuple
-        Symmetric and Anti-Symmetric phases.
-    tt : char
-        Determines which functional derivative to compute (wrt phi_s or phi_a).
-    Phi : np.ndarray
-        Interlayer coupling of size (grid,grid)
-    pars : 3-tuple
-        Parameters alpha, beta and gamma.
-    d2_phi : ndarray
-        Second derivative of the phase (symm or anti-symm) to compute.
-
-    Returns
-    -------
-    np.ndarray
-        Gradient of Hamiltonian on the (grid,grid) space.
-    """
-    a1_m, a2_m = A_M
-    gx,gy = phi[0].shape
-    xx = np.linspace(0,np.linalg.norm(a1_m),gx,endpoint=False)
-    yy = np.linspace(0,np.linalg.norm(a2_m),gy,endpoint=False)
-    tt_phi = phi[0] if tt == 'A' else phi[1]
-    yy_phi = phi[1] if tt == 'A' else phi[0]
-    fun = smooth(tt_phi,rg,A_M)[1]
-    d_phi11 = smooth(fun.partial_derivative(2,0)(xx,yy),rg,A_M)[0]
-    d_phi22 = smooth(fun.partial_derivative(0,2)(xx,yy),rg,A_M)[0]
-    d_phi12 = smooth(fun.partial_derivative(1,1)(xx,yy),rg,A_M)[0]
-    det, n1x, n2x, n1y, n2y = M_transf
-    lapl = (n1x**2+n1y**2)*d_phi11 + 2*(n1x*n2x+n1y*n2y)*d_phi12 + (n2x**2+n2y**2)*d_phi22
-    #
-    if tt=='A':
-        return -rho/2*lapl + 2*anisotropy*np.sin(phi[0])*np.cos(phi[1]) + gamma*np.cos(phi[1]/2)*np.sin(phi[0]/2)
-    elif tt=='B':
-        return -rho/2*lapl + 2*anisotropy*np.cos(phi[0])*np.sin(phi[1]) + Phi*np.sin(phi[1]) + gamma*np.cos(phi[0]/2)*np.sin(phi[1]/2)
-
-grad_H = {'sa': grad_H_sa,  '12': grad_H_12}
+    if type_of_computation == '12':
+        return -rho*lapl + anisotropy*np.sin(2*tt_phi) + Phi*np.sin(tt_phi-yy_phi) + gamma*np.sin(tt_phi)
+    else:
+        if tt=='A':
+            return -rho/2*lapl + 2*anisotropy*np.sin(phi[0])*np.cos(phi[1]) + gamma*np.cos(phi[1]/2)*np.sin(phi[0]/2)
+        elif tt=='B':
+            return -rho/2*lapl + 2*anisotropy*np.cos(phi[0])*np.sin(phi[1]) + Phi*np.sin(phi[1]) + gamma*np.cos(phi[0]/2)*np.sin(phi[1]/2)
 
 def check_energies(list_E):
     """ Checks wether the last nn energies in the list_E are within lim distance to each other.
@@ -976,7 +909,7 @@ def get_res_dn(machine):
     string
         The directory name.
     """
-    return get_home_dn(machine)+'tesults/'
+    return get_home_dn(machine)+'results/'
 
 def get_home_dn(machine):
     if machine == 'loc':
@@ -1321,7 +1254,7 @@ def compute_MPs_new(list_pars,rho_str,ani_str,machine):
 def compute_order(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
     phi_s,phi_a = phi
     gx,gy = phi_s.shape
-    E = compute_energy[type_of_computation](phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
+    E = compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
     E0 = -2*gamma - anisotropy - Phi.sum()/Phi.shape[0]/Phi.shape[1]
     if E-E0 > 1e-4:       #Solution collinear was not tried for some reason
         col = 0
