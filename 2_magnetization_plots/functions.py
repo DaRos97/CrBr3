@@ -66,7 +66,6 @@ def const_in_pt(fA,fB,gx,gy):
     return np.array([phi_A, phi_B])
 
 def ts1_12(Phi,gx,gy):
-    #return np.random.rand(2,gx,gy)*2*np.pi
     phi_1 = (np.sign(Phi+offset_solution)-1)*np.pi/4
     phi_2 = -(np.sign(Phi+offset_solution)-1)*np.pi/4
     return np.array([phi_1,phi_2])
@@ -152,7 +151,7 @@ def compute_solution(args_m):
         #First energy evaluation
         E = [compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg), ]
         if 0 and args_m['disp']: #plot initial condition
-            plot_magnetization(phi,Phi,A_M,"initial condition "+"{:.4f}".format(E[0]),False)
+            #plot_magnetization(phi,Phi,A_M,"initial condition "+"{:.4f}".format(E[0]),False)
             compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,True)
         print('\n',ind_in_pt," initial energy: ","{:.8f}".format(E[0]))
         #Initialize learning rate and minimization loop
@@ -213,10 +212,10 @@ def compute_solution(args_m):
                 print(ind_in_pt," reached maxiter")
                 keep_going = False
             step += 1
-    if 1 and args_m['disp']:
+    if 0 and args_m['disp']:
         compute_energy(result,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,True)
         print("mag: ",compute_magnetization(result))
-        plot_magnetization(result,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(E[0]),False)
+        plot_magnetization(result,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(min_E),False)
         plot_phis(result,A_M,'Solution of phi_A (left) and phi_B (right)')
     if (result == np.ones((2,gx,gy))*20).all():
         print("Not a single converged solution, they all reached max number of iterations or too low LR")

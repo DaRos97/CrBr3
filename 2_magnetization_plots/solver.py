@@ -3,6 +3,7 @@ import functions as fs
 import sys, os, h5py
 from pathlib import Path
 
+ind = int(sys.argv[1])
 ##############################################################################
 max_grid = 150
 AV = 1
@@ -11,8 +12,6 @@ S = 3/2
 machine = fs.get_machine(os.getcwd())
 
 type_computation = 'PD' if len(sys.argv)<3 else sys.argv[2]
-
-ind = int(sys.argv[1])
 
 if type_computation == 'PD':
     moire_type,moire_pars = fs.get_moire_pars(ind)
@@ -35,6 +34,15 @@ elif type_computation == 'CO':
     moire_pars = {}
     moire_pars[moire_type] = {'place':place_interlayer,}
     moire_pars['theta'] = 0.
+elif type_computation == 'DB':
+    ggg = [100,200,300,400]
+    avav = [0,1,2,3,4]
+    max_grid = ggg[ind // (5*100)]
+    AV = avav[ind % (5*100) //100]
+    rho = 1.4
+    anisotropy = 0.0709
+    gamma = fs.gammas['MPs'][ind % (5*100) %100]
+    moire_type,moire_pars = fs.get_moire_pars(0)
 
 print("Computing with Moire with ",moire_type," strain of ",moire_pars[moire_type]," and rotation ",moire_pars['theta'])
 print("Physical parameters are gamma: ","{:.4f}".format(gamma),", rho: ","{:.4f}".format(rho),", anisotropy: ","{:.4f}".format(anisotropy))
@@ -57,7 +65,7 @@ precision_pars = (gridx,gridy,AV)
 print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.norm(a2_m))
 print("Relative angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m))))
 print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
-print("Grid size: ",gridx,gridy)
+print("Grid size: ",gridx,'x',gridy,', average: ',AV)
 
 if 0 and machine =='loc':
     exit()
