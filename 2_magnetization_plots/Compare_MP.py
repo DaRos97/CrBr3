@@ -4,29 +4,62 @@ import os,sys
 import h5py
 from pathlib import Path
 
-max_gridsize = 150
+max_grid = 150
 AV = 1
 
 machine = fs.get_machine(os.getcwd())
 
-type_computation = 'MP'
+type_computation = 'PD' if len(sys.argv)<2 else sys.argv[1]
 
-inds = [0,3,6,9]#int(sys.argv[1])
-input_type = 'DFT'
+inds = np.array([1,2,3,4])+5
 list_pars = []
 for ind in inds:
-    moire_type,moire_pars = fs.get_moire_pars(ind)
-    print("Condensing PD for Moire with ",moire_type," strain of args ",moire_pars[moire_type])
+    if type_computation == 'PD':
+        #Moire parameters
+        moire_type = 'biaxial'
+        moire_pars = {}
+        moire_pars['theta'] = 0.0
+        moire_pars[moire_type] = {}
+        moire_pars[moire_type]['eps'] = 0.03
+        #Rho,anisotropy
+        rho = "{:.5f}".format(fs.rhos[ind//len(fs.anis)])
+        anisotropy = "{:.5f}".format(fs.anis[ind%len(fs.anis)])
+        txt_name = r'$\rho$:'+rho+', '+r'$d$:'+anisotropy
+    elif type_computation == 'CO':
+        rho = "{:.5f}".format(0)
+        ind_a = ind // (2)
+        ind_l = ind % (2)
+        anisotropy = "{:.5f}".format(fs.anis[ind_a])
+        #Two cases: AA and M
+        list_interlayer = ['AA','M']
+        place_interlayer = list_interlayer[ind_l]
+        moire_type = 'const'
+        moire_pars = {}
+        moire_pars[moire_type] = {'place':place_interlayer,}
+        moire_pars['theta'] = 0.
+        txt_name = place_interlayer + r', $\rho$:'+rho+', '+r'$d$:'+anisotropy
+    elif type_computation == 'DB':
+        ggg = [100,200,300,400]
+        avav = [0,1,2,3,4]
+        max_grid = ggg[ind // (5)]
+        AV = avav[ind % (5)]
+        rho = "{:.5f}".format(1.4)
+        anisotropy = "{:.5f}".format(0.0709)
+        moire_type,moire_pars = fs.get_moire_pars(0)
+        txt_name = 'grid='+str(max_grid)+', AV:'+str(AV)
 
-    a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
-    gridx,gridy = fs.get_gridsize(max_gridsize,a1_m,a2_m)
+    Phi_fn = fs.get_Phi_fn(moire_type,moire_pars,machine)
+    Phi,a1_m,a2_m = fs.load_Moire(Phi_fn,fs.get_AM_fn(moire_type,moire_pars,machine))
+    #Precision parameters
+    gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
     precision_pars = (gridx,gridy,AV)
+    print("Condensing PD for Moire with ",moire_type," strain of args ",moire_pars[moire_type])
+    print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.norm(a2_m))
+    print("Relative angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m))))
+    print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
+    print("Grid size: ",gridx,'x',gridy,', average: ',AV)
 
-    txt_name = r'$\epsilon$:'+"{:.2f}".format(moire_pars[moire_type]['eps'])+', '+r'$\nu$:'+"{:.2f}".format(moire_pars[moire_type]['ni'])
-    list_pars.append((moire_type,moire_pars,precision_pars,txt_name))
-rho = fs.rho_phys[input_type]
-anisotropy = fs.d_phys[input_type]
-    
+    list_pars.append((rho,anisotropy,precision_pars,moire_type,moire_pars,txt_name))
 
-fs.compute_MPs_new(list_pars,"{:.5f}".format(rho),"{:.5f}".format(anisotropy),machine)
+fs.compute_MPs_new(list_pars,machine)
 

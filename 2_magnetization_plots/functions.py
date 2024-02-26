@@ -1247,15 +1247,15 @@ def compute_MPs(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine):
     plt.savefig(get_fig_mp_fn(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine))
     plt.close()
 
-def compute_MPs_new(list_pars,moire_type,moire_pars,precision_pars,machine):
+def compute_MPs_new(list_pars,machine):
     """Compute the magnetization plots.
 
     """
     fig = plt.figure(figsize=(20,20))
     colors = ['r','b','g','y','k','orange','pink']
-    hdf5_fn = get_hdf5_fn(moire_type,moire_pars,precision_pars,machine)
     for iii in range(len(list_pars)):
-        rho_str,ani_str,txt_name = list_pars[iii]
+        rho_str,ani_str,precision_pars,moire_type,moire_pars,txt_name = list_pars[iii]
+        hdf5_fn = get_hdf5_fn(moire_type,moire_pars,precision_pars,machine)
         #Open and read h5py File
         data = []
         n = 0
