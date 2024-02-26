@@ -10,24 +10,28 @@ AV = 1
 S = 3/2
 machine = fs.get_machine(os.getcwd())
 
-type_computation = 'PD' if machine=='loc' else sys.argv[2]
+
+type_computation = 'PD' if len(sys.argv)<3 else sys.argv[2]
+
+ind = int(sys.argv[1])
 
 if type_computation == 'PD':
-    moire_type,moire_pars = fs.get_moire_pars(int(sys.argv[1]))
-    gamma,rho,anisotropy = fs.get_phys_pars(int(sys.argv[1]),'MPs')          
+    moire_type,moire_pars = fs.get_moire_pars(ind)
+    gamma,rho,anisotropy = fs.get_phys_pars(ind,'MPs')          
 elif type_computation == 'MP':
-    input_type,moire_type,moire_pars,gamma = fs.get_MP_pars(int(sys.argv[1]),'MPs')
+    input_type,moire_type,moire_pars,gamma = fs.get_MP_pars(ind,'MPs')
     rho = fs.rho_phys[input_type]
     anisotropy = fs.d_phys[input_type]
     print("Input type: ",input_type)
 elif type_computation == 'CO':
-    input_type = 'DFT'
-    rho = fs.rho_phys[input_type]
-    anisotropy = fs.d_phys[input_type]
+    rho = 0
+    ind_a = ind // (2*len(fs.gammas['M']))
+    ind_l = ind % (2*len(fs.gammas['M']))
+    anisotropy = fs.anis[ind_a]
     #Two cases: AA and M
     list_interlayer = ['AA','M']
-    place_interlayer = list_interlayer[int(sys.argv[1])//len(fs.gammas['M'])]
-    gamma = fs.gammas[place_interlayer][int(sys.argv[1])%len(fs.gammas['M'])]
+    place_interlayer = list_interlayer[ind_l//len(fs.gammas['M'])]
+    gamma = fs.gammas[place_interlayer][ind_l%len(fs.gammas['M'])]
     moire_type = 'const'
     moire_pars = {}
     moire_pars[moire_type] = {'place':place_interlayer,}
@@ -56,7 +60,7 @@ print("Relative angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1
 print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
 print("Grid size: ",gridx,gridy)
 
-if 0 and machine =='loc':
+if 1 and machine =='loc':
     exit()
 #Compute Phi over new grid parameters
 Phi = fs.reshape_Phi(Phi,gridx,gridy)
@@ -72,14 +76,15 @@ if not Path(solution_fn).is_file():
             'args_phys':        (gamma,rho,anisotropy),
             'grid':             (gridx,gridy),
             'pts_per_fit':      AV,                          #Maybe can be related to gridx/gridy
-            'n_initial_pts':    25,                         #three solution initial states, 25 constant initial states and n-25 random states
+            'n_initial_pts':    36,                         #three solution initial states, 25 constant initial states and n-25 random states
             'maxiter':          1e5, 
             'machine':          machine, 
             'disp':             machine=='loc',
             'type_comp':        type_computation,
             }
     phi = fs.compute_solution(args_minimization)
-    np.save(solution_fn,phi)
+    if not machine == 'loc':
+        np.save(solution_fn,phi)
 else:
     print("Already computed")
 

@@ -12,19 +12,22 @@ import h5py
 #Physical parameters
 rho_phys = {'DFT':1.4,'exp':1.7} #     (meV)      
 d_phys = {'DFT':0.0709,'exp':0.09} #     (meV)       0.0709
+#
 gammas = {  'MPs':np.linspace(0,2,100,endpoint=False), 
-            'MPl':np.linspace(0,6,500,endpoint=False),
             'AA':np.linspace(0,0.5,100,endpoint=False),
             'M':np.linspace(0,0.5,100,endpoint=False),
             }
+#rhos = np.linspace(0,10,5)
+#anis = [0.01,0.03,0.0709,0.10,0.2]
 rhos = np.linspace(0.1,10,25)
 anis = [0.01,0.0709,0.10,0.2]
+#
 epss = [0.05,0.03,0.01,0.005]
 nis = [1.,0.5,0.3]
 thetas = np.pi/180*0
-
+#
 type_of_computation = '12'
-
+#
 offset_solution = -0.3
 NNNN = 21
 lr_list = np.logspace(-5,1,num=NNNN)
@@ -63,6 +66,7 @@ def const_in_pt(fA,fB,gx,gy):
     return np.array([phi_A, phi_B])
 
 def ts1_12(Phi,gx,gy):
+    return np.random.rand(2,gx,gy)*2*np.pi
     phi_1 = (np.sign(Phi+offset_solution)-1)*np.pi/4
     phi_2 = -(np.sign(Phi+offset_solution)-1)*np.pi/4
     return np.array([phi_1,phi_2])
@@ -137,10 +141,10 @@ def compute_solution(args_m):
         #Initial condition
         if ind_in_pt < 0:   #t-s and t-a
             phi = custom_in_pt[type_of_computation][ind_in_pt+3](Phi,gx,gy)
-        elif ind_in_pt < 25:    #constant specific
-            fs = np.pi/4*(ind_in_pt//5)
-            fa = np.pi/4*(ind_in_pt%5)
-            phi = const_in_pt(fs,fa,gx,gy)
+        elif ind_in_pt < 36:    #constant specific
+            fs = np.pi/3*(ind_in_pt//6)
+            fa = np.pi/3*(ind_in_pt%6)
+            phi = const_in_pt(fs,fa,gx,gy) + 0.1
         else:   #constant random
             fs = random.random()*2*np.pi
             fa = random.random()*2*np.pi
@@ -149,6 +153,7 @@ def compute_solution(args_m):
         E = [compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg), ]
         if 0 and args_m['disp']: #plot initial condition
             plot_magnetization(phi,Phi,A_M,"initial condition "+"{:.4f}".format(E[0]),False)
+            compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,True)
         print('\n',ind_in_pt," initial energy: ","{:.8f}".format(E[0]))
         #Initialize learning rate and minimization loop
         step = 1        #initial step
@@ -171,11 +176,28 @@ def compute_solution(args_m):
             #Check the minimum of energies wrt LR
             amin = np.argmin(list_E[:,1])
             if list_E[amin,1] < E[0]:
+                if 0 and args_m['disp']:   #Plot energies
+                    plt.plot(list_E[:,0],list_E[:,1],'*k')
+                    plt.plot(list_E[amin,0],list_E[amin,1],'*r')
+                    plt.hlines(E[0],lr_list[0],lr_list[-1],ls='--')
+                    plt.xscale('log')
+                    plt.title('some below, min at LR='+"{:.6f}".format(list_E[amin,0]))
+                    plt.show()
                 E.insert(0,list_E[amin,1])
                 phi = np.copy(list_phi[amin])
                 if 0 and args_m['disp']:
                     print("energy step ",step," is ","{:.9f}".format(E[0])," with dH = ","{:.3f}".format(np.sum(np.absolute(dH))))
+                    temp_E = compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,True)
+                    plot_magnetization(phi,Phi,A_M,"new_state",False)
+                    #input()
             else:
+                if 0 and args_m['disp']:   #Plot energies
+                    plt.plot(list_E[:,0],list_E[:,1],'*k')
+                    plt.plot(list_E[amin,0],list_E[amin,1],'*r')
+                    plt.hlines(E[0],lr_list[0],lr_list[-1],ls='--')
+                    plt.xscale('log')
+                    plt.title('all above')
+                    plt.show()
                 print("none LR was lower in energy -> exit")
                 keep_going = False
             #Check if energy converged to a constant value
@@ -191,17 +213,17 @@ def compute_solution(args_m):
                 print(ind_in_pt," reached maxiter")
                 keep_going = False
             step += 1
-        if 0 and args_m['disp']:
-            print("Minimum energy at ",E[0])
-            plot_magnetization(phi,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(E[0]),False)
-            plot_phis(phi,A_M,'Solution of phi_A (left) and phi_B (right)')
+    if 0 and args_m['disp']:
+        compute_energy(result,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,True)
+        print("mag: ",compute_magnetization(result))
+        plot_magnetization(result,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(E[0]),False)
+        plot_phis(result,A_M,'Solution of phi_A (left) and phi_B (right)')
     if (result == np.ones((2,gx,gy))*20).all():
         print("Not a single converged solution, they all reached max number of iterations or too low LR")
         exit()
-    print("mag: ",compute_magnetization(result))
     return result
 
-def compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
+def compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,disp=False):
     """Computes the energy of the system.
 
     Parameters
@@ -231,12 +253,22 @@ def compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
         grad_2.append( (n1x*d_phi1+n2x*d_phi2)**2+(n1y*d_phi1+n2y*d_phi2)**2 )
     if type_of_computation == '12':
         energy = rho/2*grad_2[0]+rho/2*grad_2[1] - anisotropy*(np.cos(phi[0])**2+np.cos(phi[1])**2) - Phi*np.cos(phi[0]-phi[1]) - gamma*(np.cos(phi[0])+np.cos(phi[1]))
+        if disp:
+            kin = (rho/2*grad_2[0]+rho/2*grad_2[1]).sum()/gx/gy 
+            an = (- anisotropy*(np.cos(phi[0])**2+np.cos(phi[1])**2)).sum()/gx/gy 
+            Int = (- Phi*np.cos(phi[0]-phi[1])).sum()/gx/gy 
+            M = (- gamma*(np.cos(phi[0])+np.cos(phi[1]))).sum()/gx/gy
+            print("Final energy: ",energy.sum()/gx/gy)
+            print("Kin: ",kin)
+            print("Ani: ",an)
+            print("Int: ",Int)
+            print("M: ",M)
     else:
-        energy = rho/4*(grad_2[0]+grad_2[1]) - 2*anisotropy*np.cos(phi[1])*np.cos(phi[0]) - Phi*np.cos(phi[1]) - 2*gamma*np.cos(phi[0]/2)*np.cos(phi[1]/2)
+        energy = rho/4*(grad_2[0]+grad_2[1]) - anisotropy*np.cos(phi[1])*np.cos(phi[0]) - Phi*np.cos(phi[1]) - 2*gamma*np.cos(phi[0]/2)*np.cos(phi[1]/2)
     H = energy.sum()/gx/gy
     return H
 
-def grad_H(phi,tt,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
+def grad_H(phi,tt,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,disp=False):
     """Computes evolution step dH/d phi.
 
     Parameters
@@ -270,12 +302,17 @@ def grad_H(phi,tt,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
     det, n1x, n2x, n1y, n2y = M_transf
     lapl = (n1x**2+n1y**2)*d_phi11 + 2*(n1x*n2x+n1y*n2y)*d_phi12 + (n2x**2+n2y**2)*d_phi22
     if type_of_computation == '12':
+        if disp:
+            print(tt," lapl: ",lapl.sum()/gx/gy)
+            plot_phis(phi,A_M,'phi')
+            plot_phis((d_phi11,d_phi22),A_M,'11 and 22')
+            plot_phis((d_phi12,lapl),A_M,'12 and lapl')
         return -rho*lapl + anisotropy*np.sin(2*tt_phi) + Phi*np.sin(tt_phi-yy_phi) + gamma*np.sin(tt_phi)
     else:
         if tt=='A':
-            return -rho/2*lapl + 2*anisotropy*np.sin(phi[0])*np.cos(phi[1]) + gamma*np.cos(phi[1]/2)*np.sin(phi[0]/2)
+            return -rho/2*lapl + anisotropy*np.sin(phi[0])*np.cos(phi[1]) + gamma*np.cos(phi[1]/2)*np.sin(phi[0]/2)
         elif tt=='B':
-            return -rho/2*lapl + 2*anisotropy*np.cos(phi[0])*np.sin(phi[1]) + Phi*np.sin(phi[1]) + gamma*np.cos(phi[0]/2)*np.sin(phi[1]/2)
+            return -rho/2*lapl + anisotropy*np.cos(phi[0])*np.sin(phi[1]) + Phi*np.sin(phi[1]) + gamma*np.cos(phi[0]/2)*np.sin(phi[1]/2)
 
 def check_energies(list_E):
     """ Checks wether the last nn energies in the list_E are within lim distance to each other.
@@ -625,14 +662,6 @@ def plot_magnetization(phi,Phi,A_M,title='',save=False):
     else:
         plt.show()
 
-def check_phis(phi_o):
-    phi = np.zeros(phi_o.shape)
-    for i in range(phi_o.shape[0]):
-        phi[i] = np.mod(phi_o[i],2*np.pi)
-        phi[i] = np.where(phi[i] < - np.pi/2, phi[i] + 2 * np.pi, phi[i])
-        phi[i] = np.where(phi[i] > 2*np.pi - np.pi/2, phi[i] - 2 * np.pi, phi[i])
-    return phi
-
 def plot_phis(phi,A_M,txt_title='mah'):
     """Plot the phases phi_1 and phi_2 in a 3D graph
 
@@ -653,7 +682,7 @@ def plot_phis(phi,A_M,txt_title='mah'):
     col = 3 if nn>=3 else nn
     for i in range(nn):
         ax = fig.add_subplot(nn//3+1,col,i+1,projection='3d')
-        surf = ax.plot_surface(X, Y, check_phis(phi)[i].T, cmap=cm.coolwarm,
+        surf = ax.plot_surface(X, Y, phi[i].T, cmap=cm.coolwarm,
                    linewidth=0, antialiased=False)
         fig.colorbar(surf, shrink=0.5, aspect=5)
     plt.show()
@@ -1207,23 +1236,22 @@ def compute_MPs(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine):
     plt.xlabel(r'$h_\bot(T)$',size=s_)
     plt.ylabel(r'$M$',size=s_)
     plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" theta: "+"{:.3f}".format(moire_pars['theta'])+" rho = "+rho_str+", d = "+ani_str+", and precision pars: "+str(precision_pars[0])+'x'+str(precision_pars[1])+'_'+str(precision_pars[2]))
-    if machine == 'loc':
+    if 0 and machine == 'loc':
         plt.show()
         exit()
     plt.savefig(get_fig_mp_fn(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine))
     plt.close()
 
-def compute_MPs_new(list_pars,rho_str,ani_str,machine):
+def compute_MPs_new(list_pars,moire_type,moire_pars,precision_pars,machine):
     """Compute the magnetization plots.
 
     """
     fig = plt.figure(figsize=(20,20))
-    colors = ['r','b','g','y']
-    ind = [27,31,32,32]
+    colors = ['r','b','g','y','k','orange','pink']
+    hdf5_fn = get_hdf5_fn(moire_type,moire_pars,precision_pars,machine)
     for iii in range(len(list_pars)):
-        moire_type,moire_pars,precision_pars,txt_name = list_pars[iii]
+        rho_str,ani_str,txt_name = list_pars[iii]
         #Open and read h5py File
-        hdf5_fn = get_hdf5_fn(moire_type,moire_pars,precision_pars,machine)
         data = []
         n = 0
         with h5py.File(hdf5_fn,'r') as f:
@@ -1242,11 +1270,9 @@ def compute_MPs_new(list_pars,rho_str,ani_str,machine):
         M = np.array(data)
         s_ = 20
         plt.plot(M[:,0]*3/2/0.607,M[:,1],'-',color=colors[iii],marker='*',label=txt_name)
-#        plt.scatter(M[ind[iii],0],M[ind[iii],1],s=200,facecolors='none',edgecolors=colors[iii],zorder=10)
     plt.xlabel(r'$h_\bot(T)$',size=s_)
     plt.ylabel(r'$M$',size=s_)
     plt.legend(fontsize=s_)
-    plt.title("rho = "+rho_str+", d = "+ani_str,size=s_+5)
     plt.show()
     exit()
 
@@ -1298,14 +1324,6 @@ def compute_PDs(moire_type,moire_pars,precision_pars,gamma_str,machine):
         ccc = np.asarray(data[gamma][:,2],dtype=int)
         plt.figure()
         plt.scatter(data[gamma][:,0],data[gamma][:,1],color=colors[ccc],marker='o')
-        r_d = rho_phys['DFT']
-        r_e = rho_phys['exp']
-        d_d = d_phys['DFT']
-        d_e = d_phys['exp']
-        plt.hlines([d_e,d_d],r_d,r_e,color='k',linestyles='dashed',zorder=-1)
-        plt.vlines([r_e,r_d],d_e,d_d,color='k',linestyles='dashed',zorder=-1)
-        plt.xticks([rhos[0],r_d,r_e,rhos[-1]] ,['1.1',r'$\rho_{DFT}$',r'$\rho_{exp}$','2'])
-        plt.yticks([anis[0],d_e,d_d,anis[-1]] ,['0',r'$d_{exp}$',r'$d_{DFT}$','0.27'])
         plt.xlabel('rho')
         plt.ylabel('anisotropy')
         #plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" theta: "+"{:.3f}".format(moire_pars['theta'])+", gamma = "+gamma+", and precision pars: "+str(precision_pars[0])+'x'+str(precision_pars[1])+'_'+"{:.4f}".format(precision_pars[2])+'_'+str(precision_pars[3]))
