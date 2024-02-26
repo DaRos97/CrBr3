@@ -10,7 +10,6 @@ AV = 1
 S = 3/2
 machine = fs.get_machine(os.getcwd())
 
-
 type_computation = 'PD' if len(sys.argv)<3 else sys.argv[2]
 
 ind = int(sys.argv[1])
@@ -24,7 +23,7 @@ elif type_computation == 'MP':
     anisotropy = fs.d_phys[input_type]
     print("Input type: ",input_type)
 elif type_computation == 'CO':
-    rho = 0
+    rho = 1000
     ind_a = ind // (2*len(fs.gammas['M']))
     ind_l = ind % (2*len(fs.gammas['M']))
     anisotropy = fs.anis[ind_a]
@@ -60,7 +59,7 @@ print("Relative angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1
 print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
 print("Grid size: ",gridx,gridy)
 
-if 1 and machine =='loc':
+if 0 and machine =='loc':
     exit()
 #Compute Phi over new grid parameters
 Phi = fs.reshape_Phi(Phi,gridx,gridy)

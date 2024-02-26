@@ -66,7 +66,7 @@ def const_in_pt(fA,fB,gx,gy):
     return np.array([phi_A, phi_B])
 
 def ts1_12(Phi,gx,gy):
-    return np.random.rand(2,gx,gy)*2*np.pi
+    #return np.random.rand(2,gx,gy)*2*np.pi
     phi_1 = (np.sign(Phi+offset_solution)-1)*np.pi/4
     phi_2 = -(np.sign(Phi+offset_solution)-1)*np.pi/4
     return np.array([phi_1,phi_2])
@@ -144,7 +144,7 @@ def compute_solution(args_m):
         elif ind_in_pt < 36:    #constant specific
             fs = np.pi/3*(ind_in_pt//6)
             fa = np.pi/3*(ind_in_pt%6)
-            phi = const_in_pt(fs,fa,gx,gy) + 0.1
+            phi = const_in_pt(fs,fa,gx,gy)
         else:   #constant random
             fs = random.random()*2*np.pi
             fa = random.random()*2*np.pi
@@ -187,8 +187,8 @@ def compute_solution(args_m):
                 phi = np.copy(list_phi[amin])
                 if 0 and args_m['disp']:
                     print("energy step ",step," is ","{:.9f}".format(E[0])," with dH = ","{:.3f}".format(np.sum(np.absolute(dH))))
-                    temp_E = compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,True)
-                    plot_magnetization(phi,Phi,A_M,"new_state",False)
+                    #temp_E = compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,True)
+                    #plot_magnetization(phi,Phi,A_M,"new_state",False)
                     #input()
             else:
                 if 0 and args_m['disp']:   #Plot energies
@@ -213,7 +213,7 @@ def compute_solution(args_m):
                 print(ind_in_pt," reached maxiter")
                 keep_going = False
             step += 1
-    if 0 and args_m['disp']:
+    if 1 and args_m['disp']:
         compute_energy(result,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,True)
         print("mag: ",compute_magnetization(result))
         plot_magnetization(result,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(E[0]),False)
@@ -247,9 +247,11 @@ def compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,disp=False):
     yy = np.linspace(0,np.linalg.norm(a2_m),gy,endpoint=False)
     det, n1x, n2x, n1y, n2y = M_transf
     for i in range(2):
-        fun = smooth(phi[i],rg,A_M)[1]
-        d_phi1 = smooth(fun.partial_derivative(1,0)(xx,yy),rg,A_M)[0]
-        d_phi2 = smooth(fun.partial_derivative(0,1)(xx,yy),rg,A_M)[0]
+#        fun = smooth(phi[i],rg,A_M)[1]
+#        d_phi1 = smooth(fun.partial_derivative(1,0)(xx,yy),rg,A_M)[0]
+#        d_phi2 = smooth(fun.partial_derivative(0,1)(xx,yy),rg,A_M)[0]
+        d_phi1 = smooth((np.roll(phi[i],-1,axis=0)-phi[i])/(xx[1]-xx[0]),rg,A_M)[0]
+        d_phi2 = smooth((np.roll(phi[i],-1,axis=1)-phi[i])/(yy[1]-yy[0]),rg,A_M)[0]
         grad_2.append( (n1x*d_phi1+n2x*d_phi2)**2+(n1y*d_phi1+n2y*d_phi2)**2 )
     if type_of_computation == '12':
         energy = rho/2*grad_2[0]+rho/2*grad_2[1] - anisotropy*(np.cos(phi[0])**2+np.cos(phi[1])**2) - Phi*np.cos(phi[0]-phi[1]) - gamma*(np.cos(phi[0])+np.cos(phi[1]))
@@ -295,10 +297,13 @@ def grad_H(phi,tt,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,disp=False):
     yy = np.linspace(0,np.linalg.norm(a2_m),gy,endpoint=False)
     tt_phi = phi[0] if tt == 'A' else phi[1]
     yy_phi = phi[1] if tt == 'A' else phi[0]
-    fun = smooth(tt_phi,rg,A_M)[1]
-    d_phi11 = smooth(fun.partial_derivative(2,0)(xx,yy),rg,A_M)[0]
-    d_phi22 = smooth(fun.partial_derivative(0,2)(xx,yy),rg,A_M)[0]
-    d_phi12 = smooth(fun.partial_derivative(1,1)(xx,yy),rg,A_M)[0]
+#    fun = smooth(tt_phi,rg,A_M)[1]
+#    d_phi11 = smooth(fun.partial_derivative(2,0)(xx,yy),rg,A_M)[0]
+#    d_phi22 = smooth(fun.partial_derivative(0,2)(xx,yy),rg,A_M)[0]
+#    d_phi12 = smooth(fun.partial_derivative(1,1)(xx,yy),rg,A_M)[0]
+    d_phi11 = smooth((np.roll(tt_phi,-2,axis=0) - 2*np.roll(tt_phi,-1,axis=0) + tt_phi)/(xx[1]-xx[0]),rg,A_M)[0]
+    d_phi22 = smooth((np.roll(tt_phi,-2,axis=1) - 2*np.roll(tt_phi,-1,axis=1) + tt_phi)/(yy[1]-yy[0]),rg,A_M)[0]
+    d_phi12 = smooth((np.roll(np.roll(tt_phi,-1,axis=0),-1,axis=1) - np.roll(tt_phi,-1,axis=0) - np.roll(tt_phi,-1,axis=1) + tt_phi)/(xx[1]-xx[0])/(yy[1]-yy[0]),rg,A_M)[0]
     det, n1x, n2x, n1y, n2y = M_transf
     lapl = (n1x**2+n1y**2)*d_phi11 + 2*(n1x*n2x+n1y*n2y)*d_phi12 + (n2x**2+n2y**2)*d_phi22
     if type_of_computation == '12':
@@ -685,6 +690,7 @@ def plot_phis(phi,A_M,txt_title='mah'):
         surf = ax.plot_surface(X, Y, phi[i].T, cmap=cm.coolwarm,
                    linewidth=0, antialiased=False)
         fig.colorbar(surf, shrink=0.5, aspect=5)
+    plt.xlabel('x')
     plt.show()
 
 def plot_Phi(Phi,a1_m,a2_m,title=''):
@@ -1236,7 +1242,7 @@ def compute_MPs(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine):
     plt.xlabel(r'$h_\bot(T)$',size=s_)
     plt.ylabel(r'$M$',size=s_)
     plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" theta: "+"{:.3f}".format(moire_pars['theta'])+" rho = "+rho_str+", d = "+ani_str+", and precision pars: "+str(precision_pars[0])+'x'+str(precision_pars[1])+'_'+str(precision_pars[2]))
-    if 0 and machine == 'loc':
+    if 1 and machine == 'loc':
         plt.show()
         exit()
     plt.savefig(get_fig_mp_fn(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine))
