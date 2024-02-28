@@ -29,31 +29,21 @@ results/phase_diagram_data/moire_specs(type,eps,ni,gx,gy)/gamma/ one directory f
     3 - MP (DFT), e=0.1 & 0.05 & 0.04, ni=1, precision: 200,-1e-1,3
     #new name (LR)
 ## Ygg
-    0 - CO AA&M d=0.07-0.1-0.2    150,1   25 const solutions, rho=0
-    0 - PD (0.03,1), (rho,d):(1.1%2,0%0.2), 13x13
-    0 - MP (0.05-0.03-0.01-0.005,1-0.5-0.3), g:(0%3,100) (d,rho) = (0.0709,1.4) (no 0.005,0.3)
-    0 - MP (0.05-0.03-0.01-0.005,1-0.5-0.3), g:(0%3,100) (d,rho) = (0.1,1.4) (no 0.005,0.3)
-    0 - MP (0.05-0.03-0.01-0.005,1-0.5-0.3), g:(0%3,100) (d,rho) = (0.2,1.4) (no 0.005,0.3)
 
 # Computing
 ## Bao
 ## Ygg
-All in (150,1,25 sol)
-    - PD rho:(0.1,10,25), d:(0.01,0.07,0.1,0.2), g:(0,2,100)    --> error in d: twice the value --> delet it
+    New derivative of order 8
+    - DB: (gg,AV)=(200-300-400-500,0-1-2) at (rho,d)=(1.4-100,0.07), g=(from 0 to 1, 50), biaxial 0.03, 100 sols (36+18)        -> results/
+    - DB: (gg,AV)=(200-300-400-500,0) at (rho,d)=(1.4-100,0.07), g=(from 0 to 1, 50), biaxial 0.03, 5 sols (36+18)              -> Results/
 
 # To do
-    - PD rho:(0.1,10,25), d:(0.01,0.07,0.1,0.2), g:(0,2,100) ('12', correct d)
-    - Try some MP with rho different for 1 and 2
 
 # Comments
 If phi_s starts at 0, it stays there for all evolution->we can make it go faster because there is no need to compute dHs.
-Stay for meeting of 19/02 at grid 150 and AV=1.
 
 # Problems
-Some points in the phase diagrams are still oscillating from t-s to t-a
-Constant interlayer -> jumps a lot
-Solution sometimes seems t-a but just because the phi_s is very rough. In real t-a you can see the domes of phase 0 and pi.
-
+Derivatives (laplacian in particular) is very messy -> blows up the simulation and increasing the averaging does not seem to help.
 
 
 

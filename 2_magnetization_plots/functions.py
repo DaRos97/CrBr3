@@ -13,19 +13,19 @@ import h5py
 rho_phys = {'DFT':1.4,'exp':1.7} #     (meV)      
 d_phys = {'DFT':0.0709,'exp':0.09} #     (meV)       0.0709
 #
-gammas = {  'MPs':np.linspace(0,2,100,endpoint=False), 
-            'AA':np.linspace(0,0.5,100,endpoint=False),
-            'M':np.linspace(0,0.5,100,endpoint=False),
+gammas = {  'MPs':np.linspace(0,2,50,endpoint=False), 
+            'AA':np.linspace(0,1,100,endpoint=False),
+            'M':np.linspace(0,1,100,endpoint=False),
             }
-rhos = np.linspace(0.1,10,25)
-anis = [0.01,0.0709,0.10,0.2]
+conversion_factor = 0.607 
+Spin = 3/2
+#
+rhos = [0.1,1.4,5,10,50,100]
+anis = [0.01,0.03,0.0709,0.11,0.2]
 #
 epss = [0.05,0.03,0.01,0.005]
 nis = [1.,0.5,0.3]
 thetas = np.pi/180*0
-#
-type_of_computation = '12'
-der_order = 8
 #
 offset_solution = -0.1
 NNNN = 21
@@ -88,9 +88,7 @@ def compute_solution(args_m):
     Phi,A_M = args_m['args_moire']
     a1_m, a2_m = A_M
     M_transf = get_M_transf(a1_m,a2_m)
-    gamma,rho,anisotropy = args_m['args_phys']
     gx,gy = args_m['grid']
-    rg = args_m['pts_per_fit']
     #Variables for storing best solution
     min_E = 1e10
     result = np.ones((2,gx,gy))*20
@@ -99,56 +97,32 @@ def compute_solution(args_m):
         if args_m['disp']:
             print("Starting minimization step ",str(ind_in_pt))
         #Initial condition
-        if ind_in_pt < 0:   #t-s and t-a
-            phi = custom_in_pt[type_of_computation][ind_in_pt+3](Phi,gx,gy)
-        elif ind_in_pt < 100:    #constant specific
-            fs = ((ind_in_pt//10)*36+18)/180*np.pi
-            fa = ((ind_in_pt%10)*36+18)/180*np.pi
-            phi = const_in_pt(fs,fa,gx,gy)
-        else:   #constant random
-            fs = random.random()*2*np.pi
-            fa = random.random()*2*np.pi
-            phi = const_in_pt(fs,fa,gx,gy)
+        fs = ((ind_in_pt//10)*36+18)/180*np.pi
+        fa = ((ind_in_pt%10)*36+18)/180*np.pi
+        phi = const_in_pt(fs,fa,gx,gy)
         #First energy evaluation
-        E = [compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg), ]
-        if 1 and args_m['disp']: #plot initial condition
-            #plot_magnetization(phi,Phi,A_M,"initial condition "+"{:.4f}".format(E[0]),False)
-            compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,True)
-            print('\n',ind_in_pt," initial energy: ","{:.8f}".format(E[0]))
+        E = [compute_energy(phi,Phi,args_m['args_phys'],A_M,M_transf), ]
         #Initialize learning rate and minimization loop
         step = 1        #initial step
         keep_going = True
         while keep_going:
             #Energy gradients
-            dHA = grad_H(phi,'A',Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
-            dHB = grad_H(phi,'B',Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
-            dH = np.array([dHA,dHB])
+            dH = grad_H(phi,Phi,args_m['args_phys'],A_M,M_transf)
             #Compute energy in all points of LR
             list_E = []
             list_phi = []
             for lr_i in range(NNNN):
                 LR_ = lr_list[lr_i]
                 phi_new = np.copy(phi-LR_*dH)
-                temp_E = compute_energy(phi_new,Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
+                temp_E = compute_energy(phi_new,Phi,args_m['args_phys'],A_M,M_transf)
                 list_phi.append(np.copy(phi_new))
                 list_E.append(np.array([LR_,temp_E]))
             list_E = np.array(list_E)
             #Check the minimum of energies wrt LR
             amin = np.argmin(list_E[:,1])
             if list_E[amin,1] < E[0]:
-#                if 0 and args_m['disp']:   #Plot energies wrt LR
-#                    plt.plot(list_E[:,0],list_E[:,1],'*k')
-#                    plt.plot(list_E[amin,0],list_E[amin,1],'*r')
-#                    plt.hlines(E[0],lr_list[0],lr_list[-1],ls='--')
-#                    plt.xscale('log')
-#                    plt.title('some below, min at LR='+"{:.6f}".format(list_E[amin,0]))
-#                    plt.show()
-#                    plot_phis(phi,A_M,'phi')
-#                    plot_phis(dH,A_M,'grad')
                 E.insert(0,list_E[amin,1])
                 phi = np.copy(list_phi[amin])
-#                if 1 and args_m['disp']:
-#                    print("energy step ",step," is ","{:.9f}".format(E[0])," with dH = ","{:.3f}".format(np.sum(np.absolute(dH))))
             else:
                 print(ind_in_pt," none LR was lower in energy")
                 keep_going = False
@@ -165,17 +139,12 @@ def compute_solution(args_m):
                 print(ind_in_pt," reached maxiter")
                 keep_going = False
             step += 1
-#        if 1 and args_m['disp']: #Plot step solution
-#            compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,True)
-#            print("mag: ",compute_magnetization(phi))
-#            plot_magnetization(phi,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(E[0]),False)
-            #plot_phis(phi,A_M,'Solution of phi_A (left) and phi_B (right)')
     if (result == np.ones((2,gx,gy))*20).all():
         print("Not a single converged solution, they all reached max number of iterations or too low LR")
         exit()
     return result
 
-def compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,disp=False):
+def compute_energy(phi,Phi,phys_args,A_M,M_transf):
     """Computes the energy of the system.
 
     Parameters
@@ -192,41 +161,24 @@ def compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,disp=False):
     float
         Energy density summed over all sites.
     """
+    gamma,rho,anisotropy = phys_args
+    det, n1x, n2x, n1y, n2y = M_transf
     a1_m, a2_m = A_M
-    grad_2 = []
     gx,gy = phi[0].shape
     xx = np.linspace(0,np.linalg.norm(a1_m),gx,endpoint=False)
     yy = np.linspace(0,np.linalg.norm(a2_m),gy,endpoint=False)
     dx = xx[1]-xx[0]
     dy = yy[1]-yy[0]
-    det, n1x, n2x, n1y, n2y = M_transf
+    grad_2 = []
     for i in range(2):
-#        if 0:   #1-st order, forward
-#            d_phi1 = smooth((np.roll(phi[i],-1,axis=0)-phi[i])/(xx[1]-xx[0]),rg,A_M)[0]
-#            d_phi2 = smooth((np.roll(phi[i],-1,axis=1)-phi[i])/(yy[1]-yy[0]),rg,A_M)[0]
-#        else:   #n-th order, central
-        d_phi1 = smooth(derivative(phi[i],der_order,dx,0),rg,A_M)[0]
-        d_phi2 = smooth(derivative(phi[i],der_order,dy,1),rg,A_M)[0]
+        d_phi1 = derivative(phi[i],dx,0)
+        d_phi2 = derivative(phi[i],dy,1)
         #
         grad_2.append( (n1x*d_phi1+n2x*d_phi2)**2+(n1y*d_phi1+n2y*d_phi2)**2 )
-    if type_of_computation == '12':
-        energy = rho/2*grad_2[0]+rho/2*grad_2[1] - anisotropy*(np.cos(phi[0])**2+np.cos(phi[1])**2) - Phi*np.cos(phi[0]-phi[1]) - gamma*(np.cos(phi[0])+np.cos(phi[1]))
-#        if disp:
-#            kin = (rho/2*grad_2[0]+rho/2*grad_2[1]).sum()/gx/gy 
-#            an = (- anisotropy*(np.cos(phi[0])**2+np.cos(phi[1])**2)).sum()/gx/gy 
-#            Int = (- Phi*np.cos(phi[0]-phi[1])).sum()/gx/gy 
-#            M = (- gamma*(np.cos(phi[0])+np.cos(phi[1]))).sum()/gx/gy
-#            print("Final energy: ",energy.sum()/gx/gy)
-#            print("Kin: ",kin)
-#            print("Ani: ",an)
-#            print("Int: ",Int)
-#            print("M: ",M)
-    else:
-        energy = rho/4*(grad_2[0]+grad_2[1]) - anisotropy*np.cos(phi[1])*np.cos(phi[0]) - Phi*np.cos(phi[1]) - 2*gamma*np.cos(phi[0]/2)*np.cos(phi[1]/2)
-    H = energy.sum()/gx/gy
-    return H
+    energy = rho/2*grad_2[0]+rho/2*grad_2[1] - anisotropy*(np.cos(phi[0])**2+np.cos(phi[1])**2) - Phi*np.cos(phi[0]-phi[1]) - conversion_factor/Spin*gamma*(np.cos(phi[0])+np.cos(phi[1]))
+    return energy.sum()/gx/gy
 
-def grad_H(phi,tt,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,disp=False):
+def grad_H(phi,Phi,phys_args,A_M,M_transf):
     """Computes evolution step dH/d phi.
 
     Parameters
@@ -247,59 +199,30 @@ def grad_H(phi,tt,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,disp=False):
     np.ndarray
         Gradient of Hamiltonian on the (grid,grid) space.
     """
+    gamma,rho,anisotropy = phys_args
+    det, n1x, n2x, n1y, n2y = M_transf
     a1_m, a2_m = A_M
     gx,gy = phi[0].shape
     xx = np.linspace(0,np.linalg.norm(a1_m),gx,endpoint=False)
     yy = np.linspace(0,np.linalg.norm(a2_m),gy,endpoint=False)
     dx = xx[1]-xx[0]
     dy = yy[1]-yy[0]
-    tt_phi = np.copy(phi[0]) if tt == 'A' else np.copy(phi[1])
-    yy_phi = np.copy(phi[1]) if tt == 'A' else np.copy(phi[0])
-    tt_phi = smooth(tt_phi,rg,A_M)[0]
-    yy_phi = smooth(yy_phi,rg,A_M)[0]
-#    if 0:   #first order, forward
-#        d_phi11 = smooth((np.roll(tt_phi,-2,axis=0) - 2*np.roll(tt_phi,-1,axis=0) + tt_phi)/(xx[1]-xx[0]),rg,A_M)[0]
-#        d_phi22 = smooth((np.roll(tt_phi,-2,axis=1) - 2*np.roll(tt_phi,-1,axis=1) + tt_phi)/(yy[1]-yy[0]),rg,A_M)[0]
-#        d_phi12 = smooth((np.roll(np.roll(tt_phi,-1,axis=0),-1,axis=1) - np.roll(tt_phi,-1,axis=0) - np.roll(tt_phi,-1,axis=1) + tt_phi)/(xx[1]-xx[0])/(yy[1]-yy[0]),rg,A_M)[0]
-#    else:   #n-th order, central
-    d_phi11 = smooth(derivative2(tt_phi,der_order,dx,0),rg,A_M)[0]
-    d_phi22 = smooth(derivative2(tt_phi,der_order,dy,1),rg,A_M)[0]
-    d_phi12 = smooth(derivative(derivative(tt_phi,der_order,dx,0),der_order,dy,1),rg,A_M)[0]
-    #
-    det, n1x, n2x, n1y, n2y = M_transf
-    lapl = (n1x**2+n1y**2)*d_phi11 + 2*(n1x*n2x+n1y*n2y)*d_phi12 + (n2x**2+n2y**2)*d_phi22
-    if type_of_computation == '12':
-#        if disp:
-#            print(tt," lapl: ",lapl.sum()/gx/gy)
-#            plot_phis(phi,A_M,'phi')
-#            plot_phis((d_phi11,d_phi22),A_M,'11 and 22')
-#            plot_phis((d_phi12,lapl),A_M,'12 and lapl')
-        return -rho*lapl + anisotropy*np.sin(2*tt_phi) + Phi*np.sin(tt_phi-yy_phi) + gamma*np.sin(tt_phi)
-    else:
-        if tt=='A':
-            return -rho/2*lapl + anisotropy*np.sin(phi[0])*np.cos(phi[1]) + gamma*np.cos(phi[1]/2)*np.sin(phi[0]/2)
-        elif tt=='B':
-            return -rho/2*lapl + anisotropy*np.cos(phi[0])*np.sin(phi[1]) + Phi*np.sin(phi[1]) + gamma*np.cos(phi[0]/2)*np.sin(phi[1]/2)
+    res = np.zeros((2,gx,gy))
+    for i in range(2):
+        tt_phi = phi[i]
+        yy_phi = phi[(i+1)%2]
+        d_phi11 = derivative2(tt_phi,dx,0)
+        d_phi22 = derivative2(tt_phi,dy,1)
+        d_phi12 = derivative(derivative(tt_phi,dx,0),dy,1)
+        lapl = (n1x**2+n1y**2)*d_phi11 + 2*(n1x*n2x+n1y*n2y)*d_phi12 + (n2x**2+n2y**2)*d_phi22
+        res[i] = -rho*lapl + anisotropy*np.sin(2*tt_phi) + Phi*np.sin(tt_phi-yy_phi) + conversion_factor/Spin*gamma*np.sin(tt_phi)
+    return res
 
-def derivative(phi,order,dd,ax):
-    if order == 2:
-        return (-1/2*np.roll(phi,1,axis=ax)+1/2*np.roll(phi,-1,axis=ax))/dd
-    elif order == 4:
-        return (1/12*np.roll(phi,2,axis=ax)-2/3*np.roll(phi,1,axis=ax)+2/3*np.roll(phi,-1,axis=ax)-1/12*np.roll(phi,-2,axis=ax))/dd
-    elif order == 6:
-        return (-1/60*np.roll(phi,3,axis=ax)+3/20*np.roll(phi,2,axis=ax)-3/4*np.roll(phi,1,axis=ax)+3/4*np.roll(phi,-1,axis=ax)-3/20*np.roll(phi,-2,axis=ax)+1/60*np.roll(phi,-3,axis=ax))/dd
-    elif order == 8:
-        return (1/280*np.roll(phi,4,axis=ax)-4/105*np.roll(phi,3,axis=ax)+1/5*np.roll(phi,2,axis=ax)-4/5*np.roll(phi,1,axis=ax)+4/5*np.roll(phi,-1,axis=ax)-1/5*np.roll(phi,-2,axis=ax)+4/105*np.roll(phi,-3,axis=ax)-1/280*np.roll(phi,-4,axis=ax))/dd
+def derivative(phi,dd,ax):
+    return (1/280*np.roll(phi,4,axis=ax)-4/105*np.roll(phi,3,axis=ax)+1/5*np.roll(phi,2,axis=ax)-4/5*np.roll(phi,1,axis=ax)+4/5*np.roll(phi,-1,axis=ax)-1/5*np.roll(phi,-2,axis=ax)+4/105*np.roll(phi,-3,axis=ax)-1/280*np.roll(phi,-4,axis=ax))/dd
 
-def derivative2(phi,order,dd,ax):
-    if order == 2:
-        return (np.roll(phi,1,axis=ax)-2*phi+np.roll(phi,-1,axis=ax))/dd**2
-    elif order == 4:
-        return (-1/12*np.roll(phi,2,axis=ax)+4/3*np.roll(phi,1,axis=ax)-5/2*phi+4/3*np.roll(phi,-1,axis=ax)-1/12*np.roll(phi,-2,axis=ax))/dd**2
-    elif order == 6:
-        return (1/90*np.roll(phi,3,axis=ax)-3/20*np.roll(phi,2,axis=ax)+3/2*np.roll(phi,1,axis=ax)-49/18*phi+3/2*np.roll(phi,-1,axis=ax)-3/20*np.roll(phi,-2,axis=ax)+1/90*np.roll(phi,-3,axis=ax))/dd**2
-    elif order == 8:
-        return (-1/560*np.roll(phi,4,axis=ax)+8/315*np.roll(phi,3,axis=ax)-1/5*np.roll(phi,2,axis=ax)+8/5*np.roll(phi,1,axis=ax)-205/72*phi+8/5*np.roll(phi,-1,axis=ax)-1/5*np.roll(phi,-2,axis=ax)+8/315*np.roll(phi,-3,axis=ax)-1/560*np.roll(phi,-4,axis=ax))/dd**2
+def derivative2(phi,dd,ax):
+    return (-1/560*np.roll(phi,4,axis=ax)+8/315*np.roll(phi,3,axis=ax)-1/5*np.roll(phi,2,axis=ax)+8/5*np.roll(phi,1,axis=ax)-205/72*phi+8/5*np.roll(phi,-1,axis=ax)-1/5*np.roll(phi,-2,axis=ax)+8/315*np.roll(phi,-3,axis=ax)-1/560*np.roll(phi,-4,axis=ax))/dd**2
 
 def get_M_transf(a1_m,a2_m):
     det = a1_m[0]*a2_m[1]-a2_m[0]*a1_m[1]
@@ -331,33 +254,6 @@ def check_energies(list_E):
         if abs(list_E[i]-list_E[i+1]) > lim:
             return False
     return True
-
-def smooth(phi,rg,A_M):
-    """Smooth out the periodic function phi.
-
-    Parameters
-    ----------
-    phi: np.ndarray
-        Function on a grid.
-
-    Returns
-    -------
-    np.ndarray, function
-        Values of phi after being smoothen by first extending it on a larger domain and then interpolate it on
-        fewer points (second returned argument) and finally computed on the original grid.
-    """
-    if rg == 0:
-        return phi,0
-    gx,gy = phi.shape
-    smooth_phi = np.zeros((gx,gy))
-    for i in range(-rg,rg+1):
-        for j in range(-rg,rg+1):
-            smooth_phi += np.roll(np.roll(phi,i,axis=0),j,axis=1)
-    smooth_phi /= (1+2*rg)**2
-#    xx = np.linspace(0,np.linalg.norm(A_M[0]),gx,endpoint=False)
-#    yy = np.linspace(0,np.linalg.norm(A_M[1]),gy,endpoint=False)
-#    fun = RBS(xx,yy,smooth_phi)
-    return smooth_phi,0#fun
 
 def plot_magnetization(phi,Phi,A_M,title='',save=False):
     """Plots the magnetization values in the Moirè unit cell, with a background given by the
@@ -635,12 +531,12 @@ def get_fig_dn(machine):
     """
     return get_res_dn(machine)+'figures/'
 
-def get_fig_pd_fn(moire_type,moire_pars,precision_pars,gamma,machine):
-    moire_dn = get_moire_dn(moire_type,moire_pars,precision_pars,machine)[:-1]
+def get_fig_pd_fn(moire_type,moire_pars,grid_pts,gamma,machine):
+    moire_dn = get_moire_dn(moire_type,moire_pars,grid_pts,machine)[:-1]
     return get_fig_dn(machine) + 'PD_' + moire_dn[len(moire_dn)-moire_dn[::-1].index('/'):] +'_'+gamma+'.png'
 
-def get_fig_mp_fn(moire_type,moire_pars,precision_pars,rho,ani,machine):
-    moire_dn = get_moire_dn(moire_type,moire_pars,precision_pars,machine)[:-1]
+def get_fig_mp_fn(moire_type,moire_pars,grid_pts,rho,ani,machine):
+    moire_dn = get_moire_dn(moire_type,moire_pars,grid_pts,machine)[:-1]
     return get_fig_dn(machine) + 'MP_' + moire_dn[len(moire_dn)-moire_dn[::-1].index('/'):] +'_'+rho+'_'+ani+'.png'
 
 def get_hdf5_dn(machine):
@@ -658,8 +554,8 @@ def get_hdf5_dn(machine):
     """
     return get_res_dn(machine)+'hdf5/'
 
-def get_hdf5_fn(moire_type,moire_pars,precision_pars,machine):
-    moire_dn = get_moire_dn(moire_type,moire_pars,precision_pars,machine)[:-1]
+def get_hdf5_fn(moire_type,moire_pars,grid_pts,machine):
+    moire_dn = get_moire_dn(moire_type,moire_pars,grid_pts,machine)[:-1]
     return get_hdf5_dn(machine) + moire_dn[len(moire_dn)-moire_dn[::-1].index('/'):] + '.hdf5'
 
 def get_pd_dn(machine):
@@ -677,14 +573,14 @@ def get_pd_dn(machine):
     """
     return get_res_dn(machine) +'phase_diagrams_data/'
 
-def get_moire_dn(moire_type,moire_pars,precision_pars,machine):
-    gx,gy,AV = precision_pars
-    return get_pd_dn(machine) + moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'_'+"{:.3f}".format(moire_pars['theta'])+'_'+str(gx)+'x'+str(gy)+'_'+str(AV)+'/'
+def get_moire_dn(moire_type,moire_pars,grid_pts,machine):
+    gx,gy = grid_pts
+    return get_pd_dn(machine) + moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'_'+"{:.3f}".format(moire_pars['theta'])+'_'+str(gx)+'x'+str(gy)+'/'
 
-def get_gamma_dn(moire_type,moire_pars,precision_pars,gamma,machine):
-    return get_moire_dn(moire_type,moire_pars,precision_pars,machine) + 'gamma_'+"{:.4f}".format(gamma)+'/'
+def get_gamma_dn(moire_type,moire_pars,grid_pts,gamma,machine):
+    return get_moire_dn(moire_type,moire_pars,grid_pts,machine) + 'gamma_'+"{:.4f}".format(gamma)+'/'
 
-def get_sol_fn(moire_type,moire_pars,precision_pars,gamma,rho,anisotropy,machine):
+def get_sol_fn(moire_type,moire_pars,grid_pts,phys_args,machine):
     """Computes the filename of the interlayer coupling.
 
     Parameters
@@ -697,7 +593,8 @@ def get_sol_fn(moire_type,moire_pars,precision_pars,gamma,rho,anisotropy,machine
     string
         The name of the .npy file containing the interlayer coupling.
     """
-    return get_gamma_dn(moire_type,moire_pars,precision_pars,gamma,machine)+'sol_'+"{:.5f}".format(rho)+'_'+"{:.5f}".format(anisotropy)+'.npy'
+    gamma,rho,anisotropy = phys_args
+    return get_gamma_dn(moire_type,moire_pars,grid_pts,gamma,machine)+'sol_'+"{:.5f}".format(rho)+'_'+"{:.5f}".format(anisotropy)+'.npy'
 
 def get_Phi_dn(machine):
     """Computes the directory name where to save the interlayer potential.
@@ -910,7 +807,6 @@ def Moire(args):
             S2 = 2*displacement[1]/np.sqrt(3)
             #Find value of I[d] and assign it to J[x]
             J[i,j] = fun_I(S1,S2)
-    J = smooth(J,2,(a1_m,a2_m))[0]
     #
     if disp:
         title = ""#"Strain type : "+moire_type+" with (eps,ni,phi)=("+"{:.2f}".format(moire_pars[moire_type]['eps'])+','+"{:.2f}".format(moire_pars[moire_type]['ni'])+','+"{:.2f}".format(moire_pars[moire_type]['phi'])+'), and theta='+"{:.3f}".format(moire_pars['theta'])
@@ -956,7 +852,7 @@ def get_dft_data(machine):
         y = "{:.5f}".format(data[i,1])
         ind1 = S_txt.index(x)
         ind2 = S_txt.index(y)
-        I[ind1,ind2] = -(data[i,2]-data[i,3])
+        I[ind1,ind2] = -(data[i,2]-data[i,3])/2/Spin**2
     #
     np.save(data_fn,I)
     return I
@@ -1153,26 +1049,17 @@ def get_moire_pars(ind):
         }
     return (moire_types[imt],moire_pars)
 
-def get_phys_pars(ind,type_gamma):
-    lg = len(gammas[type_gamma])
-    lr = len(rhos)
-    la = len(anis)
-    ig = ind//(lr*la)
-    ir = (ind%(lr*la)) // la
-    ia = (ind%(lr*la)) % la
-    return (gammas[type_gamma][ig],rhos[ir],anis[ia])
-
-def check_directory(moire_type,moire_pars,precision_pars,gamma,machine):
+def check_directory(moire_type,moire_pars,grid_pts,gamma,machine):
     #Phase diagrams dir
     pd_dn = get_pd_dn(machine)
     if not Path(pd_dn).is_dir():
         os.system('mkdir '+pd_dn)
     #Moire dir
-    moire_dn = get_moire_dn(moire_type,moire_pars,precision_pars,machine)
+    moire_dn = get_moire_dn(moire_type,moire_pars,grid_pts,machine)
     if not Path(moire_dn).is_dir():
         os.system('mkdir '+moire_dn)
     #gamma dir -> contains the actual .npy results
-    gamma_dn = get_gamma_dn(moire_type,moire_pars,precision_pars,gamma,machine)
+    gamma_dn = get_gamma_dn(moire_type,moire_pars,grid_pts,gamma,machine)
     if not Path(gamma_dn).is_dir():
         os.system('mkdir '+gamma_dn)
     #hdf5 dir
@@ -1202,46 +1089,46 @@ def compute_magnetization(phi):
     if phi.shape[0]==1:
         return np.nan
     #Single layer phases
-    phi_1 = (phi[0]+phi[1])/2 if type_of_computation == 'sa' else phi[0]
-    phi_2 = (phi[0]-phi[1])/2 if type_of_computation == 'sa' else phi[1]
+    phi_1,phi_2 = phi
     total_magnetization = np.sum(np.cos(phi_1))/gx/gy + np.sum(np.cos(phi_2))/gx/gy
     return abs(total_magnetization)
 
-def compute_MPs(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine):
+def compute_MPs(moire_type,moire_pars,grid_pts,rho_str,ani_str,machine):
     """Compute the magnetization plot.
 
     """
     #Open and read h5py File
-    hdf5_fn = get_hdf5_fn(moire_type,moire_pars,precision_pars,machine)
+    hdf5_fn = get_hdf5_fn(moire_type,moire_pars,grid_pts,machine)
     data = []
     n = 0
     with h5py.File(hdf5_fn,'r') as f:
         for k in f.keys():
             if not k[:5] == 'gamma':
                 continue
-            gamma = k[-6:]            #-6 fixed by the fact that gamma is saved .4f
-            for p in f[k].keys():
-                rho = p[:7]      #7 fixed by the fact that rho is saved .5f 
-                ani = p[-7:]      #7 fixed by the fact that rho is saved .5f 
-                if rho == rho_str and ani == ani_str:
-                    data.append([float(gamma),abs(compute_magnetization(f[k][p]))])
+                gamma_ = k[6:]           #6 fixed by len(gamma_)
+                for p in f[k].keys():
+                    rho_ = p[:p.index('_')]
+                    ani_ = p[p.index('_')+1:]
+                    if rho_ == rho_str and ani_ == ani_str:
+                        data.append([float(gamma_),compute_magnetization(f[k][p])])
                     n += 1
     if n == 0:  #No data here for some reason
+        print("No data in ",hdf5_fn)
         return 0
     M = np.array(data)
     fig = plt.figure(figsize=(20,20))
     s_ = 20
-    plt.plot(M[:,0]*3/2/0.607,M[:,1],'r*-')
+    plt.plot(M[:,0],M[:,1],'r*-')
     plt.xlabel(r'$h_\bot(T)$',size=s_)
     plt.ylabel(r'$M$',size=s_)
     plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" theta: "+"{:.3f}".format(moire_pars['theta'])+" rho = "+rho_str+", d = "+ani_str+", and precision pars: "+str(precision_pars[0])+'x'+str(precision_pars[1])+'_'+str(precision_pars[2]))
     if 1 and machine == 'loc':
         plt.show()
         exit()
-    plt.savefig(get_fig_mp_fn(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine))
+    plt.savefig(get_fig_mp_fn(moire_type,moire_pars,grid_pts,rho_str,ani_str,machine))
     plt.close()
 
-def compute_MPs_new(list_pars,figname,machine):
+def compute_compare_MPs(list_pars,figname,machine):
     """Compute the magnetization plots.
 
     """
@@ -1249,9 +1136,8 @@ def compute_MPs_new(list_pars,figname,machine):
     colors = ['r','b','g','y','k','orange','pink']
     s_ = 20
     for iii in range(len(list_pars)):
-        rho_str,ani_str,precision_pars,moire_type,moire_pars,txt_name = list_pars[iii]
-        hdf5_fn = get_hdf5_fn(moire_type,moire_pars,precision_pars,machine)
-        print(list_pars[iii])
+        rho_str,ani_str,grid_pts,moire_type,moire_pars,txt_name = list_pars[iii]
+        hdf5_fn = get_hdf5_fn(moire_type,moire_pars,grid_pts,machine)
         #Open and read h5py File
         data = []
         n = 0
@@ -1259,17 +1145,18 @@ def compute_MPs_new(list_pars,figname,machine):
             for k in f.keys():
                 if not k[:5] == 'gamma':
                     continue
-                gamma = k[6:]           #6 fixed by len(gamma_)
+                gamma_ = k[6:]           #6 fixed by len(gamma_)
                 for p in f[k].keys():
-                    rho = p[:p.index('_')]
-                    ani = p[p.index('_')+1:]
-                    if rho == rho_str and ani == ani_str:
-                        data.append([float(gamma),abs(compute_magnetization(f[k][p]))])
+                    rho_ = p[:p.index('_')]
+                    ani_ = p[p.index('_')+1:]
+                    if rho_ == rho_str and ani_ == ani_str:
+                        data.append([float(gamma_),compute_magnetization(f[k][p])])
                         n += 1
         if n == 0:  #No data here for some reason
+            print("No data in ",hdf5_fn," for pars ",rho_str," and ",ani_str)
             continue
         M = np.array(data)
-        plt.plot(M[:,0]*3/2/0.607,M[:,1],'-',color=colors[iii],marker='*',label=txt_name)
+        plt.plot(M[:,0],M[:,1],'-',color=colors[iii],marker='*',label=txt_name)
     plt.xlabel(r'$h_\bot(T)$',size=s_)
     plt.ylabel(r'$M$',size=s_)
     plt.legend(fontsize=s_)
@@ -1277,33 +1164,20 @@ def compute_MPs_new(list_pars,figname,machine):
         plt.show()
     else:
         plt.savefig(figname)
-    exit()
 
-def compute_order(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
+def compute_order(phi,Phi,phys_args,A_M,M_transf):
     phi_A,phi_B = phi
     gx,gy = phi_A.shape
-    E = compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
-    E0 = -2*gamma - 2*anisotropy - Phi.sum()/Phi.shape[0]/Phi.shape[1]
-    if E-E0 > 1e-4:       #Solution collinear was not tried for some reason
-        col = 0
-    elif abs(E-E0) < 1e-2:  #collinear
-        col = 1
-    elif abs(np.max(np.cos(phi_A))-np.min(np.cos(phi_B))) < 0.1:    #t-s (all possible)
-        #twisted-s seen by considering a nearly constant cos(phi_s)
-        if np.max(np.cos(phi_A)) > 0:   #t-s1
-            col = 2
-        else:           #t-s2
-            col = 3
-    else:    #twisted-a
-        col = 4
-    return col
+    E = compute_energy(phi,Phi,phys_args,A_M,M_transf,rg)
+    print("Function not ready for 12 type of solution")
+    pass
 
-def compute_PDs(moire_type,moire_pars,precision_pars,gamma_str,machine):
+def compute_PDs(moire_type,moire_pars,grid_pts,gamma_str,machine):
     """Compute the magnetization plot.
 
     """
-    gx,gy,AV = precision_pars
-    hdf5_fn = get_hdf5_fn(moire_type,moire_pars,precision_pars,machine)
+    gx,gy = grid_pts
+    hdf5_fn = get_hdf5_fn(moire_type,moire_pars,grid_pts,machine)
     Phi_fn = get_Phi_fn(moire_type,moire_pars,machine)
     Phi = reshape_Phi(np.load(get_Phi_fn(moire_type,moire_pars,machine)),gx,gy)
     A_M = np.load(get_AM_fn(moire_type,moire_pars,machine))
@@ -1312,16 +1186,16 @@ def compute_PDs(moire_type,moire_pars,precision_pars,gamma_str,machine):
     data = {}
     with h5py.File(hdf5_fn,'r') as f:
         for k in f.keys():
-            gamma = k[-6:]            #-6 fixed by the fact that gamma is saved .4f
-            if gamma == gamma_str:
+            gamma_ = k[6:]           #6 fixed by len(gamma_)
+            if gamma_ == gamma_str:
                 if len(f[k].keys()) == 0:   #No data here
                     continue
-                data[gamma] = np.zeros((len(f[k].keys()),3))
+                data[gamma_] = np.zeros((len(f[k].keys()),3))
                 for i,p in enumerate(f[k].keys()):
-                    rho = float(p[:7])      #7 fixed by the fact that rho is saved .5f 
-                    ani = float(p[-7:])      #7 fixed by the fact that rho is saved .5f 
-                    order = compute_order(f[k][p],Phi,float(gamma),rho,ani,A_M,M_transf,2)
-                    data[gamma][i] = np.array([rho,ani,order])
+                    rho_ = float(p[:p.index('_')])
+                    ani_ = float(p[p.index('_')+1:])
+                    order = compute_order(f[k][p],Phi,float(gamma_),rho_,ani_,A_M,M_transf)
+                    data[gamma_][i] = np.array([rho_,ani_,order])
     colors = np.array(['k','y','b','m','r'])
     for gamma in data.keys():
         ccc = np.asarray(data[gamma][:,2],dtype=int)
@@ -1333,7 +1207,7 @@ def compute_PDs(moire_type,moire_pars,precision_pars,gamma_str,machine):
         if machine == 'loc':
             plt.show()
             exit()
-        plt.savefig(get_fig_pd_fn(moire_type,moire_pars,precision_pars,gamma,machine))
+        plt.savefig(get_fig_pd_fn(moire_type,moire_pars,grid_pts,gamma,machine))
         plt.close()
 
 def load_Moire(Phi_fn,AM_fn):
@@ -1361,20 +1235,7 @@ def ta_12(Phi,gx,gy):
     phi_2 = np.zeros((gx,gy))
     return np.array([phi_1,phi_2])
 
-def ts1_sa(Phi,gx,gy):
-    res = (np.sign(Phi+offset_solution)-1)*np.pi/2
-    return np.array([np.ones((gx,gy))*0,res])
-
-def ts2_sa(Phi,gx,gy):
-    res = (np.sign(Phi+offset_solution)-1)*np.pi/2
-    return np.array([np.ones((gx,gy))*np.pi,res])
-
-def ta_sa(Phi,gx,gy):
-    re_s = -(np.sign(Phi+offset_solution)-1)*np.pi/2
-    re_a = (np.sign(Phi+offset_solution)-1)*np.pi/2
-    return np.array([re_s,re_a])
-
-custom_in_pt = {'sa': (ts1_sa,ts2_sa,ta_sa),    '12': (ts1_12,ts2_12,ta_12)}
+custom_in_pt = (ts1_12,ts2_12,ta_12)
 
 
 
