@@ -9,9 +9,11 @@ AV = 1
 
 machine = fs.get_machine(os.getcwd())
 
-type_computation = 'PD' if len(sys.argv)<2 else sys.argv[1]
+type_computation = sys.argv[1]
 
-inds = np.array([1,2,3,4])+5
+i = int(sys.argv[2])
+inds = np.array([0,1,2])+5*i
+figname = 'aaa.png'
 list_pars = []
 for ind in inds:
     if type_computation == 'PD':
@@ -39,11 +41,11 @@ for ind in inds:
         moire_pars['theta'] = 0.
         txt_name = place_interlayer + r', $\rho$:'+rho+', '+r'$d$:'+anisotropy
     elif type_computation == 'DB':
-        ggg = [100,200,300,400]
+        ggg = [100,200,300,400,500]
         avav = [0,1,2,3,4]
         max_grid = ggg[ind // (5)]
         AV = avav[ind % (5)]
-        rho = "{:.5f}".format(1.4)
+        rho = "{:.5f}".format(100)
         anisotropy = "{:.5f}".format(0.0709)
         moire_type,moire_pars = fs.get_moire_pars(0)
         txt_name = 'grid='+str(max_grid)+', AV:'+str(AV)
@@ -53,6 +55,7 @@ for ind in inds:
     #Precision parameters
     gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
     precision_pars = (gridx,gridy,AV)
+    print("Physical parameters are rho: ",rho,", anisotropy: ",anisotropy)
     print("Condensing PD for Moire with ",moire_type," strain of args ",moire_pars[moire_type])
     print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.norm(a2_m))
     print("Relative angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m))))
@@ -61,5 +64,5 @@ for ind in inds:
 
     list_pars.append((rho,anisotropy,precision_pars,moire_type,moire_pars,txt_name))
 
-fs.compute_MPs_new(list_pars,machine)
+fs.compute_MPs_new(list_pars,figname,machine)
 

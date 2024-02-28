@@ -114,7 +114,7 @@ def compute_solution(args_m):
         if 1 and args_m['disp']: #plot initial condition
             #plot_magnetization(phi,Phi,A_M,"initial condition "+"{:.4f}".format(E[0]),False)
             compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,True)
-        print('\n',ind_in_pt," initial energy: ","{:.8f}".format(E[0]))
+            print('\n',ind_in_pt," initial energy: ","{:.8f}".format(E[0]))
         #Initialize learning rate and minimization loop
         step = 1        #initial step
         keep_going = True
@@ -150,7 +150,7 @@ def compute_solution(args_m):
 #                if 1 and args_m['disp']:
 #                    print("energy step ",step," is ","{:.9f}".format(E[0])," with dH = ","{:.3f}".format(np.sum(np.absolute(dH))))
             else:
-                print("none LR was lower in energy -> exit")
+                print(ind_in_pt," none LR was lower in energy")
                 keep_going = False
             #Check if energy converged to a constant value
             if check_energies(E):
@@ -1241,15 +1241,17 @@ def compute_MPs(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine):
     plt.savefig(get_fig_mp_fn(moire_type,moire_pars,precision_pars,rho_str,ani_str,machine))
     plt.close()
 
-def compute_MPs_new(list_pars,machine):
+def compute_MPs_new(list_pars,figname,machine):
     """Compute the magnetization plots.
 
     """
     fig = plt.figure(figsize=(20,20))
     colors = ['r','b','g','y','k','orange','pink']
+    s_ = 20
     for iii in range(len(list_pars)):
         rho_str,ani_str,precision_pars,moire_type,moire_pars,txt_name = list_pars[iii]
         hdf5_fn = get_hdf5_fn(moire_type,moire_pars,precision_pars,machine)
+        print(list_pars[iii])
         #Open and read h5py File
         data = []
         n = 0
@@ -1257,22 +1259,24 @@ def compute_MPs_new(list_pars,machine):
             for k in f.keys():
                 if not k[:5] == 'gamma':
                     continue
-                gamma = k[-6:]            #-6 fixed by the fact that gamma is saved .4f
+                gamma = k[6:]           #6 fixed by len(gamma_)
                 for p in f[k].keys():
-                    rho = p[:7]      #7 fixed by the fact that rho is saved .5f 
-                    ani = p[-7:]      #7 fixed by the fact that rho is saved .5f 
+                    rho = p[:p.index('_')]
+                    ani = p[p.index('_')+1:]
                     if rho == rho_str and ani == ani_str:
                         data.append([float(gamma),abs(compute_magnetization(f[k][p]))])
                         n += 1
         if n == 0:  #No data here for some reason
-            return 0
+            continue
         M = np.array(data)
-        s_ = 20
         plt.plot(M[:,0]*3/2/0.607,M[:,1],'-',color=colors[iii],marker='*',label=txt_name)
     plt.xlabel(r'$h_\bot(T)$',size=s_)
     plt.ylabel(r'$M$',size=s_)
     plt.legend(fontsize=s_)
-    plt.show()
+    if machine == 'loc':
+        plt.show()
+    else:
+        plt.savefig(figname)
     exit()
 
 def compute_order(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg):
