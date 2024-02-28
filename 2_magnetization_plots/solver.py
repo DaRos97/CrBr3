@@ -39,7 +39,7 @@ elif type_computation == 'DB':
     avav = [0,1,2,3,4]
     max_grid = ggg[ind // (5*100)]
     AV = avav[ind % (5*100) //100]
-    rho = 100#1.4
+    rho = 1.4#1.4
     anisotropy = 0.0709
     gamma = fs.gammas['MPs'][ind % (5*100) %100]
     moire_type,moire_pars = fs.get_moire_pars(0)

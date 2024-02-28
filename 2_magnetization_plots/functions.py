@@ -136,19 +136,19 @@ def compute_solution(args_m):
             #Check the minimum of energies wrt LR
             amin = np.argmin(list_E[:,1])
             if list_E[amin,1] < E[0]:
-                if 0 and args_m['disp']:   #Plot energies wrt LR
-                    plt.plot(list_E[:,0],list_E[:,1],'*k')
-                    plt.plot(list_E[amin,0],list_E[amin,1],'*r')
-                    plt.hlines(E[0],lr_list[0],lr_list[-1],ls='--')
-                    plt.xscale('log')
-                    plt.title('some below, min at LR='+"{:.6f}".format(list_E[amin,0]))
-                    plt.show()
-                    plot_phis(phi,A_M,'phi')
-                    plot_phis(dH,A_M,'grad')
+#                if 0 and args_m['disp']:   #Plot energies wrt LR
+#                    plt.plot(list_E[:,0],list_E[:,1],'*k')
+#                    plt.plot(list_E[amin,0],list_E[amin,1],'*r')
+#                    plt.hlines(E[0],lr_list[0],lr_list[-1],ls='--')
+#                    plt.xscale('log')
+#                    plt.title('some below, min at LR='+"{:.6f}".format(list_E[amin,0]))
+#                    plt.show()
+#                    plot_phis(phi,A_M,'phi')
+#                    plot_phis(dH,A_M,'grad')
                 E.insert(0,list_E[amin,1])
                 phi = np.copy(list_phi[amin])
-                if 1 and args_m['disp']:
-                    print("energy step ",step," is ","{:.9f}".format(E[0])," with dH = ","{:.3f}".format(np.sum(np.absolute(dH))))
+#                if 1 and args_m['disp']:
+#                    print("energy step ",step," is ","{:.9f}".format(E[0])," with dH = ","{:.3f}".format(np.sum(np.absolute(dH))))
             else:
                 print("none LR was lower in energy -> exit")
                 keep_going = False
@@ -165,10 +165,10 @@ def compute_solution(args_m):
                 print(ind_in_pt," reached maxiter")
                 keep_going = False
             step += 1
-        if 1 and args_m['disp']: #Plot step solution
-            compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,True)
-            print("mag: ",compute_magnetization(phi))
-            plot_magnetization(phi,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(E[0]),False)
+#        if 1 and args_m['disp']: #Plot step solution
+#            compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,True)
+#            print("mag: ",compute_magnetization(phi))
+#            plot_magnetization(phi,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(E[0]),False)
             #plot_phis(phi,A_M,'Solution of phi_A (left) and phi_B (right)')
     if (result == np.ones((2,gx,gy))*20).all():
         print("Not a single converged solution, they all reached max number of iterations or too low LR")
@@ -201,25 +201,26 @@ def compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,disp=False):
     dy = yy[1]-yy[0]
     det, n1x, n2x, n1y, n2y = M_transf
     for i in range(2):
-        if 0:   #1-st order, forward
-            d_phi1 = smooth((np.roll(phi[i],-1,axis=0)-phi[i])/(xx[1]-xx[0]),rg,A_M)[0]
-            d_phi2 = smooth((np.roll(phi[i],-1,axis=1)-phi[i])/(yy[1]-yy[0]),rg,A_M)[0]
-        else:   #n-th order, central
-            d_phi1 = smooth(derivative(phi[i],der_order,dx,0),rg,A_M)[0]
-            d_phi2 = smooth(derivative(phi[i],der_order,dy,1),rg,A_M)[0]
+#        if 0:   #1-st order, forward
+#            d_phi1 = smooth((np.roll(phi[i],-1,axis=0)-phi[i])/(xx[1]-xx[0]),rg,A_M)[0]
+#            d_phi2 = smooth((np.roll(phi[i],-1,axis=1)-phi[i])/(yy[1]-yy[0]),rg,A_M)[0]
+#        else:   #n-th order, central
+        d_phi1 = smooth(derivative(phi[i],der_order,dx,0),rg,A_M)[0]
+        d_phi2 = smooth(derivative(phi[i],der_order,dy,1),rg,A_M)[0]
+        #
         grad_2.append( (n1x*d_phi1+n2x*d_phi2)**2+(n1y*d_phi1+n2y*d_phi2)**2 )
     if type_of_computation == '12':
         energy = rho/2*grad_2[0]+rho/2*grad_2[1] - anisotropy*(np.cos(phi[0])**2+np.cos(phi[1])**2) - Phi*np.cos(phi[0]-phi[1]) - gamma*(np.cos(phi[0])+np.cos(phi[1]))
-        if disp:
-            kin = (rho/2*grad_2[0]+rho/2*grad_2[1]).sum()/gx/gy 
-            an = (- anisotropy*(np.cos(phi[0])**2+np.cos(phi[1])**2)).sum()/gx/gy 
-            Int = (- Phi*np.cos(phi[0]-phi[1])).sum()/gx/gy 
-            M = (- gamma*(np.cos(phi[0])+np.cos(phi[1]))).sum()/gx/gy
-            print("Final energy: ",energy.sum()/gx/gy)
-            print("Kin: ",kin)
-            print("Ani: ",an)
-            print("Int: ",Int)
-            print("M: ",M)
+#        if disp:
+#            kin = (rho/2*grad_2[0]+rho/2*grad_2[1]).sum()/gx/gy 
+#            an = (- anisotropy*(np.cos(phi[0])**2+np.cos(phi[1])**2)).sum()/gx/gy 
+#            Int = (- Phi*np.cos(phi[0]-phi[1])).sum()/gx/gy 
+#            M = (- gamma*(np.cos(phi[0])+np.cos(phi[1]))).sum()/gx/gy
+#            print("Final energy: ",energy.sum()/gx/gy)
+#            print("Kin: ",kin)
+#            print("Ani: ",an)
+#            print("Int: ",Int)
+#            print("M: ",M)
     else:
         energy = rho/4*(grad_2[0]+grad_2[1]) - anisotropy*np.cos(phi[1])*np.cos(phi[0]) - Phi*np.cos(phi[1]) - 2*gamma*np.cos(phi[0]/2)*np.cos(phi[1]/2)
     H = energy.sum()/gx/gy
@@ -256,22 +257,23 @@ def grad_H(phi,tt,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,disp=False):
     yy_phi = np.copy(phi[1]) if tt == 'A' else np.copy(phi[0])
     tt_phi = smooth(tt_phi,rg,A_M)[0]
     yy_phi = smooth(yy_phi,rg,A_M)[0]
-    if 0:   #first order, forward
-        d_phi11 = smooth((np.roll(tt_phi,-2,axis=0) - 2*np.roll(tt_phi,-1,axis=0) + tt_phi)/(xx[1]-xx[0]),rg,A_M)[0]
-        d_phi22 = smooth((np.roll(tt_phi,-2,axis=1) - 2*np.roll(tt_phi,-1,axis=1) + tt_phi)/(yy[1]-yy[0]),rg,A_M)[0]
-        d_phi12 = smooth((np.roll(np.roll(tt_phi,-1,axis=0),-1,axis=1) - np.roll(tt_phi,-1,axis=0) - np.roll(tt_phi,-1,axis=1) + tt_phi)/(xx[1]-xx[0])/(yy[1]-yy[0]),rg,A_M)[0]
-    else:   #n-th order, central
-        d_phi11 = smooth(derivative2(tt_phi,der_order,dx,0),rg,A_M)[0]
-        d_phi22 = smooth(derivative2(tt_phi,der_order,dy,1),rg,A_M)[0]
-        d_phi12 = smooth(derivative(derivative(tt_phi,der_order,dx,0),der_order,dy,1),rg,A_M)[0]
+#    if 0:   #first order, forward
+#        d_phi11 = smooth((np.roll(tt_phi,-2,axis=0) - 2*np.roll(tt_phi,-1,axis=0) + tt_phi)/(xx[1]-xx[0]),rg,A_M)[0]
+#        d_phi22 = smooth((np.roll(tt_phi,-2,axis=1) - 2*np.roll(tt_phi,-1,axis=1) + tt_phi)/(yy[1]-yy[0]),rg,A_M)[0]
+#        d_phi12 = smooth((np.roll(np.roll(tt_phi,-1,axis=0),-1,axis=1) - np.roll(tt_phi,-1,axis=0) - np.roll(tt_phi,-1,axis=1) + tt_phi)/(xx[1]-xx[0])/(yy[1]-yy[0]),rg,A_M)[0]
+#    else:   #n-th order, central
+    d_phi11 = smooth(derivative2(tt_phi,der_order,dx,0),rg,A_M)[0]
+    d_phi22 = smooth(derivative2(tt_phi,der_order,dy,1),rg,A_M)[0]
+    d_phi12 = smooth(derivative(derivative(tt_phi,der_order,dx,0),der_order,dy,1),rg,A_M)[0]
+    #
     det, n1x, n2x, n1y, n2y = M_transf
     lapl = (n1x**2+n1y**2)*d_phi11 + 2*(n1x*n2x+n1y*n2y)*d_phi12 + (n2x**2+n2y**2)*d_phi22
     if type_of_computation == '12':
-        if disp:
-            print(tt," lapl: ",lapl.sum()/gx/gy)
-            plot_phis(phi,A_M,'phi')
-            plot_phis((d_phi11,d_phi22),A_M,'11 and 22')
-            plot_phis((d_phi12,lapl),A_M,'12 and lapl')
+#        if disp:
+#            print(tt," lapl: ",lapl.sum()/gx/gy)
+#            plot_phis(phi,A_M,'phi')
+#            plot_phis((d_phi11,d_phi22),A_M,'11 and 22')
+#            plot_phis((d_phi12,lapl),A_M,'12 and lapl')
         return -rho*lapl + anisotropy*np.sin(2*tt_phi) + Phi*np.sin(tt_phi-yy_phi) + gamma*np.sin(tt_phi)
     else:
         if tt=='A':
