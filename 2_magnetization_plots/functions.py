@@ -17,8 +17,6 @@ gammas = {  'MPs':np.linspace(0,2,100,endpoint=False),
             'AA':np.linspace(0,0.5,100,endpoint=False),
             'M':np.linspace(0,0.5,100,endpoint=False),
             }
-#rhos = np.linspace(0,10,5)
-#anis = [0.01,0.03,0.0709,0.10,0.2]
 rhos = np.linspace(0.1,10,25)
 anis = [0.01,0.0709,0.10,0.2]
 #
@@ -27,8 +25,9 @@ nis = [1.,0.5,0.3]
 thetas = np.pi/180*0
 #
 type_of_computation = '12'
+der_order = 8
 #
-offset_solution = -0.3
+offset_solution = -0.1
 NNNN = 21
 lr_list = np.logspace(-5,1,num=NNNN)
 
@@ -65,44 +64,6 @@ def const_in_pt(fA,fB,gx,gy):
     phi_B = np.ones((gx,gy))*fB
     return np.array([phi_A, phi_B])
 
-def ts1_12(Phi,gx,gy):
-    phi_1 = (np.sign(Phi+offset_solution)-1)*np.pi/4
-    phi_2 = -(np.sign(Phi+offset_solution)-1)*np.pi/4
-    return np.array([phi_1,phi_2])
-
-def ts2_12(Phi,gx,gy):
-    phi_1 = (np.sign(Phi+offset_solution)+1)*np.pi/4
-    phi_2 = -(np.sign(Phi+offset_solution)+1)*np.pi/4 + np.pi
-    return np.array([phi_1,phi_2])
-
-def ta_12(Phi,gx,gy):
-    phi_1 = (np.sign(Phi+offset_solution)-1)*np.pi/2
-    phi_2 = np.zeros((gx,gy))
-    return np.array([phi_1,phi_2])
-
-def ts1_sa(Phi,gx,gy):
-    res = (np.sign(Phi+offset_solution)-1)*np.pi/2
-    return np.array([np.ones((gx,gy))*0,res])
-
-def ts2_sa(Phi,gx,gy):
-    res = (np.sign(Phi+offset_solution)-1)*np.pi/2
-    return np.array([np.ones((gx,gy))*np.pi,res])
-
-def ta_sa(Phi,gx,gy):
-    re_s = -(np.sign(Phi+offset_solution)-1)*np.pi/2
-    re_a = (np.sign(Phi+offset_solution)-1)*np.pi/2
-    return np.array([re_s,re_a])
-
-custom_in_pt = {'sa': (ts1_sa,ts2_sa,ta_sa),    '12': (ts1_12,ts2_12,ta_12)}
-
-def get_M_transf(a1_m,a2_m):
-    det = a1_m[0]*a2_m[1]-a2_m[0]*a1_m[1]
-    n1x = a2_m[1]/det
-    n2x = -a1_m[1]/det
-    n1y = -a2_m[0]/det
-    n2y = a1_m[0]/det
-    return (det,n1x,n2x,n1y,n2y)
-
 def compute_solution(args_m):
     """Computes the magnetization pattern by performing a gradient descent from random 
     initial points.
@@ -133,16 +94,16 @@ def compute_solution(args_m):
     #Variables for storing best solution
     min_E = 1e10
     result = np.ones((2,gx,gy))*20
-    initial_index = 0 if args_m['type_comp']=='CO' else -3
+    initial_index = 0 #if args_m['type_comp']=='CO' else -3
     for ind_in_pt in range(initial_index,args_m['n_initial_pts']):  #############
         if args_m['disp']:
             print("Starting minimization step ",str(ind_in_pt))
         #Initial condition
         if ind_in_pt < 0:   #t-s and t-a
             phi = custom_in_pt[type_of_computation][ind_in_pt+3](Phi,gx,gy)
-        elif ind_in_pt < 36:    #constant specific
-            fs = np.pi/3*(ind_in_pt//6)
-            fa = np.pi/3*(ind_in_pt%6)
+        elif ind_in_pt < 100:    #constant specific
+            fs = ((ind_in_pt//10)*36+18)/180*np.pi
+            fa = ((ind_in_pt%10)*36+18)/180*np.pi
             phi = const_in_pt(fs,fa,gx,gy)
         else:   #constant random
             fs = random.random()*2*np.pi
@@ -150,7 +111,7 @@ def compute_solution(args_m):
             phi = const_in_pt(fs,fa,gx,gy)
         #First energy evaluation
         E = [compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg), ]
-        if 0 and args_m['disp']: #plot initial condition
+        if 1 and args_m['disp']: #plot initial condition
             #plot_magnetization(phi,Phi,A_M,"initial condition "+"{:.4f}".format(E[0]),False)
             compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,True)
         print('\n',ind_in_pt," initial energy: ","{:.8f}".format(E[0]))
@@ -167,7 +128,7 @@ def compute_solution(args_m):
             list_phi = []
             for lr_i in range(NNNN):
                 LR_ = lr_list[lr_i]
-                phi_new = phi-LR_*dH
+                phi_new = np.copy(phi-LR_*dH)
                 temp_E = compute_energy(phi_new,Phi,gamma,rho,anisotropy,A_M,M_transf,rg)
                 list_phi.append(np.copy(phi_new))
                 list_E.append(np.array([LR_,temp_E]))
@@ -175,28 +136,20 @@ def compute_solution(args_m):
             #Check the minimum of energies wrt LR
             amin = np.argmin(list_E[:,1])
             if list_E[amin,1] < E[0]:
-                if 0 and args_m['disp']:   #Plot energies
+                if 0 and args_m['disp']:   #Plot energies wrt LR
                     plt.plot(list_E[:,0],list_E[:,1],'*k')
                     plt.plot(list_E[amin,0],list_E[amin,1],'*r')
                     plt.hlines(E[0],lr_list[0],lr_list[-1],ls='--')
                     plt.xscale('log')
                     plt.title('some below, min at LR='+"{:.6f}".format(list_E[amin,0]))
                     plt.show()
+                    plot_phis(phi,A_M,'phi')
+                    plot_phis(dH,A_M,'grad')
                 E.insert(0,list_E[amin,1])
                 phi = np.copy(list_phi[amin])
-                if 0 and args_m['disp']:
+                if 1 and args_m['disp']:
                     print("energy step ",step," is ","{:.9f}".format(E[0])," with dH = ","{:.3f}".format(np.sum(np.absolute(dH))))
-                    #temp_E = compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,True)
-                    #plot_magnetization(phi,Phi,A_M,"new_state",False)
-                    #input()
             else:
-                if 0 and args_m['disp']:   #Plot energies
-                    plt.plot(list_E[:,0],list_E[:,1],'*k')
-                    plt.plot(list_E[amin,0],list_E[amin,1],'*r')
-                    plt.hlines(E[0],lr_list[0],lr_list[-1],ls='--')
-                    plt.xscale('log')
-                    plt.title('all above')
-                    plt.show()
                 print("none LR was lower in energy -> exit")
                 keep_going = False
             #Check if energy converged to a constant value
@@ -212,11 +165,11 @@ def compute_solution(args_m):
                 print(ind_in_pt," reached maxiter")
                 keep_going = False
             step += 1
-    if 0 and args_m['disp']:
-        compute_energy(result,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,True)
-        print("mag: ",compute_magnetization(result))
-        plot_magnetization(result,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(min_E),False)
-        plot_phis(result,A_M,'Solution of phi_A (left) and phi_B (right)')
+        if 1 and args_m['disp']: #Plot step solution
+            compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,True)
+            print("mag: ",compute_magnetization(phi))
+            plot_magnetization(phi,Phi,A_M,"Final configuration with energy "+"{:.4f}".format(E[0]),False)
+            #plot_phis(phi,A_M,'Solution of phi_A (left) and phi_B (right)')
     if (result == np.ones((2,gx,gy))*20).all():
         print("Not a single converged solution, they all reached max number of iterations or too low LR")
         exit()
@@ -244,13 +197,16 @@ def compute_energy(phi,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,disp=False):
     gx,gy = phi[0].shape
     xx = np.linspace(0,np.linalg.norm(a1_m),gx,endpoint=False)
     yy = np.linspace(0,np.linalg.norm(a2_m),gy,endpoint=False)
+    dx = xx[1]-xx[0]
+    dy = yy[1]-yy[0]
     det, n1x, n2x, n1y, n2y = M_transf
     for i in range(2):
-#        fun = smooth(phi[i],rg,A_M)[1]
-#        d_phi1 = smooth(fun.partial_derivative(1,0)(xx,yy),rg,A_M)[0]
-#        d_phi2 = smooth(fun.partial_derivative(0,1)(xx,yy),rg,A_M)[0]
-        d_phi1 = smooth((np.roll(phi[i],-1,axis=0)-phi[i])/(xx[1]-xx[0]),rg,A_M)[0]
-        d_phi2 = smooth((np.roll(phi[i],-1,axis=1)-phi[i])/(yy[1]-yy[0]),rg,A_M)[0]
+        if 0:   #1-st order, forward
+            d_phi1 = smooth((np.roll(phi[i],-1,axis=0)-phi[i])/(xx[1]-xx[0]),rg,A_M)[0]
+            d_phi2 = smooth((np.roll(phi[i],-1,axis=1)-phi[i])/(yy[1]-yy[0]),rg,A_M)[0]
+        else:   #n-th order, central
+            d_phi1 = smooth(derivative(phi[i],der_order,dx,0),rg,A_M)[0]
+            d_phi2 = smooth(derivative(phi[i],der_order,dy,1),rg,A_M)[0]
         grad_2.append( (n1x*d_phi1+n2x*d_phi2)**2+(n1y*d_phi1+n2y*d_phi2)**2 )
     if type_of_computation == '12':
         energy = rho/2*grad_2[0]+rho/2*grad_2[1] - anisotropy*(np.cos(phi[0])**2+np.cos(phi[1])**2) - Phi*np.cos(phi[0]-phi[1]) - gamma*(np.cos(phi[0])+np.cos(phi[1]))
@@ -294,15 +250,20 @@ def grad_H(phi,tt,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,disp=False):
     gx,gy = phi[0].shape
     xx = np.linspace(0,np.linalg.norm(a1_m),gx,endpoint=False)
     yy = np.linspace(0,np.linalg.norm(a2_m),gy,endpoint=False)
-    tt_phi = phi[0] if tt == 'A' else phi[1]
-    yy_phi = phi[1] if tt == 'A' else phi[0]
-#    fun = smooth(tt_phi,rg,A_M)[1]
-#    d_phi11 = smooth(fun.partial_derivative(2,0)(xx,yy),rg,A_M)[0]
-#    d_phi22 = smooth(fun.partial_derivative(0,2)(xx,yy),rg,A_M)[0]
-#    d_phi12 = smooth(fun.partial_derivative(1,1)(xx,yy),rg,A_M)[0]
-    d_phi11 = smooth((np.roll(tt_phi,-2,axis=0) - 2*np.roll(tt_phi,-1,axis=0) + tt_phi)/(xx[1]-xx[0]),rg,A_M)[0]
-    d_phi22 = smooth((np.roll(tt_phi,-2,axis=1) - 2*np.roll(tt_phi,-1,axis=1) + tt_phi)/(yy[1]-yy[0]),rg,A_M)[0]
-    d_phi12 = smooth((np.roll(np.roll(tt_phi,-1,axis=0),-1,axis=1) - np.roll(tt_phi,-1,axis=0) - np.roll(tt_phi,-1,axis=1) + tt_phi)/(xx[1]-xx[0])/(yy[1]-yy[0]),rg,A_M)[0]
+    dx = xx[1]-xx[0]
+    dy = yy[1]-yy[0]
+    tt_phi = np.copy(phi[0]) if tt == 'A' else np.copy(phi[1])
+    yy_phi = np.copy(phi[1]) if tt == 'A' else np.copy(phi[0])
+    tt_phi = smooth(tt_phi,rg,A_M)[0]
+    yy_phi = smooth(yy_phi,rg,A_M)[0]
+    if 0:   #first order, forward
+        d_phi11 = smooth((np.roll(tt_phi,-2,axis=0) - 2*np.roll(tt_phi,-1,axis=0) + tt_phi)/(xx[1]-xx[0]),rg,A_M)[0]
+        d_phi22 = smooth((np.roll(tt_phi,-2,axis=1) - 2*np.roll(tt_phi,-1,axis=1) + tt_phi)/(yy[1]-yy[0]),rg,A_M)[0]
+        d_phi12 = smooth((np.roll(np.roll(tt_phi,-1,axis=0),-1,axis=1) - np.roll(tt_phi,-1,axis=0) - np.roll(tt_phi,-1,axis=1) + tt_phi)/(xx[1]-xx[0])/(yy[1]-yy[0]),rg,A_M)[0]
+    else:   #n-th order, central
+        d_phi11 = smooth(derivative2(tt_phi,der_order,dx,0),rg,A_M)[0]
+        d_phi22 = smooth(derivative2(tt_phi,der_order,dy,1),rg,A_M)[0]
+        d_phi12 = smooth(derivative(derivative(tt_phi,der_order,dx,0),der_order,dy,1),rg,A_M)[0]
     det, n1x, n2x, n1y, n2y = M_transf
     lapl = (n1x**2+n1y**2)*d_phi11 + 2*(n1x*n2x+n1y*n2y)*d_phi12 + (n2x**2+n2y**2)*d_phi22
     if type_of_computation == '12':
@@ -317,6 +278,34 @@ def grad_H(phi,tt,Phi,gamma,rho,anisotropy,A_M,M_transf,rg,disp=False):
             return -rho/2*lapl + anisotropy*np.sin(phi[0])*np.cos(phi[1]) + gamma*np.cos(phi[1]/2)*np.sin(phi[0]/2)
         elif tt=='B':
             return -rho/2*lapl + anisotropy*np.cos(phi[0])*np.sin(phi[1]) + Phi*np.sin(phi[1]) + gamma*np.cos(phi[0]/2)*np.sin(phi[1]/2)
+
+def derivative(phi,order,dd,ax):
+    if order == 2:
+        return (-1/2*np.roll(phi,1,axis=ax)+1/2*np.roll(phi,-1,axis=ax))/dd
+    elif order == 4:
+        return (1/12*np.roll(phi,2,axis=ax)-2/3*np.roll(phi,1,axis=ax)+2/3*np.roll(phi,-1,axis=ax)-1/12*np.roll(phi,-2,axis=ax))/dd
+    elif order == 6:
+        return (-1/60*np.roll(phi,3,axis=ax)+3/20*np.roll(phi,2,axis=ax)-3/4*np.roll(phi,1,axis=ax)+3/4*np.roll(phi,-1,axis=ax)-3/20*np.roll(phi,-2,axis=ax)+1/60*np.roll(phi,-3,axis=ax))/dd
+    elif order == 8:
+        return (1/280*np.roll(phi,4,axis=ax)-4/105*np.roll(phi,3,axis=ax)+1/5*np.roll(phi,2,axis=ax)-4/5*np.roll(phi,1,axis=ax)+4/5*np.roll(phi,-1,axis=ax)-1/5*np.roll(phi,-2,axis=ax)+4/105*np.roll(phi,-3,axis=ax)-1/280*np.roll(phi,-4,axis=ax))/dd
+
+def derivative2(phi,order,dd,ax):
+    if order == 2:
+        return (np.roll(phi,1,axis=ax)-2*phi+np.roll(phi,-1,axis=ax))/dd**2
+    elif order == 4:
+        return (-1/12*np.roll(phi,2,axis=ax)+4/3*np.roll(phi,1,axis=ax)-5/2*phi+4/3*np.roll(phi,-1,axis=ax)-1/12*np.roll(phi,-2,axis=ax))/dd**2
+    elif order == 6:
+        return (1/90*np.roll(phi,3,axis=ax)-3/20*np.roll(phi,2,axis=ax)+3/2*np.roll(phi,1,axis=ax)-49/18*phi+3/2*np.roll(phi,-1,axis=ax)-3/20*np.roll(phi,-2,axis=ax)+1/90*np.roll(phi,-3,axis=ax))/dd**2
+    elif order == 8:
+        return (-1/560*np.roll(phi,4,axis=ax)+8/315*np.roll(phi,3,axis=ax)-1/5*np.roll(phi,2,axis=ax)+8/5*np.roll(phi,1,axis=ax)-205/72*phi+8/5*np.roll(phi,-1,axis=ax)-1/5*np.roll(phi,-2,axis=ax)+8/315*np.roll(phi,-3,axis=ax)-1/560*np.roll(phi,-4,axis=ax))/dd**2
+
+def get_M_transf(a1_m,a2_m):
+    det = a1_m[0]*a2_m[1]-a2_m[0]*a1_m[1]
+    n1x = a2_m[1]/det
+    n2x = -a1_m[1]/det
+    n1y = -a2_m[0]/det
+    n2y = a1_m[0]/det
+    return (det,n1x,n2x,n1y,n2y)
 
 def check_energies(list_E):
     """ Checks wether the last nn energies in the list_E are within lim distance to each other.
@@ -340,129 +329,6 @@ def check_energies(list_E):
         if abs(list_E[i]-list_E[i+1]) > lim:
             return False
     return True
-#
-def compute_lattices(moire_type,moire_pars):
-    """Compute the 2 honeycomb lattices with lattice lengths A_1/A_2 and a twist angle theta.
-
-    Parameters
-    ----------
-    A_1 : float
-        Lattice length of lattice 1.
-    A_2 : float
-        Lattice length of lattice 2.
-    theta : float
-        Relative rotation of the 2 axes.
-
-    Returns
-    -------
-    ndarray, ndarray, int, int
-        Lattices 1 and 2, together with x and y extesions.
-        
-    """
-    #Strain tensor
-    if moire_type=='general':
-        e_xx = moire_pars['general']['e_xx']
-        e_yy = moire_pars['general']['e_yy']
-        e_xy = moire_pars['general']['e_xy']
-        strain_tensor = np.array([[e_xx,e_xy],[e_xy,e_yy]])
-    elif moire_type=='uniaxial':
-        eps = moire_pars['uniaxial']['eps']
-        ni = moire_pars['uniaxial']['ni']
-        phi = moire_pars['uniaxial']['phi']
-        strain_tensor = np.matmul(np.matmul(R_z(-phi).T,np.array([[eps,0],[0,-ni*eps]])),R_z(-phi))
-    elif moire_type=='biaxial':
-        eps = moire_pars['biaxial']['eps']
-        strain_tensor = np.identity(2)*eps
-    elif moire_type=='shear':
-        e_xy = moire_pars['shear']['e_xy']
-        phi = moire_pars['shear']['phi']
-        strain_tensor = np.matmul(np.matmul(R_z(-phi).T,np.array([[0,e_xy],[e_xy,0]])),R_z(-phi))
-    #
-    theta = moire_pars['theta']
-    #Moire lattice vectors
-    T = np.matmul(np.identity(2)+strain_tensor/2,R_z(-theta/2)) - np.matmul(np.identity(2)-strain_tensor/2,R_z(theta/2))
-    a1_m = np.matmul(np.linalg.inv(T).T,a1)  #Moire reciprocal lattice vector 1
-    a2_m = np.matmul(np.linalg.inv(T).T,a2)
-    n1_m = np.linalg.norm(a1_m)
-    n2_m = np.linalg.norm(a2_m)
-    Np = np.linalg.norm(a1_m+a2_m)
-    Nm = np.linalg.norm(a1_m-a2_m)
-    nnm = min(Np,Nm)
-    if nnm < max(n1_m,n2_m):
-        new_a = a1_m+a2_m if Np<Nm else a1_m-a2_m
-        a1_m = new_a if n1_m>n2_m else a1_m
-        a2_m = new_a if n2_m>n1_m else a2_m
-    n1_m = np.linalg.norm(a1_m)
-    n2_m = np.linalg.norm(a2_m)
-    #
-    A_M = max(n1_m,n2_m)
-    n_x = n_y = 5       #number of moirè lenths to include in l1,l2
-    xxx = int(n_x*A_M)
-    yyy = int(n_y*A_M)
-    l1 = np.zeros((xxx,yyy,2,2))
-    l2 = np.zeros((xxx,yyy,2,2))
-    a1_1 = np.matmul(np.identity(2)+strain_tensor/2,np.matmul(R_z(theta/2),a1)) #vector 1 of lattice 1
-    a2_1 = np.matmul(np.identity(2)+strain_tensor/2,np.matmul(R_z(theta/2),a2)) #vector 2 of lattice 1
-    offset_sublattice_1 = np.matmul(np.identity(2)+strain_tensor/2,np.matmul(R_z(theta/2),d))
-    a1_2 = np.matmul(np.identity(2)-strain_tensor/2,np.matmul(R_z(-theta/2),a1)) #vector 1 of lattice 1
-    a2_2 = np.matmul(np.identity(2)-strain_tensor/2,np.matmul(R_z(-theta/2),a2)) #vector 2 of lattice 1
-    offset_sublattice_2 = np.matmul(np.identity(2)-strain_tensor/2,np.matmul(R_z(-theta/2),d))
-    for i in range(xxx):
-        for j in range(yyy):
-            l1[i,j,0] = (i-n_x//2*A_M)*a1_1+(j-n_y//2*A_M)*a2_1
-            l1[i,j,1] = l1[i,j,0] + offset_sublattice_1
-            l2[i,j,0] = (i-n_x//2*A_M)*a1_2+(j-n_y//2*A_M)*a2_2
-            l2[i,j,1] = l2[i,j,0] + offset_sublattice_2
-    print("Moire lengths: ",n1_m,' ',n2_m)
-    print("Angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/n1_m,a2_m/n2_m)))
-    return l1,l2,a1_m,a2_m
-
-def find_closest(lattice,site,UC_):
-    """Finds the closest lattice site to the coordinates "site". 
-    The lattice is stored in "lattice" and the search can be constrained 
-    to the unit cell "UC_", if given.
-
-
-    Parameters
-    ----------
-    lattice : ndarray
-        Lattice sites storage. Lattice has shape nx,ny,2->unit cell index,2->x and y.
-    site : np.array
-        x and y coordinates of space.
-    UC_ : string
-        Unit cell to constrain the search.
-
-    Returns
-    -------
-    int, int, UC
-        Indexes of clusest site, together with corresponding UC.
-    """
-    X,Y,W,Z = lattice.shape
-    #
-    dist_A = np.sqrt((lattice[:,:,0,0]-site[0])**2+(lattice[:,:,0,1]-site[1])**2)
-    dist_B = np.sqrt((lattice[:,:,1,0]-site[0])**2+(lattice[:,:,1,1]-site[1])**2)
-    min_A = np.min(np.ravel(dist_A))
-    min_B = np.min(np.ravel(dist_B))
-    if UC_=='nan':
-        if min_A < min_B:
-            UC = 0
-            arg = np.argmin(np.reshape(dist_A,(X*Y)))
-        else:
-            UC = 1
-            arg = np.argmin(np.reshape(dist_B,(X*Y)))
-    elif UC_==0:
-        arg = np.argmin(np.reshape(dist_A,(X*Y)))
-        UC = UC_
-    elif UC_==1:
-        arg = np.argmin(np.reshape(dist_B,(X*Y)))
-        UC = UC_
-    #Smallest y-difference in A and B sublattice
-    argx = arg//Y
-    argy = arg%Y
-    if argx in [0,X-1] or argy in [0,Y-1]:
-        print("Reached end of lattice, probably not good")
-        exit()
-    return argx,argy,UC
 
 def smooth(phi,rg,A_M):
     """Smooth out the periodic function phi.
@@ -478,52 +344,95 @@ def smooth(phi,rg,A_M):
         Values of phi after being smoothen by first extending it on a larger domain and then interpolate it on
         fewer points (second returned argument) and finally computed on the original grid.
     """
+    if rg == 0:
+        return phi,0
     gx,gy = phi.shape
     smooth_phi = np.zeros((gx,gy))
     for i in range(-rg,rg+1):
         for j in range(-rg,rg+1):
             smooth_phi += np.roll(np.roll(phi,i,axis=0),j,axis=1)
     smooth_phi /= (1+2*rg)**2
-    xx = np.linspace(0,np.linalg.norm(A_M[0]),gx,endpoint=False)
-    yy = np.linspace(0,np.linalg.norm(A_M[1]),gy,endpoint=False)
-    fun = RBS(xx,yy,smooth_phi)
-    return smooth_phi,fun
+#    xx = np.linspace(0,np.linalg.norm(A_M[0]),gx,endpoint=False)
+#    yy = np.linspace(0,np.linalg.norm(A_M[1]),gy,endpoint=False)
+#    fun = RBS(xx,yy,smooth_phi)
+    return smooth_phi,0#fun
 
-def get_dft_data(machine):
-    data_fn = get_home_dn(machine)+"Data/CrBr3_interlayer.npy"
-    if Path(data_fn).is_file():
-        return np.load(data_fn)
-    #Compute it
-    data_marco_fn = get_home_dn(machine)+"Data/CrBr3_scan.txt"
-    with open(data_marco_fn,'r') as f:
-        lines = f.readlines()
-    #remove one every 2 lines -> empty
-    l1 = []
-    for i,l in enumerate(lines):
-        if i%2==0:
-            l1.append(l[:-1])
-    #separate numbers
-    data = np.zeros((len(l1),4))
-    for i,l in enumerate(l1):
-        a = l.split(' ')
-        for j in range(4):
-            data[i,j] = float(a[j])
-    #Extract CrBr3 interlayer data in matrix form
-    pts = int(np.sqrt(data.shape[0]))
-    S_list = list(np.linspace(0,1,pts,endpoint=False))
-    S_txt = []
-    for s in S_list:
-        S_txt.append("{:.5f}".format(s))
-    I = np.zeros((pts,pts))
-    for i in range(pts**2):
-        x = "{:.5f}".format(data[i,0])
-        y = "{:.5f}".format(data[i,1])
-        ind1 = S_txt.index(x)
-        ind2 = S_txt.index(y)
-        I[ind1,ind2] = -(data[i,2]-data[i,3])
-    #
-    np.save(data_fn,I)
-    return I
+def plot_magnetization(phi,Phi,A_M,title='',save=False):
+    """Plots the magnetization values in the Moirè unit cell, with a background given by the
+    interlayer potential. The two images correspond to the 2 layers. Magnetization is in x-z
+    plane while the layers are in x-y plane.
+
+    Parameters
+    ----------
+    phi: 2-tuple
+        Symmetric and Anti-Symmetric phases.
+    Phi : np.ndarray
+        Interlayer coupling of size (grid,grid).
+    pars : 3-tuple
+        Parameters alpha, beta and gamma.
+    save : bool (optional, default=False)
+        Wether to save or not the plot.
+    tt : string (optional)
+        Name of the figure (just needed if save=True).
+
+    """
+    gx,gy = phi[0].shape
+    a1_m,a2_m = A_M
+    a12_m = a1_m+a2_m
+    #Single layer phases
+    phi_1 = phi[0]
+    phi_2 = phi[1]
+    #Background -> interlayer coupling
+    nn = 5
+    big_Phi = extend(Phi,nn)
+    long_X = np.linspace(-nn//2,nn//2,nn*gx,endpoint=False)
+    long_Y = np.linspace(-nn//2,nn//2,nn*gy,endpoint=False)
+    X,Y = np.meshgrid(long_X,long_Y)
+    A1 = X*A_M[0][0] + Y*A_M[1][0]
+    A2 = X*A_M[0][1] + Y*A_M[1][1]
+    #BZ lines parameters
+    x_i,args_i = get_BZ_args(a1_m,a2_m,a12_m)
+    mi,qi = get_l_args(args_i)
+    #Arrows parameters
+    l = np.linalg.norm(a1_m)/40 if np.linalg.norm(a1_m)>np.linalg.norm(a2_m) else np.linalg.norm(a2_m)/40#0.02       #length of arrow
+    hw = l/2#0.01       #arrow head width
+    hl = l/2#0.01       #arrow head length
+    facx = gx//30     #plot 1 spin every "fac" of grid
+    facy = gy//30     #plot 1 spin every "fac" of grid
+    phi_ = [phi_1,phi_2]
+    #Figure
+    fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(18,7))
+    for ind,ax in enumerate([ax1,ax2]):
+        ax.axis('off')
+        ax.set_aspect(1.)
+        ax.contour(A1,A2,big_Phi.T,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(1,))
+        surf = ax.contourf(A1,A2,big_Phi.T,levels=20)
+        plt.colorbar(surf)
+        ax.arrow(0,0,a1_m[0],a1_m[1])
+        ax.arrow(0,0,a2_m[0],a2_m[1])
+        #Box unit cell
+        for i in range(3):
+            for s in [-1,1]:
+                li = line(np.linspace(-x_i[i],x_i[i],100),args_i[i],s)
+                ax.plot(li[:,0],li[:,1],'k',lw=0.7,ls='dashed')
+        #plot small arrows
+        for i in range(gx//facx):
+            for j in range(gy//facy):
+                x_c = (i*facx)/gx
+                y_c = (j*facy)/gy
+                x = x_c*A_M[0][0] + y_c*A_M[1][0]
+                y = x_c*A_M[0][1] + y_c*A_M[1][1]
+                x,y = inside_UC(x,y,mi,qi,a1_m,a2_m,a12_m)
+                phi_fin = phi_[ind][i*facx,j*facy]
+                ax.arrow(x - l/2*np.sin(phi_fin),y - l/2*np.cos(phi_fin),l*np.sin(phi_fin), l*np.cos(phi_fin),head_width=hw,head_length=hl,color='k')
+        ax.set_xlim(-abs(a1_m[0])/4*3,abs(a1_m[0])/4*3)
+        ax.set_ylim(-abs(a2_m[1])/4*3,abs(a2_m[1])/4*3)
+    fig.suptitle(title,size=20)
+    fig.tight_layout()
+    if save:
+        plt.savefig('results/temp/'+title+'.png')
+    else:
+        plt.show()
 
 def dist_xy(x,y):
     return np.sqrt((x[0]-y[0])**2+(x[1]-y[1])**2)
@@ -588,83 +497,6 @@ def get_l_args(args_i):
         mi.append((args_i[i][1])/(args_i[i][0]) if not args_i[i][0]==0 else 0)
         qi.append(args_i[i][3] - mi[i]*args_i[i][2])
     return mi,qi
-
-def plot_magnetization(phi,Phi,A_M,title='',save=False):
-    """Plots the magnetization values in the Moirè unit cell, with a background given by the
-    interlayer potential. The two images correspond to the 2 layers. Magnetization is in x-z
-    plane while the layers are in x-y plane.
-
-    Parameters
-    ----------
-    phi: 2-tuple
-        Symmetric and Anti-Symmetric phases.
-    Phi : np.ndarray
-        Interlayer coupling of size (grid,grid).
-    pars : 3-tuple
-        Parameters alpha, beta and gamma.
-    save : bool (optional, default=False)
-        Wether to save or not the plot.
-    tt : string (optional)
-        Name of the figure (just needed if save=True).
-
-    """
-    gx,gy = phi[0].shape
-    a1_m,a2_m = A_M
-    a12_m = a1_m+a2_m
-    #Single layer phases
-    phi_1 = phi[0]
-    phi_2 = phi[1]
-    #Background -> interlayer coupling
-    nn = 5
-    big_Phi = extend(Phi,nn)
-    long_X = np.linspace(-nn//2,nn//2,nn*gx,endpoint=False)
-    long_Y = np.linspace(-nn//2,nn//2,nn*gy,endpoint=False)
-    X,Y = np.meshgrid(long_X,long_Y)
-    A1 = X*A_M[0][0] + Y*A_M[1][0]
-    A2 = X*A_M[0][1] + Y*A_M[1][1]
-    #BZ lines parameters
-    x_i,args_i = get_BZ_args(a1_m,a2_m,a12_m)
-    mi,qi = get_l_args(args_i)
-    #Arrows parameters
-    l = np.linalg.norm(a1_m)/40 if np.linalg.norm(a1_m)>np.linalg.norm(a2_m) else np.linalg.norm(a2_m)/40#0.02       #length of arrow
-    hw = l/2#0.01       #arrow head width
-    hl = l/2#0.01       #arrow head length
-    facx = gx//15     #plot 1 spin every "fac" of grid
-    facy = gy//15     #plot 1 spin every "fac" of grid
-    phi_ = [phi_1,phi_2]
-    #Figure
-    fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(18,7))
-    for ind,ax in enumerate([ax1,ax2]):
-        ax.axis('off')
-        ax.set_aspect(1.)
-        ax.contour(A1,A2,big_Phi.T,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(1,))
-        surf = ax.contourf(A1,A2,big_Phi.T,levels=20)
-        plt.colorbar(surf)
-        ax.arrow(0,0,a1_m[0],a1_m[1])
-        ax.arrow(0,0,a2_m[0],a2_m[1])
-        #Box unit cell
-        for i in range(3):
-            for s in [-1,1]:
-                li = line(np.linspace(-x_i[i],x_i[i],100),args_i[i],s)
-                ax.plot(li[:,0],li[:,1],'k',lw=0.7,ls='dashed')
-        #plot small arrows
-        for i in range(gx//facx):
-            for j in range(gy//facy):
-                x_c = (i*facx)/gx
-                y_c = (j*facy)/gy
-                x = x_c*A_M[0][0] + y_c*A_M[1][0]
-                y = x_c*A_M[0][1] + y_c*A_M[1][1]
-                x,y = inside_UC(x,y,mi,qi,a1_m,a2_m,a12_m)
-                phi_fin = phi_[ind][i*facx,j*facy]
-                ax.arrow(x - l/2*np.sin(phi_fin),y - l/2*np.cos(phi_fin),l*np.sin(phi_fin), l*np.cos(phi_fin),head_width=hw,head_length=hl,color='k')
-        ax.set_xlim(-abs(a1_m[0])/4*3,abs(a1_m[0])/4*3)
-        ax.set_ylim(-abs(a2_m[1])/4*3,abs(a2_m[1])/4*3)
-    fig.suptitle(title,size=20)
-    fig.tight_layout()
-    if save:
-        plt.savefig('results/temp/'+title+'.png')
-    else:
-        plt.show()
 
 def plot_phis(phi,A_M,txt_title='mah'):
     """Plot the phases phi_1 and phi_2 in a 3D graph
@@ -1091,6 +923,166 @@ def Moire(args):
     np.save(moire_potential_fn,J)
     np.save(get_AM_fn(moire_type,moire_pars,machine),np.array([a1_m,a2_m]))
 
+def get_dft_data(machine):
+    data_fn = get_home_dn(machine)+"Data/CrBr3_interlayer.npy"
+    if Path(data_fn).is_file():
+        return np.load(data_fn)
+    #Compute it
+    data_marco_fn = get_home_dn(machine)+"Data/CrBr3_scan.txt"
+    with open(data_marco_fn,'r') as f:
+        lines = f.readlines()
+    #remove one every 2 lines -> empty
+    l1 = []
+    for i,l in enumerate(lines):
+        if i%2==0:
+            l1.append(l[:-1])
+    #separate numbers
+    data = np.zeros((len(l1),4))
+    for i,l in enumerate(l1):
+        a = l.split(' ')
+        for j in range(4):
+            data[i,j] = float(a[j])
+    #Extract CrBr3 interlayer data in matrix form
+    pts = int(np.sqrt(data.shape[0]))
+    S_list = list(np.linspace(0,1,pts,endpoint=False))
+    S_txt = []
+    for s in S_list:
+        S_txt.append("{:.5f}".format(s))
+    I = np.zeros((pts,pts))
+    for i in range(pts**2):
+        x = "{:.5f}".format(data[i,0])
+        y = "{:.5f}".format(data[i,1])
+        ind1 = S_txt.index(x)
+        ind2 = S_txt.index(y)
+        I[ind1,ind2] = -(data[i,2]-data[i,3])
+    #
+    np.save(data_fn,I)
+    return I
+
+def compute_lattices(moire_type,moire_pars):
+    """Compute the 2 honeycomb lattices with lattice lengths A_1/A_2 and a twist angle theta.
+
+    Parameters
+    ----------
+    A_1 : float
+        Lattice length of lattice 1.
+    A_2 : float
+        Lattice length of lattice 2.
+    theta : float
+        Relative rotation of the 2 axes.
+
+    Returns
+    -------
+    ndarray, ndarray, int, int
+        Lattices 1 and 2, together with x and y extesions.
+        
+    """
+    #Strain tensor
+    if moire_type=='general':
+        e_xx = moire_pars['general']['e_xx']
+        e_yy = moire_pars['general']['e_yy']
+        e_xy = moire_pars['general']['e_xy']
+        strain_tensor = np.array([[e_xx,e_xy],[e_xy,e_yy]])
+    elif moire_type=='uniaxial':
+        eps = moire_pars['uniaxial']['eps']
+        ni = moire_pars['uniaxial']['ni']
+        phi = moire_pars['uniaxial']['phi']
+        strain_tensor = np.matmul(np.matmul(R_z(-phi).T,np.array([[eps,0],[0,-ni*eps]])),R_z(-phi))
+    elif moire_type=='biaxial':
+        eps = moire_pars['biaxial']['eps']
+        strain_tensor = np.identity(2)*eps
+    elif moire_type=='shear':
+        e_xy = moire_pars['shear']['e_xy']
+        phi = moire_pars['shear']['phi']
+        strain_tensor = np.matmul(np.matmul(R_z(-phi).T,np.array([[0,e_xy],[e_xy,0]])),R_z(-phi))
+    #
+    theta = moire_pars['theta']
+    #Moire lattice vectors
+    T = np.matmul(np.identity(2)+strain_tensor/2,R_z(-theta/2)) - np.matmul(np.identity(2)-strain_tensor/2,R_z(theta/2))
+    a1_m = np.matmul(np.linalg.inv(T).T,a1)  #Moire reciprocal lattice vector 1
+    a2_m = np.matmul(np.linalg.inv(T).T,a2)
+    n1_m = np.linalg.norm(a1_m)
+    n2_m = np.linalg.norm(a2_m)
+    Np = np.linalg.norm(a1_m+a2_m)
+    Nm = np.linalg.norm(a1_m-a2_m)
+    nnm = min(Np,Nm)
+    if nnm < max(n1_m,n2_m):
+        new_a = a1_m+a2_m if Np<Nm else a1_m-a2_m
+        a1_m = new_a if n1_m>n2_m else a1_m
+        a2_m = new_a if n2_m>n1_m else a2_m
+    n1_m = np.linalg.norm(a1_m)
+    n2_m = np.linalg.norm(a2_m)
+    #
+    A_M = max(n1_m,n2_m)
+    n_x = n_y = 5       #number of moirè lenths to include in l1,l2
+    xxx = int(n_x*A_M)
+    yyy = int(n_y*A_M)
+    l1 = np.zeros((xxx,yyy,2,2))
+    l2 = np.zeros((xxx,yyy,2,2))
+    a1_1 = np.matmul(np.identity(2)+strain_tensor/2,np.matmul(R_z(theta/2),a1)) #vector 1 of lattice 1
+    a2_1 = np.matmul(np.identity(2)+strain_tensor/2,np.matmul(R_z(theta/2),a2)) #vector 2 of lattice 1
+    offset_sublattice_1 = np.matmul(np.identity(2)+strain_tensor/2,np.matmul(R_z(theta/2),d))
+    a1_2 = np.matmul(np.identity(2)-strain_tensor/2,np.matmul(R_z(-theta/2),a1)) #vector 1 of lattice 1
+    a2_2 = np.matmul(np.identity(2)-strain_tensor/2,np.matmul(R_z(-theta/2),a2)) #vector 2 of lattice 1
+    offset_sublattice_2 = np.matmul(np.identity(2)-strain_tensor/2,np.matmul(R_z(-theta/2),d))
+    for i in range(xxx):
+        for j in range(yyy):
+            l1[i,j,0] = (i-n_x//2*A_M)*a1_1+(j-n_y//2*A_M)*a2_1
+            l1[i,j,1] = l1[i,j,0] + offset_sublattice_1
+            l2[i,j,0] = (i-n_x//2*A_M)*a1_2+(j-n_y//2*A_M)*a2_2
+            l2[i,j,1] = l2[i,j,0] + offset_sublattice_2
+    print("Moire lengths: ",n1_m,' ',n2_m)
+    print("Angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/n1_m,a2_m/n2_m)))
+    return l1,l2,a1_m,a2_m
+
+def find_closest(lattice,site,UC_):
+    """Finds the closest lattice site to the coordinates "site". 
+    The lattice is stored in "lattice" and the search can be constrained 
+    to the unit cell "UC_", if given.
+
+
+    Parameters
+    ----------
+    lattice : ndarray
+        Lattice sites storage. Lattice has shape nx,ny,2->unit cell index,2->x and y.
+    site : np.array
+        x and y coordinates of space.
+    UC_ : string
+        Unit cell to constrain the search.
+
+    Returns
+    -------
+    int, int, UC
+        Indexes of clusest site, together with corresponding UC.
+    """
+    X,Y,W,Z = lattice.shape
+    #
+    dist_A = np.sqrt((lattice[:,:,0,0]-site[0])**2+(lattice[:,:,0,1]-site[1])**2)
+    dist_B = np.sqrt((lattice[:,:,1,0]-site[0])**2+(lattice[:,:,1,1]-site[1])**2)
+    min_A = np.min(np.ravel(dist_A))
+    min_B = np.min(np.ravel(dist_B))
+    if UC_=='nan':
+        if min_A < min_B:
+            UC = 0
+            arg = np.argmin(np.reshape(dist_A,(X*Y)))
+        else:
+            UC = 1
+            arg = np.argmin(np.reshape(dist_B,(X*Y)))
+    elif UC_==0:
+        arg = np.argmin(np.reshape(dist_A,(X*Y)))
+        UC = UC_
+    elif UC_==1:
+        arg = np.argmin(np.reshape(dist_B,(X*Y)))
+        UC = UC_
+    #Smallest y-difference in A and B sublattice
+    argx = arg//Y
+    argy = arg%Y
+    if argx in [0,X-1] or argy in [0,Y-1]:
+        print("Reached end of lattice, probably not good")
+        exit()
+    return argx,argy,UC
+
+
 def get_MP_pars(ind,type_gamma):
     input_types = ['DFT','exp']
     moire_types = ['uniaxial','biaxial','shear']
@@ -1348,6 +1340,35 @@ def load_Moire(Phi_fn,AM_fn):
             print(i," let's try again")
     exit()
 
+def ts1_12(Phi,gx,gy):
+    phi_1 = (np.sign(Phi+offset_solution)-1)*np.pi/4
+    phi_2 = -(np.sign(Phi+offset_solution)-1)*np.pi/4
+    return np.array([phi_1,phi_2])
+
+def ts2_12(Phi,gx,gy):
+    phi_1 = (np.sign(Phi+offset_solution)+1)*np.pi/4
+    phi_2 = -(np.sign(Phi+offset_solution)+1)*np.pi/4 + np.pi
+    return np.array([phi_1,phi_2])
+
+def ta_12(Phi,gx,gy):
+    phi_1 = (np.sign(Phi+offset_solution)-1)*np.pi/2
+    phi_2 = np.zeros((gx,gy))
+    return np.array([phi_1,phi_2])
+
+def ts1_sa(Phi,gx,gy):
+    res = (np.sign(Phi+offset_solution)-1)*np.pi/2
+    return np.array([np.ones((gx,gy))*0,res])
+
+def ts2_sa(Phi,gx,gy):
+    res = (np.sign(Phi+offset_solution)-1)*np.pi/2
+    return np.array([np.ones((gx,gy))*np.pi,res])
+
+def ta_sa(Phi,gx,gy):
+    re_s = -(np.sign(Phi+offset_solution)-1)*np.pi/2
+    re_a = (np.sign(Phi+offset_solution)-1)*np.pi/2
+    return np.array([re_s,re_a])
+
+custom_in_pt = {'sa': (ts1_sa,ts2_sa,ta_sa),    '12': (ts1_12,ts2_12,ta_12)}
 
 
 

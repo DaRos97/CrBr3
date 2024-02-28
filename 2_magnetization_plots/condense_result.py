@@ -32,7 +32,7 @@ if type_computation == 'CO':
     moire_pars[moire_type] = {'place':place_interlayer,}
     moire_pars['theta'] = 0.
 elif type_computation == 'DB':
-    ggg = [100,200,300,400]
+    ggg = [100,200,300,400,500]
     avav = [0,1,2,3,4]
     max_grid = ggg[ind // (5)]
     AV = avav[ind % (5)]
@@ -42,12 +42,12 @@ elif type_computation == 'DB':
 else:
     moire_type,moire_pars = fs.get_moire_pars(ind)
 
-print("Condensing PD for Moire with ",moire_type," strain of args ",moire_pars[moire_type])
 Phi_fn = fs.get_Phi_fn(moire_type,moire_pars,machine)
 Phi = np.load(fs.get_Phi_fn(moire_type,moire_pars,machine))
 a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
 gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
 precision_pars = (gridx,gridy,AV)
+print("Condensing PD for Moire with ",moire_type," strain of args ",moire_pars[moire_type])
 print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.norm(a2_m))
 print("Relative angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m))))
 print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")

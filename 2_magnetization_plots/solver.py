@@ -35,11 +35,11 @@ elif type_computation == 'CO':
     moire_pars[moire_type] = {'place':place_interlayer,}
     moire_pars['theta'] = 0.
 elif type_computation == 'DB':
-    ggg = [100,200,300,400]
+    ggg = [100,200,300,400,500]
     avav = [0,1,2,3,4]
     max_grid = ggg[ind // (5*100)]
     AV = avav[ind % (5*100) //100]
-    rho = 1.4
+    rho = 100#1.4
     anisotropy = 0.0709
     gamma = fs.gammas['MPs'][ind % (5*100) %100]
     moire_type,moire_pars = fs.get_moire_pars(0)
@@ -83,7 +83,7 @@ if not Path(solution_fn).is_file():
             'args_phys':        (gamma,rho,anisotropy),
             'grid':             (gridx,gridy),
             'pts_per_fit':      AV,                          #Maybe can be related to gridx/gridy
-            'n_initial_pts':    36,                         #three solution initial states, 25 constant initial states and n-25 random states
+            'n_initial_pts':    100,                         #three solution initial states, 25 constant initial states and n-25 random states
             'maxiter':          1e5, 
             'machine':          machine, 
             'disp':             machine=='loc',
