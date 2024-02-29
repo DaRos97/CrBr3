@@ -56,6 +56,7 @@ print("Relative angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1
 print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
 print("Grid size: ",gridx,'x',gridy)
 #
+hdf5_mag_fn = fs.get_hdf5_mag_fn(moire_type,moire_pars,grid_pts,machine)
 hdf5_fn = fs.get_hdf5_fn(moire_type,moire_pars,grid_pts,machine)
 if not (machine=='loc' and Path(hdf5_fn).is_file()):
     #Open h5py File
@@ -73,4 +74,52 @@ if not (machine=='loc' and Path(hdf5_fn).is_file()):
                     dataset_name = gamma_gn+'/'+sol[len(sol)-sol[::-1].index('/')+4:-4]
                     if sol[len(sol)-sol[::-1].index('/'):len(sol)-sol[::-1].index('/')+3]=='sol' and dataset_name not in f.keys():
                         f.create_dataset(dataset_name,data=np.load(sol))
+    with h5py.File(hdf5_mag_fn,'a') as f:
+        #List elements in directory
+        moire_dn = fs.get_moire_dn(moire_type,moire_pars,grid_pts,machine)
+        for element in Path(moire_dn).iterdir():
+            gamma_dn = str(element)
+            if gamma_dn[len(gamma_dn)-gamma_dn[::-1].index('/'):len(gamma_dn)-gamma_dn[::-1].index('_')-1]=='gamma':
+                gamma_gn = gamma_dn[len(gamma_dn)-gamma_dn[::-1].index('/'):]        #gn==group name
+                if gamma_gn not in f.keys():
+                    f.create_group(gamma_gn)
+                for file in Path(gamma_dn+'/').iterdir():
+                    sol = str(file)
+                    dataset_name = gamma_gn+'/'+sol[len(sol)-sol[::-1].index('/')+4:-4]
+                    if sol[len(sol)-sol[::-1].index('/'):len(sol)-sol[::-1].index('/')+3]=='sol' and dataset_name not in f.keys():
+                        f.create_dataset(dataset_name,data=fs.compute_magnetization(np.load(sol)))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

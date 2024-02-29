@@ -20,8 +20,10 @@ gammas = {  'MPs':np.linspace(0,2,50,endpoint=False),
 conversion_factor = 0.607 
 Spin = 3/2
 #
-rhos = [0.1,1.4,5,10,50,100]
-anis = [0.01,0.03,0.0709,0.11,0.2]
+#rhos = [0.1,1.4,5,10,50,100]
+#anis = [0.01,0.03,0.0709,0.11,0.2]
+rhos = [0.1,1.4,5,10,100]
+anis = [0.03,0.0709,0.11,0.2]
 
 epss = [0.05,0.04,0.03,0.02,0.01]
 #
@@ -558,6 +560,10 @@ def get_hdf5_dn(machine):
 def get_hdf5_fn(moire_type,moire_pars,grid_pts,machine):
     moire_dn = get_moire_dn(moire_type,moire_pars,grid_pts,machine)[:-1]
     return get_hdf5_dn(machine) + moire_dn[len(moire_dn)-moire_dn[::-1].index('/'):] + '.hdf5'
+
+def get_hdf5_mag_fn(moire_type,moire_pars,grid_pts,machine):
+    moire_dn = get_moire_dn(moire_type,moire_pars,grid_pts,machine)[:-1]
+    return get_hdf5_dn(machine) + 'mag_' + moire_dn[len(moire_dn)-moire_dn[::-1].index('/'):] + '.hdf5'
 
 def get_pd_dn(machine):
     """Computes the directory name where to save the interlayer potential.
@@ -1102,7 +1108,7 @@ def compute_compare_MPs(list_pars,figname,machine):
 
     """
     fig = plt.figure(figsize=(20,20))
-    colors = ['r','b','g','y','k','orange','pink']
+#    colors = ['r','b','g','y','k','orange','pink',]
     s_ = 20
     for iii in range(len(list_pars)):
         rho_str,ani_str,grid_pts,moire_type,moire_pars,txt_name = list_pars[iii]
@@ -1125,7 +1131,7 @@ def compute_compare_MPs(list_pars,figname,machine):
             print("No data in ",hdf5_fn," for pars ",rho_str," and ",ani_str)
             continue
         M = np.array(data)
-        plt.plot(M[:,0],M[:,1],'-',color=colors[iii],marker='*',label=txt_name)
+        plt.plot(M[:,0],M[:,1],'-',marker='*',label=txt_name)
     plt.xlabel(r'$h_\bot(T)$',size=s_)
     plt.ylabel(r'$M$',size=s_)
     plt.legend(fontsize=s_)
