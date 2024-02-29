@@ -22,8 +22,9 @@ Spin = 3/2
 #
 rhos = [0.1,1.4,5,10,50,100]
 anis = [0.01,0.03,0.0709,0.11,0.2]
+
+epss = [0.05,0.04,0.03,0.02,0.01]
 #
-epss = [0.05,0.03,0.01,0.005]
 nis = [1.,0.5,0.3]
 thetas = np.pi/180*0
 #
@@ -1016,38 +1017,6 @@ def get_MP_pars(ind,type_gamma):
         }
     imt = 1
     return (input_types[iit],moire_types[imt],moire_pars,gammas[type_gamma][iga])
-
-def get_moire_pars(ind):
-    moire_types = ['uniaxial','biaxial','shear']
-    #
-    lep = len(epss)
-    lni = len(nis)
-    #
-    imt = 1
-    iep = 0#ind // lni
-    ini = 0#ind % lni
-    #
-    moire_pars = {
-        'general':{
-            'e_xx':0.1,
-            'e_yy':0.3,
-            'e_xy':0.15,
-            },
-        'uniaxial':{
-            'eps':epss[iep],
-            'ni':nis[ini],
-            'phi':0.,
-            },
-        'biaxial':{
-            'eps':0.03,
-            },
-        'shear':{
-            'e_xy':0.05,
-            'phi':0,
-            },
-        'theta':thetas,
-        }
-    return (moire_types[imt],moire_pars)
 
 def check_directory(moire_type,moire_pars,grid_pts,gamma,machine):
     #Phase diagrams dir

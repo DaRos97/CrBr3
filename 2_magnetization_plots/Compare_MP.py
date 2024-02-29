@@ -10,12 +10,20 @@ machine = fs.get_machine(os.getcwd())
 
 type_computation = sys.argv[1]
 
-inds = np.array([0,1,])
+#ind = int(sys.argv[2])
+i_m = 0
+inds = np.array([0,1,2,3,4])+5*0
 figname = 'aaa.png'
 list_pars = []
 for ind in inds:
     if type_computation == 'PD':
-        moire_type,moire_pars = fs.get_moire_pars(0)        #3% biaxial
+        moire_type = 'biaxial'
+        moire_pars = {
+            'biaxial':{
+                'eps':fs.epss[i_m],       
+                },
+            'theta':fs.thetas,
+            }
         l_a = len(fs.anis)
         rho = fs.rhos[ind // l_a]
         anisotropy = fs.anis[ind % l_a]

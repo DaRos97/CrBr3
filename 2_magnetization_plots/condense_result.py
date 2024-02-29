@@ -16,7 +16,15 @@ machine = fs.get_machine(os.getcwd())
 type_computation = 'PD' if len(sys.argv)<3 else sys.argv[2]
 
 ind = int(sys.argv[1])      #one index every 225 for 15x15 PD -> like this sys.argv[1] from 0 to 11
-if type_computation == 'CO':
+if type_computation == 'PD':
+    moire_type = 'biaxial'
+    moire_pars = {
+        'biaxial':{
+            'eps':fs.epss[ind],       
+            },
+        'theta':fs.thetas,
+        }
+elif type_computation == 'CO':
     rho = 0
     ind_a = ind // (2)
     ind_l = ind % (2)
@@ -36,8 +44,6 @@ elif type_computation == 'DB':
     rho = 1.4
     anisotropy = 0.0709
     moire_type,moire_pars = fs.get_moire_pars(0)
-elif type_computation == 'PD':
-    moire_type,moire_pars = fs.get_moire_pars(0)        #3% biaxial
 
 Phi_fn = fs.get_Phi_fn(moire_type,moire_pars,machine)
 Phi = np.load(fs.get_Phi_fn(moire_type,moire_pars,machine))
