@@ -12,7 +12,7 @@ type_computation = sys.argv[1]
 
 #ind = int(sys.argv[2])
 i_m = 1
-inds = np.array([0])
+inds = np.array([3])
 #inds = np.arange(20)
 figname = 'aaa.png'
 list_pars = []
@@ -31,7 +31,7 @@ for ind in inds:
         rho_str = "{:.5f}".format(rho)
         anisotropy_str = "{:.5f}".format(anisotropy)
         txt_name = r'$\rho$:'+rho_str+', '+r'$d$:'+anisotropy_str+', $\epsilon$:'+"{:.4f}".format(fs.epss[i_m])
-        i_m +=1
+#        i_m +=1
     elif type_computation == 'CO':
         rho = "{:.5f}".format(0)
         ind_a = ind // (2)
@@ -70,5 +70,5 @@ for ind in inds:
 
 print("Condensing PD for Moire with ",moire_type," strain of args ",moire_pars[moire_type])
 
-fs.compute_compare_MPs(list_pars,figname,machine,0)     #0 for energy, 1 for magnetization
+fs.compute_compare_MPs(list_pars,figname,machine,1)     #0 for energy, 1 for magnetization
 

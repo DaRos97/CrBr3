@@ -20,10 +20,8 @@ gammas = {  'MPs':np.linspace(0,2,50,endpoint=False),
 conversion_factor = 0.607 
 Spin = 3/2
 #
-#rhos = [0.1,1.4,5,10,50,100]
-#anis = [0.01,0.03,0.0709,0.11,0.2]
 rhos = [0.1,1.4,10,100]
-anis = [0.01,0.03,0.0709,0.11,0.2]
+anis = [0.01,0.03,0.0709,0.11,0.15]
 
 epss = [0.05,0.04,0.03,0.02,0.01,0.005]
 #
@@ -33,6 +31,11 @@ thetas = np.pi/180*0
 offset_solution = -0.1
 NNNN = 21
 lr_list = np.logspace(-5,1,num=NNNN)
+list_ind = [0,1,2,3,5,
+            6,7,8,9,12,
+            13,16,17,18,23,
+            24,25,26,27,34,
+            35,36,45]
 
 #Triangular lattice
 a1 = np.array([1,0])
@@ -95,14 +98,18 @@ def compute_solution(args_m):
     #Variables for storing best solution
     min_E = 1e10
     result = np.ones((2,gx,gy))*20
-    initial_index = 0 #if args_m['type_comp']=='CO' else -3
+    initial_index = 0 if args_m['type_comp']=='CO' else -3
     for ind_in_pt in range(initial_index,args_m['n_initial_pts']):  #############
         if args_m['disp']:
             print("Starting minimization step ",str(ind_in_pt))
         #Initial condition
-        fs = ((ind_in_pt//10)*36+18)/180*np.pi
-        fa = ((ind_in_pt%10)*36+18)/180*np.pi
-        phi = const_in_pt(fs,fa,gx,gy)
+        if ind_in_pt < 0:
+            phi = custom_in_pt[ind_in_pt+3](Phi,gx,gy)
+        else:
+            inddd = list_ind[ind_in_pt]
+            fs = ((inddd//10)*36+18)/180*np.pi
+            fa = ((inddd%10)*36+18)/180*np.pi
+            phi = const_in_pt(fs,fa,gx,gy)
         #First energy evaluation
         E = [compute_energy(phi,Phi,args_m['args_phys'],A_M,M_transf), ]
         #Initialize learning rate and minimization loop
@@ -126,6 +133,8 @@ def compute_solution(args_m):
             if list_E[amin,1] < E[0]:
                 E.insert(0,list_E[amin,1])
                 phi = np.copy(list_phi[amin])
+                if 0 and args_m['disp']:
+                    print("step: ",ind_in_pt," with E:","{:.10f}".format(E[0]))
             else:
                 print(ind_in_pt," none LR was lower in energy")
                 keep_going = False
@@ -1116,7 +1125,7 @@ def compute_compare_MPs(list_pars,figname,machine,ind=0):
         #Open and read h5py File
         data = []
         n = 0
-        with h5py.File(hdf5_mag_fn,'r') as f:
+        with h5py.File(hdf5_par_fn,'r') as f:
             for k in f.keys():
                 if not k[:5] == 'gamma':
                     continue
@@ -1128,7 +1137,7 @@ def compute_compare_MPs(list_pars,figname,machine,ind=0):
                         data.append([float(gamma_),f[k][p][ind]])
                         n += 1
         if n == 0:  #No data here for some reason
-            print("No data in ",hdf5_mag_fn," for pars ",rho_str," and ",ani_str)
+            print("No data in ",hdf5_par_fn," for pars ",rho_str," and ",ani_str)
             continue
         M = np.array(data)
         plt.plot(M[:,0],M[:,1],'-',marker='*',label=txt_name)

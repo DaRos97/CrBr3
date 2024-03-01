@@ -5,12 +5,12 @@ from pathlib import Path
 
 ind = int(sys.argv[1])
 ##############################################################################
-max_grid = 400
+max_grid = 100
 ##############################################################################
 machine = fs.get_machine(os.getcwd())
 
 type_computation = 'PD' if len(sys.argv)<3 else sys.argv[2]
-ind_moire = 0 in len(sys.argv)<4 else int(sys.argv[3])
+ind_moire = 0 if len(sys.argv)<4 else int(sys.argv[3])
 
 if type_computation == 'PD':            #Phase Diagram type of physical parameters
     moire_type = 'biaxial'
@@ -70,7 +70,7 @@ print("Relative angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1
 print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
 print("Grid size: ",gridx,'x',gridy)
 
-if 1 and machine =='loc':
+if 0 and machine =='loc':
     exit()
 #Compute Phi over new grid parameters
 Phi = fs.reshape_Phi(Phi,gridx,gridy)
@@ -85,7 +85,7 @@ if not Path(solution_fn).is_file():
             'args_moire':       (Phi,(a1_m,a2_m)),
             'args_phys':        phys_args,
             'grid':             grid_pts,
-            'n_initial_pts':    50,                         #three solution initial states, 25 constant initial states and n-25 random states
+            'n_initial_pts':    len(fs.list_ind),                         #three solution initial states, 25 constant initial states and n-25 random states
             'maxiter':          1e5, 
             'machine':          machine, 
             'disp':             machine=='loc',
