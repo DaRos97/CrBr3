@@ -9,7 +9,7 @@ Remember to adjust max_gridsze.
 For each moire dir create a new hdf5, which will contain gamma as dir and (rho,ani) as dataset.
 """
 
-max_grid = 300
+max_grid = 400
 
 machine = fs.get_machine(os.getcwd())
 
@@ -56,7 +56,7 @@ print("Relative angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1
 print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
 print("Grid size: ",gridx,'x',gridy)
 #
-hdf5_mag_fn = fs.get_hdf5_mag_fn(moire_type,moire_pars,grid_pts,machine)
+hdf5_par_fn = fs.get_hdf5_par_fn(moire_type,moire_pars,grid_pts,machine)
 hdf5_fn = fs.get_hdf5_fn(moire_type,moire_pars,grid_pts,machine)
 if not (machine=='loc' and Path(hdf5_fn).is_file()):
     #Open h5py File
@@ -74,7 +74,7 @@ if not (machine=='loc' and Path(hdf5_fn).is_file()):
                     dataset_name = gamma_gn+'/'+sol[len(sol)-sol[::-1].index('/')+4:-4]
                     if sol[len(sol)-sol[::-1].index('/'):len(sol)-sol[::-1].index('/')+3]=='sol' and dataset_name not in f.keys():
                         f.create_dataset(dataset_name,data=np.load(sol))
-    with h5py.File(hdf5_mag_fn,'a') as f:
+    with h5py.File(hdf5_par_fn,'a') as f:
         #List elements in directory
         moire_dn = fs.get_moire_dn(moire_type,moire_pars,grid_pts,machine)
         for element in Path(moire_dn).iterdir():
@@ -87,7 +87,11 @@ if not (machine=='loc' and Path(hdf5_fn).is_file()):
                     sol = str(file)
                     dataset_name = gamma_gn+'/'+sol[len(sol)-sol[::-1].index('/')+4:-4]
                     if sol[len(sol)-sol[::-1].index('/'):len(sol)-sol[::-1].index('/')+3]=='sol' and dataset_name not in f.keys():
-                        f.create_dataset(dataset_name,data=fs.compute_magnetization(np.load(sol)))
+                        gamma_ = float(gamma_gn[5:])
+                        rho_ = float(sol[4:11])
+                        ani_ = float(sol[12:19])
+                        phys_args = (gamma_,rho_,ani_)
+                        f.create_dataset(dataset_name,data=np.array([fs.compute_energy(np.load(sol),Phi,phys_args,A_M,fs.get_M_transf(A_M[0],A_M[1])),fs.compute_magnetization(np.load(sol))]))
 
 
 

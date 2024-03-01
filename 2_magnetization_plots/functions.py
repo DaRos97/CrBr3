@@ -561,9 +561,9 @@ def get_hdf5_fn(moire_type,moire_pars,grid_pts,machine):
     moire_dn = get_moire_dn(moire_type,moire_pars,grid_pts,machine)[:-1]
     return get_hdf5_dn(machine) + moire_dn[len(moire_dn)-moire_dn[::-1].index('/'):] + '.hdf5'
 
-def get_hdf5_mag_fn(moire_type,moire_pars,grid_pts,machine):
+def get_hdf5_par_fn(moire_type,moire_pars,grid_pts,machine):
     moire_dn = get_moire_dn(moire_type,moire_pars,grid_pts,machine)[:-1]
-    return get_hdf5_dn(machine) + 'mag_' + moire_dn[len(moire_dn)-moire_dn[::-1].index('/'):] + '.hdf5'
+    return get_hdf5_dn(machine) + 'par_' + moire_dn[len(moire_dn)-moire_dn[::-1].index('/'):] + '.hdf5'
 
 def get_pd_dn(machine):
     """Computes the directory name where to save the interlayer potential.
@@ -1103,7 +1103,7 @@ def compute_MPs(moire_type,moire_pars,grid_pts,rho_str,ani_str,machine):
     plt.savefig(get_fig_mp_fn(moire_type,moire_pars,grid_pts,rho_str,ani_str,machine))
     plt.close()
 
-def compute_compare_MPs(list_pars,figname,machine):
+def compute_compare_MPs(list_pars,figname,machine,ind=0):
     """Compute the magnetization plots.
 
     """
@@ -1112,7 +1112,46 @@ def compute_compare_MPs(list_pars,figname,machine):
     s_ = 20
     for iii in range(len(list_pars)):
         rho_str,ani_str,grid_pts,moire_type,moire_pars,txt_name = list_pars[iii]
-        hdf5_fn = get_hdf5_fn(moire_type,moire_pars,grid_pts,machine)
+        hdf5_par_fn = get_hdf5_par_fn(moire_type,moire_pars,grid_pts,machine)
+        #Open and read h5py File
+        data = []
+        n = 0
+        with h5py.File(hdf5_mag_fn,'r') as f:
+            for k in f.keys():
+                if not k[:5] == 'gamma':
+                    continue
+                gamma_ = k[6:]           #6 fixed by len(gamma_)
+                for p in f[k].keys():
+                    rho_ = p[:p.index('_')]
+                    ani_ = p[p.index('_')+1:]
+                    if rho_ == rho_str and ani_ == ani_str:
+                        data.append([float(gamma_),f[k][p][ind]])
+                        n += 1
+        if n == 0:  #No data here for some reason
+            print("No data in ",hdf5_mag_fn," for pars ",rho_str," and ",ani_str)
+            continue
+        M = np.array(data)
+        plt.plot(M[:,0],M[:,1],'-',marker='*',label=txt_name)
+    plt.xlabel(r'$h_\bot(T)$',size=s_)
+    if ind == 0:
+        plt.ylabel(r'$E$',size=s_)
+    else:
+        plt.ylabel(r'$M$',size=s_)
+    plt.legend(fontsize=s_)
+    if machine == 'loc':
+        plt.show()
+    else:
+        plt.savefig(figname)
+
+def compute_compare_Es(list_pars,figname,machine):
+    """Compute the magnetization plots.
+
+    """
+    fig = plt.figure(figsize=(20,20))
+    s_ = 20
+    for iii in range(len(list_pars)):
+        rho_str,ani_str,grid_pts,moire_type,moire_pars,txt_name = list_pars[iii]
+        hdf5_E_fn = get_hdf5_E_fn(moire_type,moire_pars,grid_pts,machine)
         #Open and read h5py File
         data = []
         n = 0
@@ -1125,10 +1164,10 @@ def compute_compare_MPs(list_pars,figname,machine):
                     rho_ = p[:p.index('_')]
                     ani_ = p[p.index('_')+1:]
                     if rho_ == rho_str and ani_ == ani_str:
-                        data.append([float(gamma_),compute_magnetization(f[k][p])])
+                        data.append([float(gamma_),f[k][p][()]])
                         n += 1
         if n == 0:  #No data here for some reason
-            print("No data in ",hdf5_fn," for pars ",rho_str," and ",ani_str)
+            print("No data in ",hdf5_mag_fn," for pars ",rho_str," and ",ani_str)
             continue
         M = np.array(data)
         plt.plot(M[:,0],M[:,1],'-',marker='*',label=txt_name)

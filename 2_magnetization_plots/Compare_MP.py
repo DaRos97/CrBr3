@@ -4,15 +4,16 @@ import os,sys
 import h5py
 from pathlib import Path
 
-max_grid = 300
+max_grid = 400
 
 machine = fs.get_machine(os.getcwd())
 
 type_computation = sys.argv[1]
 
 #ind = int(sys.argv[2])
-i_m = 0
-inds = np.array([0,1,2,3,4])+5*0
+i_m = 1
+inds = np.array([0])
+#inds = np.arange(20)
 figname = 'aaa.png'
 list_pars = []
 for ind in inds:
@@ -29,7 +30,8 @@ for ind in inds:
         anisotropy = fs.anis[ind % l_a]
         rho_str = "{:.5f}".format(rho)
         anisotropy_str = "{:.5f}".format(anisotropy)
-        txt_name = r'$\rho$:'+rho_str+', '+r'$d$:'+anisotropy_str
+        txt_name = r'$\rho$:'+rho_str+', '+r'$d$:'+anisotropy_str+', $\epsilon$:'+"{:.4f}".format(fs.epss[i_m])
+        i_m +=1
     elif type_computation == 'CO':
         rho = "{:.5f}".format(0)
         ind_a = ind // (2)
@@ -59,13 +61,14 @@ for ind in inds:
     gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
     grid_pts = (gridx,gridy)
     print("Physical parameters are rho: ",rho_str,", anisotropy: ",anisotropy_str)
-    print("Condensing PD for Moire with ",moire_type," strain of args ",moire_pars[moire_type])
-    print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.norm(a2_m))
-    print("Relative angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m))))
-    print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
-    print("Grid size: ",gridx,'x',gridy)
+#    print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.norm(a2_m))
+#    print("Relative angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m))))
+#    print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
+#    print("Grid size: ",gridx,'x',gridy)
 
     list_pars.append((rho_str,anisotropy_str,grid_pts,moire_type,moire_pars,txt_name))
 
-fs.compute_compare_MPs(list_pars,figname,machine)
+print("Condensing PD for Moire with ",moire_type," strain of args ",moire_pars[moire_type])
+
+fs.compute_compare_MPs(list_pars,figname,machine,0)     #0 for energy, 1 for magnetization
 

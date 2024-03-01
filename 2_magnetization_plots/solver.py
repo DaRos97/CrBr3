@@ -15,7 +15,7 @@ if type_computation == 'PD':            #Phase Diagram type of physical paramete
     moire_type = 'biaxial'
     moire_pars = {
         'biaxial':{
-            'eps':fs.epss[0],       
+            'eps':fs.epss[1],       
             },
         'theta':fs.thetas,
         }
