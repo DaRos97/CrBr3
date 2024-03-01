@@ -10,12 +10,13 @@ max_grid = 400
 machine = fs.get_machine(os.getcwd())
 
 type_computation = 'PD' if len(sys.argv)<3 else sys.argv[2]
+ind_moire = 0 in len(sys.argv)<4 else int(sys.argv[3])
 
 if type_computation == 'PD':            #Phase Diagram type of physical parameters
     moire_type = 'biaxial'
     moire_pars = {
         'biaxial':{
-            'eps':fs.epss[1],       
+            'eps':fs.epss[ind_moire],       
             },
         'theta':fs.thetas,
         }
