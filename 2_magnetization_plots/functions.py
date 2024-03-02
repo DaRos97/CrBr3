@@ -13,7 +13,7 @@ import h5py
 rho_phys = {'DFT':1.4,'exp':1.7} #     (meV)      
 d_phys = {'DFT':0.0709,'exp':0.09} #     (meV)       0.0709
 #
-gammas = {  'MPs':np.linspace(0,2,50,endpoint=False), 
+gammas = {  'MPs':np.linspace(0,2,100,endpoint=False), 
             'AA':np.linspace(0,1,100,endpoint=False),
             'M':np.linspace(0,1,100,endpoint=False),
             }
@@ -272,7 +272,7 @@ def check_energies(list_E):
             return False
     return True
 
-def plot_magnetization(phi,Phi,A_M,title='',save=False):
+def plot_magnetization(phi,Phi,A_M,gamma,**kwargs):
     """Plots the magnetization values in the Moirè unit cell, with a background given by the
     interlayer potential. The two images correspond to the 2 layers. Magnetization is in x-z
     plane while the layers are in x-y plane.
@@ -342,10 +342,11 @@ def plot_magnetization(phi,Phi,A_M,title='',save=False):
                 ax.arrow(x - l/2*np.sin(phi_fin),y - l/2*np.cos(phi_fin),l*np.sin(phi_fin), l*np.cos(phi_fin),head_width=hw,head_length=hl,color='k')
         ax.set_xlim(-abs(a1_m[0])/4*3,abs(a1_m[0])/4*3)
         ax.set_ylim(-abs(a2_m[1])/4*3,abs(a2_m[1])/4*3)
-    fig.suptitle(title,size=20)
+    if "title" in kwargs:
+        fig.suptitle(kwargs['title'],size=20)
     fig.tight_layout()
-    if save:
-        plt.savefig('results/temp/'+title+'.png')
+    if "save_figname" in kwargs:
+        plt.savefig('results/figures/'+kwargs['save_figname']+'.png')
     else:
         plt.show()
 

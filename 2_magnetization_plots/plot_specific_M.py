@@ -99,7 +99,10 @@ with h5py.File(hdf5_fn,'r') as f:
 mag = fs.compute_magnetization(solution)
 print("Magnetization: ",mag)
 energy = fs.compute_energy(solution,Phi,phys_args,(a1_m,a2_m),fs.get_M_transf(a1_m,a2_m))
-fs.plot_magnetization(solution,Phi,(a1_m,a2_m),gamma,False)
-fs.plot_phis(solution,(a1_m,a2_m))
+
+tt = r'$\gamma$:'+gamma_str+', '+r'$\rho$:'+rho_str+', '+r'$d$:'+ani_str+', $\epsilon$:'+"{:.4f}".format(moire_pars[moire_type]['eps'])
+fn = 'g:'+gamma_str+'_'+'r:'+rho_str+'_'+'d:'+ani_str+'_e:'+"{:.4f}".format(moire_pars[moire_type]['eps'])
+fs.plot_magnetization(solution,Phi,(a1_m,a2_m),gamma,title=tt,save_figname=fn)
+#fs.plot_phis(solution,(a1_m,a2_m))
 
 
