@@ -98,7 +98,7 @@ def compute_solution(args_m):
     #Variables for storing best solution
     min_E = 1e10
     result = np.ones((2,gx,gy))*20
-    initial_index = 0 if args_m['type_comp']=='CO' else -3
+    initial_index = 0 if args_m['type_comp']=='CO' else 0#-3
     for ind_in_pt in range(initial_index,args_m['n_initial_pts']):  #############
         if args_m['disp']:
             print("Starting minimization step ",str(ind_in_pt))
@@ -110,6 +110,7 @@ def compute_solution(args_m):
             fs = ((inddd//10)*36+18)/180*np.pi
             fa = ((inddd%10)*36+18)/180*np.pi
             phi = const_in_pt(fs,fa,gx,gy)
+        plot_phis(phi,A_M,'initial')
         #First energy evaluation
         E = [compute_energy(phi,Phi,args_m['args_phys'],A_M,M_transf), ]
         #Initialize learning rate and minimization loop
@@ -133,13 +134,17 @@ def compute_solution(args_m):
             if list_E[amin,1] < E[0]:
                 E.insert(0,list_E[amin,1])
                 phi = np.copy(list_phi[amin])
-                if 0 and args_m['disp']:
+                if 1 and args_m['disp']:
                     print("step: ",ind_in_pt," with E:","{:.10f}".format(E[0]))
             else:
                 print(ind_in_pt," none LR was lower in energy")
                 keep_going = False
             #Check if energy converged to a constant value
             if check_energies(E):
+                if 1 and args_m['disp']:
+                    plot_phis(dH,A_M,'final grad')
+                    plot_phis(phi,A_M,'final phi')
+                    plot_magnetization(phi,Phi,A_M)
                 if E[0]<min_E:
                     min_E = E[0]
                     result = np.copy(phi)
@@ -1255,6 +1260,7 @@ def ts2_12(Phi,gx,gy):
 
 def ta_12(Phi,gx,gy):
     phi_1 = (np.sign(Phi+offset_solution)-1)*np.pi/2
+    phi_1 = -(Phi-np.max(Phi))/np.min(Phi-np.max(Phi))*np.pi
     phi_2 = np.zeros((gx,gy))
     return np.array([phi_1,phi_2])
 

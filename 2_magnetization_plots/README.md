@@ -18,24 +18,21 @@ results/phase_diagram_data/moire_specs(type,eps,ni,gx,gy)/gamma/ one directory f
 
 # Computed 
 ## Bao
-    0 - DFT/exp, uniaxial, all e and n, max_grid = 100, in_pt = 2, gamma from 0 to 3 (100 pts) -> lr -1e-3
-    1 - DFT, uniaxial, e=0.1, n=1, max_grid = 200, in_pt = 5, gamma from 0 to 3 (100 pts) -> lr -1e-2 (also t-a). Missing 5pts (13,20,21,33,35)
-    2 - DFT, e=0.05, ni=1 and 0.3, max_grid=200, lr = -1e-3.  (MP)
-    2 - PD e=0.05, ni=1 and 0.3, max_grid=200, lr = -1e-3.
-    2 - PD, e=0.1, ni=1, max_grid=200 and 300, lr = -1e-2, rg=2.
-    2 - PD, e=0.1, ni=0.7, max_grid=200 and 300, lr = -1e-2, rg=3.
-    #new name
-    3 - PDs of e=0.1 & 0.05, ni=1 &0.7 for precision: 200,-1e-1,1    
-    3 - MP (DFT), e=0.1 & 0.05 & 0.04, ni=1, precision: 200,-1e-1,3
-    #new name (LR)
-## Ygg
-
-# Computing
-## Bao
+    - PD: (rho,d)=(0.1-1.4-5-10-100,0.03-0.0709-0.11-0.2), g=(0 to 2, 50, in Tesla), grid 400, 50 sols (36+18) eps=0.02     (ind 3) -> many missing
 ## Ygg
     New derivative of order 8
     - DB: (gg,AV)=(200-300-400-500,0-1-2) at (rho,d)=(1.4-100,0.07), g=(from 0 to 1, 50), biaxial 0.03, 100 sols (36+18)        -> results/
     - DB: (gg,AV)=(200-300-400-500,0) at (rho,d)=(1.4-100,0.07), g=(from 0 to 1, 50), biaxial 0.03, 5 sols (36+18)              -> Results/
+    Grid 300, new name (no AV), 30 solutions (36+18)
+    - PD: (rho,d)=(0.1-1.4-5-10-50-100,0.01-0.03-0.0709-0.11-0.2), g=(0 to 2, 50, in Tesla), eps=0.03
+    ------------------------------------------------------------------------------------------------------------------------
+    - PD: (rho,d)=(0.1-100,0.01-0.15), g=(0 to 2, 50, in Tesla), eps=0.05-0.005, grid=100
+    - PD: (rho,d)=(0.1-100,0.01-0.15), g=(0 to 2, 50, in Tesla), eps=0.05-0.005, grid=200
+
+# Computing
+## Bao
+## Ygg
+    - PD: (rho,d)=(0.1-100,0.01-0.15), g=(0 to 2, 50, in Tesla), eps=0.04-0.03-0.02-0.01, grid=100
 
 # To do
 
