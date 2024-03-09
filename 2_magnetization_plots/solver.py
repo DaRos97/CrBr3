@@ -52,14 +52,15 @@ phys_args = (gamma,rho,anisotropy)
 print("Computing with Moire with ",moire_type," strain of ",moire_pars[moire_type]," and rotation ",moire_pars['theta'])
 print("Physical parameters are gamma: ","{:.4f}".format(gamma),", rho: ","{:.4f}".format(rho),", anisotropy: ","{:.4f}".format(anisotropy))
 
+resc = True
 #Check if Phi already computed
-Phi_fn = fs.get_Phi_fn(moire_type,moire_pars,machine)
+Phi_fn = fs.get_Phi_fn(moire_type,moire_pars,machine,rescaled=resc)
 if not Path(Phi_fn).is_file():
     print("Computing interlayer coupling...")
     args_Moire = (machine=='loc',moire_type,moire_pars)
-    fs.Moire(args_Moire)
+    fs.Moire(args_Moire,resc)
 #Try a couple of times to load Phi since sometimes it does not work
-Phi,a1_m,a2_m = fs.load_Moire(Phi_fn,fs.get_AM_fn(moire_type,moire_pars,machine))
+Phi,a1_m,a2_m = fs.load_Moire(Phi_fn,moire_type,moire_pars,machine)
 #######
 
 gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
@@ -69,6 +70,8 @@ print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.
 print("Relative angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m))))
 print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
 print("Grid size: ",gridx,'x',gridy)
+if moire_type == 'const':
+    print(Phi.sum()/Phi.shape[0]/Phi.shape[1])
 
 if 0 and machine =='loc':
     exit()
