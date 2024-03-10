@@ -32,11 +32,15 @@ thetas = np.pi/180*0
 offset_solution = -0.1
 NNNN = 21
 lr_list = np.logspace(-5,1,num=NNNN)
-list_ind = [0,1,2,3,5,
+list_ind = {'PD':
+            [0,1,2,3,5,
             6,7,8,9,12,
             13,16,17,18,23,
             24,25,26,27,34,
-            35,36,45]
+            35,36,45],
+            
+            'CO':   np.arange(1000),
+            }
 
 #Triangular lattice
 a1 = np.array([1,0])
@@ -96,21 +100,28 @@ def compute_solution(args_m):
     a1_m, a2_m = A_M
     M_transf = get_M_transf(a1_m,a2_m)
     gx,gy = args_m['grid']
+    disp = args_m['disp']
     #Variables for storing best solution
     min_E = 1e10
     result = np.ones((2,gx,gy))*20
     initial_index = 0 #if args_m['type_comp']=='CO' else 0
     for ind_in_pt in range(initial_index,args_m['n_initial_pts']):  #############
-        if args_m['disp']:
+        if 0 and args_m['disp']:
             print("Starting minimization step ",str(ind_in_pt))
         #Initial condition
         if ind_in_pt < 0:
             phi = custom_in_pt[ind_in_pt+3](Phi,gx,gy)
+        elif args_m['type_comp']=='CO':
+            fs = np.random.rand()*2*np.pi
+            fa = np.random.rand()*2*np.pi
+            phi = const_in_pt(fs,fa,gx,gy)
         else:
-            inddd = list_ind[ind_in_pt]
+            inddd = list_ind[args_m['type_comp']][ind_in_pt]
             fs = ((inddd//10)*36+18)/180*np.pi
             fa = ((inddd%10)*36+18)/180*np.pi
             phi = const_in_pt(fs,fa,gx,gy)
+        if 0 and disp:
+            print('fs: ',fs,', fa: ',fa)
         #First energy evaluation
         E = [compute_energy(phi,Phi,args_m['args_phys'],A_M,M_transf), ]
         #Initialize learning rate and minimization loop
@@ -134,7 +145,7 @@ def compute_solution(args_m):
             if list_E[amin,1] < E[0]:
                 E.insert(0,list_E[amin,1])
                 phi = np.copy(list_phi[amin])
-                if 1 and args_m['disp']:
+                if 0 and args_m['disp']:
                     print("step: ",step," with E:","{:.10f}".format(E[0]))
             else:
                 print(ind_in_pt," none LR was lower in energy")
@@ -142,8 +153,8 @@ def compute_solution(args_m):
             #Check if energy converged to a constant value
             if check_energies(E):
                 if 0 and args_m['disp']:
-                    plot_phis(dH,A_M,'final grad')
-                    plot_phis(phi,A_M,'final phi')
+                    #plot_phis(dH,A_M,'final grad')
+                    #plot_phis(phi,A_M,'final phi')
                     plot_magnetization(phi,Phi,A_M,args_m['args_phys'][0])
                 if E[0]<min_E:
                     min_E = E[0]
@@ -312,8 +323,8 @@ def plot_magnetization(phi,Phi,A_M,gamma,**kwargs):
     l = np.linalg.norm(a1_m)/40 if np.linalg.norm(a1_m)>np.linalg.norm(a2_m) else np.linalg.norm(a2_m)/40#0.02       #length of arrow
     hw = l/2#0.01       #arrow head width
     hl = l/2#0.01       #arrow head length
-    facx = gx//30     #plot 1 spin every "fac" of grid
-    facy = gy//30     #plot 1 spin every "fac" of grid
+    facx = gx//10     #plot 1 spin every "fac" of grid
+    facy = gy//10     #plot 1 spin every "fac" of grid
     phi_ = [phi_1,phi_2]
     #Figure
     fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(18,7))

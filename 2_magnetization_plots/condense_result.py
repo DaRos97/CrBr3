@@ -9,7 +9,7 @@ Remember to adjust max_gridsze.
 For each moire dir create a new hdf5, which will contain gamma as dir and (rho,ani) as dataset.
 """
 
-max_grid = 400
+max_grid = 100
 
 machine = fs.get_machine(os.getcwd())
 
@@ -25,7 +25,7 @@ if type_computation == 'PD':
         'theta':fs.thetas,
         }
 elif type_computation == 'CO':
-    rho = 0
+    rho = 1000
     ind_a = ind // (2)
     ind_l = ind % (2)
     anisotropy = fs.anis[ind_a]
@@ -45,11 +45,12 @@ elif type_computation == 'DB':
     anisotropy = 0.0709
     moire_type,moire_pars = fs.get_moire_pars(0)
 
-Phi_fn = fs.get_Phi_fn(moire_type,moire_pars,machine)
-Phi = np.load(fs.get_Phi_fn(moire_type,moire_pars,machine))
-a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
+Phi_fn = fs.get_Phi_fn(moire_type,moire_pars,machine,rescaled=True)
+Phi,a1_m,a2_m = fs.load_Moire(Phi_fn,moire_type,moire_pars,machine)
+A_M = (a1_m,a2_m)
 gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
 grid_pts = (gridx,gridy)
+Phi = fs.reshape_Phi(Phi,gridx,gridy)
 print("Condensing PD for Moire with ",moire_type," strain of args ",moire_pars[moire_type])
 print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.norm(a2_m))
 print("Relative angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m))))

@@ -88,7 +88,7 @@ if not Path(solution_fn).is_file():
             'args_moire':       (Phi,(a1_m,a2_m)),
             'args_phys':        phys_args,
             'grid':             grid_pts,
-            'n_initial_pts':    len(fs.list_ind),                         #three solution initial states, 25 constant initial states and n-25 random states
+            'n_initial_pts':    len(fs.list_ind[type_computation]),                         #three solution initial states, 25 constant initial states and n-25 random states
             'maxiter':          1e5, 
             'machine':          machine, 
             'disp':             machine=='loc',
