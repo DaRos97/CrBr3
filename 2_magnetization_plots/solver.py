@@ -8,6 +8,7 @@ ind = int(sys.argv[1])
 max_grid = 100
 ##############################################################################
 machine = fs.get_machine(os.getcwd())
+rescaled = True
 
 type_computation = 'PD' if len(sys.argv)<3 else sys.argv[2]
 ind_moire = 0 if len(sys.argv)<4 else int(sys.argv[3])
@@ -15,9 +16,7 @@ ind_moire = 0 if len(sys.argv)<4 else int(sys.argv[3])
 if type_computation == 'PD':            #Phase Diagram type of physical parameters
     moire_type = 'biaxial'
     moire_pars = {
-        'biaxial':{
-            'eps':fs.epss[ind_moire],       
-            },
+        'eps':fs.epss[ind_moire],       
         'theta':fs.thetas,
         }
     l_a = len(fs.anis)
@@ -26,7 +25,7 @@ if type_computation == 'PD':            #Phase Diagram type of physical paramete
     anisotropy = fs.anis[ind % (l_a*l_g) // l_g]
     gamma = fs.gammas['MPs'][ind % (l_a*l_g) % l_g]
 elif type_computation == 'CO':          #Constant interlayer interaction
-    rho = 1000
+    rho = 0
     ind_a = ind // (2*len(fs.gammas['M']))
     ind_l = ind % (2*len(fs.gammas['M']))
     anisotropy = fs.anis[ind_a]
@@ -35,9 +34,10 @@ elif type_computation == 'CO':          #Constant interlayer interaction
     place_interlayer = list_interlayer[ind_l//len(fs.gammas['M'])]
     gamma = fs.gammas[place_interlayer][ind_l%len(fs.gammas['M'])]
     moire_type = 'const'
-    moire_pars = {}
-    moire_pars[moire_type] = {'place':place_interlayer,}
-    moire_pars['theta'] = 0.
+    moire_pars = {
+        'place':place_interlayer,
+        'theta':fs.thetas,
+        }
 elif type_computation == 'DB':          #Debug mode, to see which values are better for the minimization
     ggg = [100,200,300,400,500]
     g_pts = len(fs.gammas['MPs'])
@@ -45,20 +45,22 @@ elif type_computation == 'DB':          #Debug mode, to see which values are bet
     rho = 1.4
     anisotropy = 0.0709
     gamma = fs.gammas['MPs'][ind % g_pts]
-    moire_type,moire_pars = fs.get_moire_pars(0)        #3% biaxial
+    moire_type = 'biaxial'
+    moire_pars = {
+        'eps':fs.epss[ind_moire],       
+        'theta':fs.thetas,
+        }
 
 phys_args = (gamma,rho,anisotropy)
 
-print("Computing with Moire with ",moire_type," strain of ",moire_pars[moire_type]," and rotation ",moire_pars['theta'])
+print("Computing Moire ",moire_type," with parameters ",moire_pars)
 print("Physical parameters are gamma: ","{:.4f}".format(gamma),", rho: ","{:.4f}".format(rho),", anisotropy: ","{:.4f}".format(anisotropy))
 
-resc = True
 #Check if Phi already computed
-Phi_fn = fs.get_Phi_fn(moire_type,moire_pars,machine,rescaled=resc)
+Phi_fn = fs.get_Phi_fn(moire_type,moire_pars,machine,rescaled)
 if not Path(Phi_fn).is_file():
     print("Computing interlayer coupling...")
-    args_Moire = (machine=='loc',moire_type,moire_pars)
-    fs.Moire(args_Moire,resc)
+    fs.Moire(moire_type,moire_pars,machine,rescaled)
 #Try a couple of times to load Phi since sometimes it does not work
 Phi,a1_m,a2_m = fs.load_Moire(Phi_fn,moire_type,moire_pars,machine)
 #######
@@ -67,11 +69,10 @@ gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
 grid_pts = (gridx,gridy)
 
 print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.norm(a2_m))
-print("Relative angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m))))
-print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
+print("Relative angle (deg): ","{:.2f}".format(180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m)))))
 print("Grid size: ",gridx,'x',gridy)
 if moire_type == 'const':
-    print(Phi.sum()/Phi.shape[0]/Phi.shape[1])
+    print("Constant interlayer: ","{:.5f}".format(Phi.sum()/Phi.shape[0]/Phi.shape[1]))
 
 if 0 and machine =='loc':
     exit()
@@ -95,7 +96,7 @@ if not Path(solution_fn).is_file():
             'type_comp':        type_computation,
             }
     phi = fs.compute_solution(args_minimization)
-    if not machine == 'loc':
+    if 1:#not machine == 'loc':
         np.save(solution_fn,phi)
 else:
     print("Already computed")

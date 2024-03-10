@@ -39,13 +39,13 @@ list_ind = {'PD':
             24,25,26,27,34,
             35,36,45],
             
-            'CO':   np.arange(1000),
+            'CO':   np.arange(100),
             }
 
 #Triangular lattice
 a1 = np.array([1,0])
 a2 = np.array([-1/2,np.sqrt(3)/2])
-d = np.array([0,1/np.sqrt(3)])  #vector connecting the two sublattices
+d_vec = np.array([0,1/np.sqrt(3)])  #vector connecting the two sublattices
 b1 = np.array([1,1/np.sqrt(3)])*2*np.pi
 b2 = np.array([0,2/np.sqrt(3)])*2*np.pi
 
@@ -120,8 +120,6 @@ def compute_solution(args_m):
             fs = ((inddd//10)*36+18)/180*np.pi
             fa = ((inddd%10)*36+18)/180*np.pi
             phi = const_in_pt(fs,fa,gx,gy)
-        if 0 and disp:
-            print('fs: ',fs,', fa: ',fa)
         #First energy evaluation
         E = [compute_energy(phi,Phi,args_m['args_phys'],A_M,M_transf), ]
         #Initialize learning rate and minimization loop
@@ -608,7 +606,7 @@ def get_pd_dn(machine):
 
 def get_moire_dn(moire_type,moire_pars,grid_pts,machine):
     gx,gy = grid_pts
-    return get_pd_dn(machine) + moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'_'+"{:.3f}".format(moire_pars['theta'])+'_'+str(gx)+'x'+str(gy)+'/'
+    return get_pd_dn(machine) + moire_type+'_'+moire_pars_fn(moire_pars)+'_'+str(gx)+'x'+str(gy)+'/'
 
 def get_gamma_dn(moire_type,moire_pars,grid_pts,gamma,machine):
     return get_moire_dn(moire_type,moire_pars,grid_pts,machine) + 'gamma_'+"{:.4f}".format(gamma)+'/'
@@ -644,7 +642,7 @@ def get_Phi_dn(machine):
     """
     return get_res_dn(machine) +'Phi_values/'
 
-def get_Phi_fn(moire_type,moire_pars,machine,**kwargs):
+def get_Phi_fn(moire_type,moire_pars,machine,rescaled):
     """Computes the filename of the interlayer coupling.
 
     Parameters
@@ -657,11 +655,8 @@ def get_Phi_fn(moire_type,moire_pars,machine,**kwargs):
     string
         The name of the .npy file containing the interlayer coupling.
     """
-    if 'rescaled' in kwargs.keys():
-        txt_rs = 'rescaled' if kwargs['rescaled'] else 'original'
-    else:
-        txt_rs = 'original'
-    return get_Phi_dn(machine) + 'Phi_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'_'+"{:.3f}".format(moire_pars['theta'])+'_'+txt_rs+'.npy'
+    txt_rs = 'rescaled' if rescaled else 'original'
+    return get_Phi_dn(machine) + 'Phi_'+moire_type+'_'+moire_pars_fn(moire_pars)+'_'+txt_rs+'.npy'
 
 def get_AM_fn(moire_type,moire_pars,machine):
     """Computes the filename of the interlayer coupling.
@@ -676,7 +671,7 @@ def get_AM_fn(moire_type,moire_pars,machine):
     string
         The name of the .npy file containing the interlayer coupling.
     """
-    return get_Phi_dn(machine) + 'AM_'+moire_type+'_'+moire_pars_fn(moire_pars[moire_type])+'_'+"{:.3f}".format(moire_pars['theta'])+'.npy'
+    return get_Phi_dn(machine) + 'AM_'+moire_type+'_'+moire_pars_fn(moire_pars)+'.npy'
 
 def moire_pars_fn(dic):
     """Generates a filename with the parameters formatted accordingly and a given extension.
@@ -760,180 +755,98 @@ def R_z(t):
     R[1,1] = np.cos(t)
     return R
 
-def Moire(args,rescaled):
+def Moire(moire_type,moire_pars,machine,rescaled):
     """The Moire script as a function
     """
-    disp,moire_type,moire_pars = args
     #
-    machine = get_machine(os.getcwd())
+    disp = (machine=='loc')
+    Phi_fn = get_Phi_fn(moire_type,moire_pars,machine,rescaled)
+    AM_fn = get_AM_fn(moire_type,moire_pars,machine)
     xpts = ypts = 200 #if machine == 'loc' else 400
-    if moire_type=='const':
-        moire_type_='biaxial'
-        moire_pars_ = {
-            'biaxial':{
-                'eps':0.05,       
-                },
-            'theta':0.,
-            }
-    moire_potential_fn = get_Phi_fn(moire_type_,moire_pars_,machine)
-    if Path(moire_potential_fn).is_file():
-        J = np.load(moire_potential_fn)
-    else:
-        I = get_dft_data(machine)
-        #Interpolate interlayer DFT data
-        pts = I.shape[0]
-        big_I = extend(I,5)
-        S_array = np.linspace(-2,3,5*pts,endpoint=False)
-        fun_I = RBS(S_array,S_array,big_I)
-        #Lattice-1 and lattice-2
-        l1_t,l2_t,a1_t,a2_t = compute_lattices(moire_type_,moire_pars_)
-        #Chose moire vectors 1 and 2 depending on x component
-        if a1_t[0]>a2_t[0]:
-            a1_m = a1_t
-            a2_m = a2_t
-            l1 = l1_t
-            l2 = l2_t
-        else:
-            a1_m = a2_t
-            a2_m = a1_t
-            l1 = l2_t
-            l2 = l1_t
-        if disp:   #Plot Moirè pattern
-            fig,ax = plt.subplots(figsize=(20,20))
-            ax.set_aspect('equal')
-            #
-            sss = max(np.linalg.norm(a1_m),np.linalg.norm(a2_m))
-            for n in range(2):      #sublattice index
-                for y in range(l1.shape[1]):
-                    ax.scatter(l1[:,y,n,0],l1[:,y,n,1],color='b',s=sss/50)
-                    ax.scatter(l2[:,y,n,0],l2[:,y,n,1],color='r',s=sss/50)
-
-            ax.arrow(0,0,a1_m[0],a1_m[1],color='k',lw=2,head_width=0.5)
-            ax.arrow(0,0,a2_m[0],a2_m[1],color='k',lw=2,head_width=0.5)
-            ax.axis('off')
-            plt.show()
-    #        exit()
-
-        #Compute interlayer energy by evaluating the local stacking of the two layers
-        J = np.zeros((xpts,ypts))
-        X = np.linspace(0,1,xpts,endpoint=False)
-        Y = np.linspace(0,1,ypts,endpoint=False)
-        for i in range(xpts):
-            for j in range(ypts):     #Cycle over all considered points in Moirè unit cell
-                site = X[i]*a1_m + Y[j]*a2_m    #x and y components of consider point
-                x1,y1,UC = find_closest(l1,site,'nan')
-                x2,y2,UC = find_closest(l2,site,UC)
-                if i==j and 0:   #plot two lattices, chosen site and coloured closest sites
-                    plt.figure(figsize=(10,10))
-                    plt.gca().set_aspect('equal')
-                    for n in range(2):  #lattices
-                        for y in range(l1.shape[1]):
-                            plt.scatter(l1[:,y,n,0],l1[:,y,n,1],color='b',s=3)
-                            plt.scatter(l2[:,y,n,0],l2[:,y,n,1],color='r',s=3)
-                    plt.scatter(l1[x1,y1,UC,0],l1[x1,y1,UC,1],color='g',s=15)
-                    plt.scatter(l2[x2,y2,UC,0],l2[x2,y2,UC,1],color='m',s=15)
-                    plt.scatter(site[0],site[1],color='b',s=20)
-                    plt.show()
-                #Find displacement
-                displacement = l1[x1,y1,UC] - l2[x2,y2,UC]
-                S1 = displacement[0]+displacement[1]/np.sqrt(3)
-                S2 = 2*displacement[1]/np.sqrt(3)
-                #Find value of I[d] and assign it to J[x]
-                J[i,j] = fun_I(S1,S2)
-        #
-        if disp:
-            title = ""#"Strain type : "+moire_type+" with (eps,ni,phi)=("+"{:.2f}".format(moire_pars[moire_type]['eps'])+','+"{:.2f}".format(moire_pars[moire_type]['ni'])+','+"{:.2f}".format(moire_pars[moire_type]['phi'])+'), and theta='+"{:.3f}".format(moire_pars['theta'])
-            plot_Phi(J,a1_m,a2_m,title)
-        #Save
-        res_dn = get_res_dn(machine)
-        if not Path(res_dn).is_dir():
-            os.system('mkdir '+res_dn)
-        Phi_dn = get_Phi_dn(machine)
-        if not Path(Phi_dn).is_dir():
-            os.system('mkdir '+Phi_dn)
-        np.save(moire_potential_fn,J)
-        np.save(get_AM_fn(moire_type_,moire_pars_,machine),np.array([a1_m,a2_m]))
-    #Rescale DFT data according to experiments
-    if 0:
-        h_ort_M = 0.55
-        h_ort_AA = 0.2
-
-        pts = J.shape[0]
-        big_Phi = extend(J,5)
-        S_array = np.linspace(-2,3,5*pts,endpoint=False)
-        fun_Phi = RBS(S_array,S_array,big_Phi)
-        J_M = float(fun_Phi(1/3,0))
-        J_AA = J_M*h_ort_AA/h_ort_M
-        print(J_AA,J_M,fun_Phi(0,0))
-        exit()
-
-    new_Phi_fn = get_Phi_fn(moire_type_,moire_pars_,machine,rescaled=True)
-    new_Phi,JM,JAA = rescale_Phi(J)
-    np.save(new_Phi_fn,new_Phi)
-    #Case of constant interlayer -> AA and M case
-    if moire_type == 'const':
-        fin_Phi_fn = get_Phi_fn(moire_type,moire_pars,machine,rescaled=rescaled)
-        if moire_pars[moire_type]['place'] == 'M':
-            const_value = JM
-        else:
-            const_value = JAA
-        J = np.ones((xpts,ypts))*const_value
-        np.save(fin_Phi_fn,J)
+    I = get_dft_data(machine,rescaled)
+    #Interpolate interlayer DFT data
+    pts = I.shape[0]
+    big_I = extend(I,5)
+    S_array = np.linspace(-2,3,5*pts,endpoint=False)
+    fun_I = RBS(S_array,S_array,big_I)
+    if moire_type=='const': #Sufficient to save just the values
+        val = float(fun_I(0,0)) if moire_pars['place']=='AA' else float(fun_I(1/3,0))
+        np.save(Phi_fn,np.ones(I.shape)*val)
         return 0
+    #Lattice-1 and lattice-2
+    l1_t,l2_t,a1_t,a2_t = compute_lattices(moire_type,moire_pars)
+    #Chose moire vectors 1 and 2 depending on x component
+    if a1_t[0]>a2_t[0]:
+        a1_m = a1_t
+        a2_m = a2_t
+        l1 = l1_t
+        l2 = l2_t
+    else:
+        a1_m = a2_t
+        a2_m = a1_t
+        l1 = l2_t
+        l2 = l1_t
+    np.save(AM_fn,np.array([a1_m,a2_m]))
+    if moire_type=='biaxial':
+        #Biaxial is actially the same as original interlayer coupling, with different moire vectors
+        np.save(Phi_fn,I)
+        return 0
+    if disp:   #Plot Moirè pattern
+        fig,ax = plt.subplots(figsize=(20,20))
+        ax.set_aspect('equal')
+        #
+        sss = max(np.linalg.norm(a1_m),np.linalg.norm(a2_m))
+        for n in range(2):      #sublattice index
+            for y in range(l1.shape[1]):
+                ax.scatter(l1[:,y,n,0],l1[:,y,n,1],color='b',s=sss/50)
+                ax.scatter(l2[:,y,n,0],l2[:,y,n,1],color='r',s=sss/50)
 
-def rescale_Phi(Phi):
-    print("Rescaling Phi... ")
-    h_ort_M = 0.55
-    h_ort_AA = 0.2
-
-    pts = Phi.shape[0]
-    big_Phi = extend(Phi,5)
-    S_array = np.linspace(-2,3,5*pts,endpoint=False)
-    fun_Phi = RBS(S_array,S_array,big_Phi)
-    J_M = float(fun_Phi(1/3,0))
-    J_AA = J_M*h_ort_AA/h_ort_M
-    if 0:
-        print(J_AA,J_M,fun_Phi(0,0))
-        exit()
-    
-    fft = np.fft.fft2(Phi)
-    M,N = fft.shape
+        ax.arrow(0,0,a1_m[0],a1_m[1],color='k',lw=2,head_width=0.5)
+        ax.arrow(0,0,a2_m[0],a2_m[1],color='k',lw=2,head_width=0.5)
+        ax.axis('off')
+        plt.show()
+    #Compute interlayer energy by evaluating the local stacking of the two layers
+    J = np.zeros((xpts,ypts))
+    X = np.linspace(0,1,xpts,endpoint=False)
+    Y = np.linspace(0,1,ypts,endpoint=False)
+    for i in range(xpts):
+        for j in range(ypts):     #Cycle over all considered points in Moirè unit cell
+            site = X[i]*a1_m + Y[j]*a2_m    #x and y components of consider point
+            x1,y1,UC = find_closest(l1,site,'nan')
+            x2,y2,UC = find_closest(l2,site,UC)
+            if i==j and 0:   #plot two lattices, chosen site and coloured closest sites
+                plt.figure(figsize=(10,10))
+                plt.gca().set_aspect('equal')
+                for n in range(2):  #lattices
+                    for y in range(l1.shape[1]):
+                        plt.scatter(l1[:,y,n,0],l1[:,y,n,1],color='b',s=3)
+                        plt.scatter(l2[:,y,n,0],l2[:,y,n,1],color='r',s=3)
+                plt.scatter(l1[x1,y1,UC,0],l1[x1,y1,UC,1],color='g',s=15)
+                plt.scatter(l2[x2,y2,UC,0],l2[x2,y2,UC,1],color='m',s=15)
+                plt.scatter(site[0],site[1],color='b',s=20)
+                plt.show()
+            #Find displacement
+            displacement = l1[x1,y1,UC] - l2[x2,y2,UC]
+            S1 = displacement[0]+displacement[1]/np.sqrt(3)
+            S2 = 2*displacement[1]/np.sqrt(3)
+            #Find value of I[d] and assign it to J[x]
+            J[i,j] = fun_I(S1,S2)
     #
-    fac1 = 0.8
-    fac2 = 2.08081
-    #
-    J0 = fft[0,0]
-    alpha = (J_AA*M*N-J0)/(6*(fac1-fac2+1))
-    const = (J0-M*N*J_M)/alpha/np.sqrt(3)
-    XX = np.linspace(0,np.pi,100)
-    beta = XX[np.argmin(np.abs(np.sqrt(3)*np.cos(XX)-np.sin(XX)-const))]
-    J2 = alpha*np.exp(1j*beta)
-    J1 = alpha*fac1
-    J3 = -alpha*fac2
-    #
-    new_res = np.copy(fft)#np.zeros((M,N),dtype=complex)
-    new_res[0,0] = J0
-    new_res[1,0] = new_res[1,-1] = new_res[0,-1] = new_res[-1,0] = new_res[-1,1] = new_res[0,1] = J1 
-    new_res[1,1] = new_res[1,-2] = new_res[2,-1] = new_res[-1,-1] = new_res[-1,2] = new_res[-2,1] = J2
-    new_res[2,0] = new_res[-2,0] = new_res[2,-2] = new_res[-2,2] = new_res[0,-2] = new_res[0,2] = J3
-    #go back
-    new_Phi = np.real(np.fft.ifft2(new_res))
-    #Evaluate M and AA
-    pts = new_Phi.shape[0]
-    big_Phi = extend(new_Phi,5)
-    S_array = np.linspace(-2,3,5*pts,endpoint=False)
-    fun_Phi = RBS(S_array,S_array,big_Phi)
-    J_Mn = float(fun_Phi(1/3,0))
-    J_AAn = float(fun_Phi(0,0))
+    if disp:
+        title = ""#"Strain type : "+moire_type+" with (eps,ni,phi)=("+"{:.2f}".format(moire_pars[moire_type]['eps'])+','+"{:.2f}".format(moire_pars[moire_type]['ni'])+','+"{:.2f}".format(moire_pars[moire_type]['phi'])+'), and theta='+"{:.3f}".format(moire_pars['theta'])
+        plot_Phi(J,a1_m,a2_m,title)
+    np.save(Phi_fn,J)
 
-    return new_Phi,J_Mn,J_AAn
-
-
-def get_dft_data(machine):
-    data_fn = get_home_dn(machine)+"Data/CrBr3_interlayer.npy"
+def get_dft_data(machine,rescaled):
+    txt_rs = 'rescaled' if rescaled else 'original'
+    data_fn = get_home_dn(machine)+"Data/CrBr3_interlayer_"+txt_rs+".npy"
     if Path(data_fn).is_file():
         return np.load(data_fn)
-    #Compute it
+    if rescaled:
+        print("Need first to compute the rescaled version")
+        exit()
+    #Compute original one
+    data_fn = get_home_dn(machine)+"Data/CrBr3_interlayer_original.npy"
     data_marco_fn = get_home_dn(machine)+"Data/CrBr3_scan.txt"
     with open(data_marco_fn,'r') as f:
         lines = f.readlines()
@@ -985,21 +898,21 @@ def compute_lattices(moire_type,moire_pars):
     """
     #Strain tensor
     if moire_type=='general':
-        e_xx = moire_pars['general']['e_xx']
-        e_yy = moire_pars['general']['e_yy']
-        e_xy = moire_pars['general']['e_xy']
+        e_xx = moire_pars['e_xx']
+        e_yy = moire_pars['e_yy']
+        e_xy = moire_pars['e_xy']
         strain_tensor = np.array([[e_xx,e_xy],[e_xy,e_yy]])
     elif moire_type=='uniaxial':
-        eps = moire_pars['uniaxial']['eps']
-        ni = moire_pars['uniaxial']['ni']
-        phi = moire_pars['uniaxial']['phi']
+        eps = moire_pars['eps']
+        ni = moire_pars['ni']
+        phi = moire_pars['phi']
         strain_tensor = np.matmul(np.matmul(R_z(-phi).T,np.array([[eps,0],[0,-ni*eps]])),R_z(-phi))
     elif moire_type=='biaxial':
-        eps = moire_pars['biaxial']['eps']
+        eps = moire_pars['eps']
         strain_tensor = np.identity(2)*eps
     elif moire_type=='shear':
-        e_xy = moire_pars['shear']['e_xy']
-        phi = moire_pars['shear']['phi']
+        e_xy = moire_pars['e_xy']
+        phi = moire_pars['phi']
         strain_tensor = np.matmul(np.matmul(R_z(-phi).T,np.array([[0,e_xy],[e_xy,0]])),R_z(-phi))
     #
     theta = moire_pars['theta']
@@ -1027,10 +940,10 @@ def compute_lattices(moire_type,moire_pars):
     l2 = np.zeros((xxx,yyy,2,2))
     a1_1 = np.matmul(np.identity(2)+strain_tensor/2,np.matmul(R_z(theta/2),a1)) #vector 1 of lattice 1
     a2_1 = np.matmul(np.identity(2)+strain_tensor/2,np.matmul(R_z(theta/2),a2)) #vector 2 of lattice 1
-    offset_sublattice_1 = np.matmul(np.identity(2)+strain_tensor/2,np.matmul(R_z(theta/2),d))
+    offset_sublattice_1 = np.matmul(np.identity(2)+strain_tensor/2,np.matmul(R_z(theta/2),d_vec))
     a1_2 = np.matmul(np.identity(2)-strain_tensor/2,np.matmul(R_z(-theta/2),a1)) #vector 1 of lattice 1
     a2_2 = np.matmul(np.identity(2)-strain_tensor/2,np.matmul(R_z(-theta/2),a2)) #vector 2 of lattice 1
-    offset_sublattice_2 = np.matmul(np.identity(2)-strain_tensor/2,np.matmul(R_z(-theta/2),d))
+    offset_sublattice_2 = np.matmul(np.identity(2)-strain_tensor/2,np.matmul(R_z(-theta/2),d_vec))
     for i in range(xxx):
         for j in range(yyy):
             l1[i,j,0] = (i-n_x//2*A_M)*a1_1+(j-n_y//2*A_M)*a2_1
@@ -1088,43 +1001,6 @@ def find_closest(lattice,site,UC_):
         exit()
     return argx,argy,UC
 
-
-def get_MP_pars(ind,type_gamma):
-    input_types = ['DFT','exp']
-    moire_types = ['uniaxial','biaxial','shear']
-    #
-    lep = len(epss)
-    lni = len(nis)
-    lga = len(gammas[type_gamma])
-    #
-    iit = ind//(lep*lni*lga)
-    iep = (ind%(lep*lni*lga)) // (lni*lga)
-    ini = ((ind%(lep*lni*lga)) % (lni*lga)) // lga
-    iga = ((ind%(lep*lni*lga)) % (lni*lga)) % lga
-    #
-    moire_pars = {
-        'general':{
-            'e_xx':0.1,
-            'e_yy':0.3,
-            'e_xy':0.15,
-            },
-        'uniaxial':{
-            'eps':epss[iep],
-            'ni':nis[ini],
-            'phi':np.pi/180*0,
-            },
-        'biaxial':{
-            'eps':0.03,
-            },
-        'shear':{
-            'e_xy':0.05,
-            'phi':0.,
-            },
-        'theta':thetas,
-        }
-    imt = 1
-    return (input_types[iit],moire_types[imt],moire_pars,gammas[type_gamma][iga])
-
 def check_directory(moire_type,moire_pars,grid_pts,gamma,machine):
     #Phase diagrams dir
     pd_dn = get_pd_dn(machine)
@@ -1169,41 +1045,6 @@ def compute_magnetization(phi):
     total_magnetization = np.sum(np.cos(phi_1))/gx/gy + np.sum(np.cos(phi_2))/gx/gy
     return abs(total_magnetization)
 
-def compute_MPs(moire_type,moire_pars,grid_pts,rho_str,ani_str,machine):
-    """Compute the magnetization plot.
-
-    """
-    #Open and read h5py File
-    hdf5_fn = get_hdf5_fn(moire_type,moire_pars,grid_pts,machine)
-    data = []
-    n = 0
-    with h5py.File(hdf5_fn,'r') as f:
-        for k in f.keys():
-            if not k[:5] == 'gamma':
-                continue
-                gamma_ = k[6:]           #6 fixed by len(gamma_)
-                for p in f[k].keys():
-                    rho_ = p[:p.index('_')]
-                    ani_ = p[p.index('_')+1:]
-                    if rho_ == rho_str and ani_ == ani_str:
-                        data.append([float(gamma_),compute_magnetization(f[k][p])])
-                    n += 1
-    if n == 0:  #No data here for some reason
-        print("No data in ",hdf5_fn)
-        return 0
-    M = np.array(data)
-    fig = plt.figure(figsize=(20,20))
-    s_ = 20
-    plt.plot(M[:,0],M[:,1],'r*-')
-    plt.xlabel(r'$h_\bot(T)$',size=s_)
-    plt.ylabel(r'$M$',size=s_)
-    plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" theta: "+"{:.3f}".format(moire_pars['theta'])+" rho = "+rho_str+", d = "+ani_str+", and precision pars: "+str(precision_pars[0])+'x'+str(precision_pars[1])+'_'+str(precision_pars[2]))
-    if 1 and machine == 'loc':
-        plt.show()
-        exit()
-    plt.savefig(get_fig_mp_fn(moire_type,moire_pars,grid_pts,rho_str,ani_str,machine))
-    plt.close()
-
 def compute_compare_MPs(list_pars,figname,machine,ind=0):
     """Compute the magnetization plots.
 
@@ -1243,87 +1084,6 @@ def compute_compare_MPs(list_pars,figname,machine,ind=0):
         plt.show()
     else:
         plt.savefig(figname)
-
-def compute_compare_Es(list_pars,figname,machine):
-    """Compute the magnetization plots.
-
-    """
-    fig = plt.figure(figsize=(20,20))
-    s_ = 20
-    for iii in range(len(list_pars)):
-        rho_str,ani_str,grid_pts,moire_type,moire_pars,txt_name = list_pars[iii]
-        hdf5_E_fn = get_hdf5_E_fn(moire_type,moire_pars,grid_pts,machine)
-        #Open and read h5py File
-        data = []
-        n = 0
-        with h5py.File(hdf5_fn,'r') as f:
-            for k in f.keys():
-                if not k[:5] == 'gamma':
-                    continue
-                gamma_ = k[6:]           #6 fixed by len(gamma_)
-                for p in f[k].keys():
-                    rho_ = p[:p.index('_')]
-                    ani_ = p[p.index('_')+1:]
-                    if rho_ == rho_str and ani_ == ani_str:
-                        data.append([float(gamma_),f[k][p][()]])
-                        n += 1
-        if n == 0:  #No data here for some reason
-            print("No data in ",hdf5_mag_fn," for pars ",rho_str," and ",ani_str)
-            continue
-        M = np.array(data)
-        plt.plot(M[:,0],M[:,1],'-',marker='*',label=txt_name)
-    plt.xlabel(r'$h_\bot(T)$',size=s_)
-    plt.ylabel(r'$M$',size=s_)
-    plt.legend(fontsize=s_)
-    if machine == 'loc':
-        plt.show()
-    else:
-        plt.savefig(figname)
-
-def compute_order(phi,Phi,phys_args,A_M,M_transf):
-    phi_A,phi_B = phi
-    gx,gy = phi_A.shape
-    E = compute_energy(phi,Phi,phys_args,A_M,M_transf,rg)
-    print("Function not ready for 12 type of solution")
-    pass
-
-def compute_PDs(moire_type,moire_pars,grid_pts,gamma_str,machine):
-    """Compute the magnetization plot.
-
-    """
-    gx,gy = grid_pts
-    hdf5_fn = get_hdf5_fn(moire_type,moire_pars,grid_pts,machine)
-    Phi_fn = get_Phi_fn(moire_type,moire_pars,machine)
-    Phi = reshape_Phi(np.load(get_Phi_fn(moire_type,moire_pars,machine)),gx,gy)
-    A_M = np.load(get_AM_fn(moire_type,moire_pars,machine))
-    M_transf = get_M_transf(A_M[0],A_M[1])
-    #Open and read h5py File
-    data = {}
-    with h5py.File(hdf5_fn,'r') as f:
-        for k in f.keys():
-            gamma_ = k[6:]           #6 fixed by len(gamma_)
-            if gamma_ == gamma_str:
-                if len(f[k].keys()) == 0:   #No data here
-                    continue
-                data[gamma_] = np.zeros((len(f[k].keys()),3))
-                for i,p in enumerate(f[k].keys()):
-                    rho_ = float(p[:p.index('_')])
-                    ani_ = float(p[p.index('_')+1:])
-                    order = compute_order(f[k][p],Phi,float(gamma_),rho_,ani_,A_M,M_transf)
-                    data[gamma_][i] = np.array([rho_,ani_,order])
-    colors = np.array(['k','y','b','m','r'])
-    for gamma in data.keys():
-        ccc = np.asarray(data[gamma][:,2],dtype=int)
-        plt.figure()
-        plt.scatter(data[gamma][:,0],data[gamma][:,1],color=colors[ccc],marker='o')
-        plt.xlabel('rho')
-        plt.ylabel('anisotropy')
-        #plt.title(moire_type + " strain, "+moire_pars_fn(moire_pars[moire_type])+" theta: "+"{:.3f}".format(moire_pars['theta'])+", gamma = "+gamma+", and precision pars: "+str(precision_pars[0])+'x'+str(precision_pars[1])+'_'+"{:.4f}".format(precision_pars[2])+'_'+str(precision_pars[3]))
-        if machine == 'loc':
-            plt.show()
-            exit()
-        plt.savefig(get_fig_pd_fn(moire_type,moire_pars,grid_pts,gamma,machine))
-        plt.close()
 
 def load_Moire(Phi_fn,moire_type,moire_pars,machine):
     AM_fn = get_AM_fn(moire_type,moire_pars,machine)

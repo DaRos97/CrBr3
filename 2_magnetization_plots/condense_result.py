@@ -19,23 +19,19 @@ ind = int(sys.argv[1])      #one index every 225 for 15x15 PD -> like this sys.a
 if type_computation == 'PD':
     moire_type = 'biaxial'
     moire_pars = {
-        'biaxial':{
-            'eps':fs.epss[ind],       
-            },
+        'eps':fs.epss[ind_moire],       
         'theta':fs.thetas,
         }
 elif type_computation == 'CO':
-    rho = 1000
-    ind_a = ind // (2)
-    ind_l = ind % (2)
-    anisotropy = fs.anis[ind_a]
+    rho = 0
     #Two cases: AA and M
     list_interlayer = ['AA','M']
-    place_interlayer = list_interlayer[ind_l]
+    place_interlayer = list_interlayer[ind]
     moire_type = 'const'
-    moire_pars = {}
-    moire_pars[moire_type] = {'place':place_interlayer,}
-    moire_pars['theta'] = 0.
+    moire_pars = {
+        'place':place_interlayer,
+        'theta':fs.thetas,
+        }
 elif type_computation == 'DB':
     ggg = [100,200,300,400,500]
     avav = [0,1,2,3,4]
@@ -51,10 +47,9 @@ A_M = (a1_m,a2_m)
 gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
 grid_pts = (gridx,gridy)
 Phi = fs.reshape_Phi(Phi,gridx,gridy)
-print("Condensing PD for Moire with ",moire_type," strain of args ",moire_pars[moire_type])
+print("Condensing PD for Moire with ",moire_type," strain of args ",moire_pars)
 print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.norm(a2_m))
-print("Relative angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m))))
-print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
+print("Relative angle (deg): ","{:.2f}".format(180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m)))))
 print("Grid size: ",gridx,'x',gridy)
 #
 hdf5_par_fn = fs.get_hdf5_par_fn(moire_type,moire_pars,grid_pts,machine)
