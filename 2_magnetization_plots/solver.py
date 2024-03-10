@@ -5,7 +5,7 @@ from pathlib import Path
 
 ind = int(sys.argv[1])
 ##############################################################################
-max_grid = 100
+max_grid = 200
 ##############################################################################
 machine = fs.get_machine(os.getcwd())
 rescaled = True
@@ -17,6 +17,13 @@ if type_computation == 'PD':            #Phase Diagram type of physical paramete
     moire_type = 'biaxial'
     moire_pars = {
         'eps':fs.epss[ind_moire],       
+        'theta':fs.thetas,
+        }
+    moire_type = 'uniaxial'
+    moire_pars = {
+        'eps':fs.epss[ind_moire],
+        'ni':0,
+        'phi':0,
         'theta':fs.thetas,
         }
     l_a = len(fs.anis)

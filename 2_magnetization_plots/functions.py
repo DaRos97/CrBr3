@@ -21,7 +21,7 @@ gammas = {  'MPs':np.linspace(0,2,100,endpoint=False),
 conversion_factor = 0.607 
 Spin = 3/2
 #
-rhos = [0.1,1.4,10,100]
+rhos = [0.1,1.4,5,10,100]
 anis = [0.01,0.03,0.0709,0.11,0.15]
 
 epss = [0.05,0.04,0.03,0.02,0.01,0.005]
@@ -918,8 +918,14 @@ def compute_lattices(moire_type,moire_pars):
     theta = moire_pars['theta']
     #Moire lattice vectors
     T = np.matmul(np.identity(2)+strain_tensor/2,R_z(-theta/2)) - np.matmul(np.identity(2)-strain_tensor/2,R_z(theta/2))
-    a1_m = np.matmul(np.linalg.inv(T).T,a1)  #Moire reciprocal lattice vector 1
-    a2_m = np.matmul(np.linalg.inv(T).T,a2)
+    try:
+        inv_T = np.linalg.inv(T)
+        a1_m = np.matmul(np.linalg.inv(T).T,a1)  #Moire real space lattice vector 1
+        a2_m = np.matmul(np.linalg.inv(T).T,a2)
+    except:
+        a1_m = a1/T[0,0]
+        a2_m = a2
+        exit()
     n1_m = np.linalg.norm(a1_m)
     n2_m = np.linalg.norm(a2_m)
     Np = np.linalg.norm(a1_m+a2_m)

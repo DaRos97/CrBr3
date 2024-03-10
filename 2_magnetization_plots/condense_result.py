@@ -9,7 +9,7 @@ Remember to adjust max_gridsze.
 For each moire dir create a new hdf5, which will contain gamma as dir and (rho,ani) as dataset.
 """
 
-max_grid = 100
+max_grid = 200
 
 machine = fs.get_machine(os.getcwd())
 
@@ -19,7 +19,14 @@ ind = int(sys.argv[1])      #one index every 225 for 15x15 PD -> like this sys.a
 if type_computation == 'PD':
     moire_type = 'biaxial'
     moire_pars = {
-        'eps':fs.epss[ind_moire],       
+        'eps':fs.epss[ind],       
+        'theta':fs.thetas,
+        }
+    moire_type = 'uniaxial'
+    moire_pars = {
+        'eps':fs.epss[ind],
+        'ni':0,
+        'phi':0,
         'theta':fs.thetas,
         }
 elif type_computation == 'CO':
