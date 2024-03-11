@@ -326,11 +326,11 @@ def plot_magnetization(phi,Phi,A_M,gamma,**kwargs):
     l = np.linalg.norm(a1_m)/40 if np.linalg.norm(a1_m)>np.linalg.norm(a2_m) else np.linalg.norm(a2_m)/40#0.02       #length of arrow
     hw = l/2#0.01       #arrow head width
     hl = l/2#0.01       #arrow head length
-    facx = gx//20     #plot 1 spin every "fac" of grid
+    facx = gx//100     #plot 1 spin every "fac" of grid
     facy = gy//20 #if gy>=10 else 1     #plot 1 spin every "fac" of grid
     phi_ = [phi_1,phi_2]
     #Figure
-    fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(18,7))
+    fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(30,10))
     for ind,ax in enumerate([ax1,ax2]):
         ax.axis('off')
         ax.set_aspect(1.)
@@ -1055,6 +1055,28 @@ def compute_magnetization(phi):
     #Single layer phases
     phi_1,phi_2 = phi
     total_magnetization = np.sum(np.cos(phi_1))/gx/gy + np.sum(np.cos(phi_2))/gx/gy
+    return abs(total_magnetization)
+
+def compute_magnetization_x(phi):
+    """Computes the total magnetization of the 2 layers (max is 2), given phi which contains symmetric and antisymmetric phases.
+
+
+    Parameters
+    ----------
+    phi: 2-tuple
+        Symmetric and Anti-Symmetric phases.
+
+    Returns
+    -------
+    float
+        Total magnetization along z of the spin configuration.
+    """
+    gx,gy = phi[0].shape
+    if phi.shape[0]==1:
+        return np.nan
+    #Single layer phases
+    phi_1,phi_2 = phi
+    total_magnetization = np.sum(np.sin(phi_1))/gx/gy + np.sum(np.sin(phi_2))/gx/gy
     return abs(total_magnetization)
 
 def compute_compare_MPs(list_pars,figname,machine,ind=0):
