@@ -6,45 +6,53 @@ from pathlib import Path
 machine = fs.get_machine(os.getcwd())
 
 ###########################
-max_grid = 100
+rescaled = True
 ###########################
 
-type_computation = 'PD' if len(sys.argv)<3 else sys.argv[2]
+type_computation = 'PDu' #if len(sys.argv)<3 else sys.argv[2]
 
 pd_size = len(fs.rhos)*len(fs.anis)
 
-ind = int(sys.argv[1])
+i_m = int(sys.argv[1])
+ind = int(sys.argv[2])
 
-if type_computation == 'PD':            #Phase Diagram type of physical parameters
-    moire_type = 'biaxial'
-    moire_pars = {
-        'biaxial':{
-            'eps':fs.epss[0],
-            },
-        'theta':fs.thetas,
-        }
+if type_computation[:2]=='PD':
+    if type_computation == 'PDb':            #Phase Diagram type of physical parameters
+        max_grid = 100
+        moire_pars = {
+            'type':'biaxial',
+            'eps':fs.epss[i_m],       
+            'theta':fs.thetas,
+            }
+    elif type_computation == 'PDu':            #Phase Diagram type of physical parameters
+        max_grid = 300
+        moire_pars = {
+            'type':'uniaxial',
+            'eps':fs.epss[i_m],
+            'ni':0,
+            'phi':0,
+            'theta':fs.thetas,
+            }
     l_a = len(fs.anis)
     l_g = len(fs.gammas['MPs'])
     rho = fs.rhos[ind // (l_a*l_g)]
     anisotropy = fs.anis[ind % (l_a*l_g) // l_g]
     gamma = fs.gammas['MPs'][ind % (l_a*l_g) % l_g]
-elif type_computation == 'MP':
-    input_type,moire_type,moire_pars,gamma = fs.get_MP_pars(int(sys.argv[1]),'MPs')
-    rho = fs.rho_phys[input_type]
-    anisotropy = fs.d_phys[input_type]
-    print("Input type: ",input_type)
 elif type_computation == 'CO':
-    input_type = 'DFT'
-    rho = fs.rho_phys[input_type]
-    anisotropy = fs.d_phys[input_type]
+    max_grid = 100
+    rho = 0
+    ind_a = ind // (2*len(fs.gammas['M']))
+    ind_l = ind % (2*len(fs.gammas['M']))
+    anisotropy = fs.anis[ind_a]
     #Two cases: AA and M
     list_interlayer = ['AA','M']
-    place_interlayer = list_interlayer[int(sys.argv[1])//len(fs.gammas['M'])]
-    gamma = fs.gammas[place_interlayer][int(sys.argv[1])%len(fs.gammas['M'])]
-    moire_type = 'const'
-    moire_pars = {}
-    moire_pars[moire_type] = {'place':place_interlayer,}
-    moire_pars['theta'] = 0.
+    place_interlayer = list_interlayer[ind_l//len(fs.gammas['M'])]
+    gamma = fs.gammas[place_interlayer][ind_l%len(fs.gammas['M'])]
+    moire_pars = {
+        'type':'const',
+        'place':place_interlayer,
+        'theta':fs.thetas,
+        }
 elif type_computation == 'DB':
     ggg = [100,200,300,400,500]
     avav = [0,1,2,3,4]
@@ -56,31 +64,28 @@ elif type_computation == 'DB':
     gamma = fs.gammas['MPs'][ind % (5*g_pts) %g_pts]
     moire_type,moire_pars = fs.get_moire_pars(0)
 
-print("Computing with Moire with ",moire_type," strain of ",moire_pars[moire_type])
+print("Computing with Moire with ",moire_pars)
 print("Physical parameters are gamma: ","{:.4f}".format(gamma),", rho: ","{:.4f}".format(rho),", anisotropy: ","{:.4f}".format(anisotropy))
 
 #Check if Phi already computed
-Phi_fn = fs.get_Phi_fn(moire_type,moire_pars,machine)
+Phi_fn = fs.get_Phi_fn(moire_pars,machine,rescaled)
 if not Path(Phi_fn).is_file():
     print("Computing interlayer coupling...")
-    args_Moire = (machine=='loc',moire_type,moire_pars)
-    fs.Moire(args_Moire)
+    fs.Moire(moire_pars,machine,rescaled)
 
-Phi = np.load(Phi_fn)
-a1_m,a2_m = np.load(fs.get_AM_fn(moire_type,moire_pars,machine))
+Phi,a1_m,a2_m = fs.load_Moire(Phi_fn,moire_pars,machine)
 gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
 grid_pts = (gridx,gridy)
 
 print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.norm(a2_m))
-print("Relative angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m))))
-print("Constant part of interlayer potential: ",Phi.sum()/Phi.shape[0]/Phi.shape[1]," meV")
+print("Relative angle (deg): ","{:.2f}".format(180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m)))))
 print("Grid size: ",gridx,'x',gridy)
 
 #Compute Phi over new grid parameters
 Phi = fs.reshape_Phi(Phi,gridx,gridy)
 
 #Extract solution
-hdf5_fn = fs.get_hdf5_fn(moire_type,moire_pars,grid_pts,machine)
+hdf5_fn = fs.get_hdf5_fn(moire_pars,grid_pts,machine)
 
 phys_args = (gamma,rho,anisotropy)
 gamma_str = "{:.4f}".format(gamma)
@@ -96,13 +101,14 @@ with h5py.File(hdf5_fn,'r') as f:
                 if rho_==rho_str and ani_==ani_str:
                     solution = np.copy(f[k][p])
                     break
-mag = fs.compute_magnetization(solution)
-print("Magnetization: ",mag)
-energy = fs.compute_energy(solution,Phi,phys_args,(a1_m,a2_m),fs.get_M_transf(a1_m,a2_m))
+#mag = fs.compute_magnetization(solution)
+#print("Magnetization: ",mag)
+#energy = fs.compute_energy(solution,Phi,phys_args,(a1_m,a2_m),fs.get_M_transf(a1_m,a2_m))
 
-tt = r'$\gamma$:'+gamma_str+', '+r'$\rho$:'+rho_str+', '+r'$d$:'+ani_str+', $\epsilon$:'+"{:.4f}".format(moire_pars[moire_type]['eps'])
-fn = 'g:'+gamma_str+'_'+'r:'+rho_str+'_'+'d:'+ani_str+'_e:'+"{:.4f}".format(moire_pars[moire_type]['eps'])
-fs.plot_magnetization(solution,Phi,(a1_m,a2_m),gamma,title=tt,save_figname=fn)
+tt = r'$\gamma$:'+gamma_str+', '+r'$\rho$:'+rho_str+', '+r'$d$:'+ani_str+', $\epsilon$:'+"{:.4f}".format(moire_pars['eps'])
+fn = 'g:'+gamma_str+'_'+'r:'+rho_str+'_'+'d:'+ani_str+'_e:'+"{:.4f}".format(moire_pars['eps'])
+
+fs.plot_magnetization(solution,Phi,(a1_m,a2_m),gamma,title=tt,save_figname=fn,machine=machine)
 #fs.plot_phis(solution,(a1_m,a2_m))
 
 

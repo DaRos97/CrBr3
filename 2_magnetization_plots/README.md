@@ -21,27 +21,27 @@ results/phase_diagram_data/moire_specs(type,eps,ni,gx,gy)/gamma/ one directory f
     - PD: (rho,d)=(0.1-1.4-5-10-100,0.03-0.0709-0.11-0.2), g=(0 to 2, 50, in Tesla), grid 400, 50 sols (36+18) eps=0.02     (ind 3) -> many missing
 ## Ygg
     New derivative of order 8
-    - DB: (gg,AV)=(200-300-400-500,0-1-2) at (rho,d)=(1.4-100,0.07), g=(from 0 to 1, 50), biaxial 0.03, 100 sols (36+18)        -> results/
-    - DB: (gg,AV)=(200-300-400-500,0) at (rho,d)=(1.4-100,0.07), g=(from 0 to 1, 50), biaxial 0.03, 5 sols (36+18)              -> Results/
-    Grid 300, new name (no AV), 30 solutions (36+18)
-    - PD: (rho,d)=(0.1-1.4-5-10-50-100,0.01-0.03-0.0709-0.11-0.2), g=(0 to 2, 50, in Tesla), eps=0.03
+    - DB: (gg,AV)=(200-300-400-500,0-1-2) at (rho,d)=(1.4-100,0.07), g=(from 0 to 1, 50), biaxial 0.03, 100 sols (36+18)        -> old/results/
+    - DB: (gg,AV)=(200-300-400-500,0) at (rho,d)=(1.4-100,0.07), g=(from 0 to 1, 50), biaxial 0.03, 5 sols (36+18)              -> old/Results/
+    New name (no AV)
+    - PD: (rho,d)=(0.1-1.4-5-10-50-100,0.01-0.03-0.0709-0.11-0.2), g=(0 to 2, 50, in Tesla), eps=0.03, grid 300 (30 sols)
     ------------------------------------------------------------------------------------------------------------------------
-    - PD: (rho,d)=(0.1-100,0.01-0.15), g=(0 to 2, 50, in Tesla), eps=0.05-0.005, grid=100
+    - PD: (rho,d)=(0.1-100,0.01-0.15), g=(0 to 2, 100, in Tesla), eps=0.05 to 0.005, grid=100 -> results_DFT
     - PD: (rho,d)=(0.1-100,0.01-0.15), g=(0 to 2, 50, in Tesla), eps=0.05-0.005, grid=200
+    Rescaled results:
+    - CO: (rho,d)=(0,0.01-0.03-0.07-0.11-0.15), g=(0 to 0.8, 100), AA and M, grid 100
+    - PD: (rho,d)=(0.1-1.4-5-10-100,0.01-0.03-0.07-0.11-0.15), g=(0 to 2, 100, in Tesla), biaxial eps=0.05-0.04-0.03-0.02-0.01-0.005, grid=100
+    - PD: (rho,d)=(0.1-1.4-5-10-100,0.01-0.03-0.07-0.11-0.15), g=(0 to 2, 100, in Tesla), uniaxial eps=0.05-0.03-0.02, grid=200 -> many missing
 
 # Computing
 ## Bao
 ## Ygg
-    - PD: (rho,d)=(0.1-100,0.01-0.15), g=(0 to 2, 50, in Tesla), eps=0.04-0.03-0.02-0.01, grid=100
+    - PD: (rho,d)=(0.1-1.4-5-10-100,0.01-0.03-0.07-0.11-0.15), g=(0 to 2, 100, in Tesla), uniaxial eps=0.05, grid=300
 
 # To do
-
-# Comments
-If phi_s starts at 0, it stays there for all evolution->we can make it go faster because there is no need to compute dHs.
-
-# Problems
-Derivatives (laplacian in particular) is very messy -> blows up the simulation and increasing the averaging does not seem to help.
-
+Latex: Role of parameters, theoretical explanation and numerics support -> figures
+Rescale interlayer coupling J=J_0+J_1 f(x) -> fix 2 points AA and M by relating them with the orthogonal field
+Uniaxial strain: extreme uniaxial case -> only one direction Moire, passing through M and AA.
 
 
 
