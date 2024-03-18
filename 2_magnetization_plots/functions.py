@@ -8,6 +8,7 @@ s_ = 20
 import random
 import os
 import h5py
+from time import time
 
 #Physical parameters
 rho_phys = {'DFT':1.4,'exp':1.7} #     (meV)      
@@ -25,20 +26,20 @@ rhos = [0.1,1.4,5,10,100]
 anis = [0.01,0.03,0.0709,0.11,0.15]
 
 epss = [0.05,0.04,0.03,0.02,0.01,0.005]
+translations = [0,1/3,0.5]
 #
 nis = [1.,0.5,0.3]
 thetas = np.pi/180*0
 #
-offset_solution = -0.1
 NNNN = 21
 lr_list = np.logspace(-5,1,num=NNNN)
-list_ind = {'PDb':
-            [0,1,2,3,5,
-            6,7,8,9,12,
-            13,16,17,18,23,
-            24,25,26,27,34,
-            35,36,45],
 
+nn_n = 2
+cutoff = 1e-8
+
+list_ind = {'PDb':
+            np.arange(20),
+            
             'PDu':
             [0,1,2,3,5,
             6,7,8,9,12,
@@ -80,6 +81,16 @@ def const_in_pt(fA,fB,gx,gy):
     phi_B = np.ones((gx,gy))*fB
     return np.array([phi_A, phi_B])
 
+def sm(X):
+    rr = 1
+    sm_X = np.zeros(X.shape)
+    for n in range(X.shape[0]):
+        for i in range(-rr,rr+1):
+            for j in range(-rr,rr+1):
+                sm_X[n] += np.roll(np.roll(X[n],i,axis=0),j,axis=1)
+        sm_X[n] /= (1+2*rr)**2
+    return sm_X        
+
 def compute_solution(args_m):
     """Computes the magnetization pattern by performing a gradient descent from random 
     initial points.
@@ -99,6 +110,7 @@ def compute_solution(args_m):
     Returns
     -------
     np.ndarray
+
         Symmetric and antisymmetric phases at each position (grid,grid) of the Moirè unit cell.
     """
     Phi,A_M = args_m['args_moire']
@@ -109,22 +121,28 @@ def compute_solution(args_m):
     #Variables for storing best solution
     min_E = 1e10
     result = np.ones((2,gx,gy))*20
-    initial_index = 0 #if args_m['type_comp']=='CO' else 0
+    initial_index = 1
+    print("gamma: ",args_m['args_phys'])
     for ind_in_pt in range(initial_index,args_m['n_initial_pts']):  #############
-        if 0 and args_m['disp']:
+        t0 = time()
+        if 1 and disp:
             print("Starting minimization step ",str(ind_in_pt))
         #Initial condition
-        if ind_in_pt < 0:
-            phi = custom_in_pt[ind_in_pt+3](Phi,gx,gy)
-        elif args_m['type_comp']=='CO':
-            fs = np.random.rand()*2*np.pi
-            fa = np.random.rand()*2*np.pi
+        if 1:#args_m['args_phys'][0]==0:   #gamma=0
+            if args_m['type_comp']=='CO':
+                fs = np.random.rand()*2*np.pi
+                fa = np.random.rand()*2*np.pi
+            else:
+                inddd = list_ind[args_m['type_comp']][ind_in_pt]
+                fs = ((inddd//10)*36+18)/180*np.pi
+                fa = ((inddd%10)*36+18)/180*np.pi
             phi = const_in_pt(fs,fa,gx,gy)
-        else:
-            inddd = list_ind[args_m['type_comp']][ind_in_pt]
-            fs = ((inddd//10)*36+18)/180*np.pi
-            fa = ((inddd%10)*36+18)/180*np.pi
-            phi = const_in_pt(fs,fa,gx,gy)
+        else:   #Use as initial condition the previous gamma point
+            phys_args = list(args_m['args_phys'])
+            phys_args[0] -= (gammas['MPs'][1]-gammas['MPs'][0])
+            sol_fn = get_sol_fn(args_m['moire_pars'],args_m['grid'],phys_args,args_m['machine'])
+            phi = np.load(sol_fn) 
+            phi += np.random.rand(*phi.shape)*0.1
         #First energy evaluation
         E = [compute_energy(phi,Phi,args_m['args_phys'],A_M,M_transf), ]
         #Initialize learning rate and minimization loop
@@ -133,6 +151,8 @@ def compute_solution(args_m):
         while keep_going:
             #Energy gradients
             dH = grad_H(phi,Phi,args_m['args_phys'],A_M,M_transf)
+            if 0 and disp:
+                plot_phis(dH,A_M,'grad')
             #Compute energy in all points of LR
             list_E = []
             list_phi = []
@@ -148,17 +168,19 @@ def compute_solution(args_m):
             if list_E[amin,1] < E[0]:
                 E.insert(0,list_E[amin,1])
                 phi = np.copy(list_phi[amin])
-                if 0 and args_m['disp']:
+                if 1 and disp:
                     print("step: ",step," with E:","{:.10f}".format(E[0]))
             else:
                 print(ind_in_pt," none LR was lower in energy")
                 keep_going = False
             #Check if energy converged to a constant value
             if check_energies(E):
-                if 0 and args_m['disp']:
+                if 1 and disp:
                     #plot_phis(dH,A_M,'final grad')
                     #plot_phis(phi,A_M,'final phi')
-                    plot_magnetization(phi,Phi,A_M,args_m['args_phys'][0])
+                    plot_phis(dH,A_M,'grad')
+                    plot_phis(phi,A_M,'solution')
+#                    plot_magnetization(phi,Phi,A_M,args_m['args_phys'][0])
                 if E[0]<min_E:
                     min_E = E[0]
                     result = np.copy(phi)
@@ -277,12 +299,10 @@ def check_energies(list_E):
         True if last nn energies are within lim distance b/w each other, False otherwise.
     
     """
-    nn = 3
-    if len(list_E) <= nn:
+    if len(list_E) <= nn_n:
         return False
-    lim = 1e-6
-    for i in range(nn):
-        if abs(list_E[i]-list_E[i+1]) > lim:
+    for i in range(nn_n):
+        if abs(list_E[i]-list_E[i+1]) > cutoff:
             return False
     return True
 
@@ -326,8 +346,8 @@ def plot_magnetization(phi,Phi,A_M,gamma,**kwargs):
     l = np.linalg.norm(a1_m)/40 if np.linalg.norm(a1_m)>np.linalg.norm(a2_m) else np.linalg.norm(a2_m)/40#0.02       #length of arrow
     hw = l/2#0.01       #arrow head width
     hl = l/2#0.01       #arrow head length
-    facx = gx//100     #plot 1 spin every "fac" of grid
-    facy = gy//20 #if gy>=10 else 1     #plot 1 spin every "fac" of grid
+    facx = gx//50     #plot 1 spin every "fac" of grid
+    facy = gy//50 #if gy>=10 else 1     #plot 1 spin every "fac" of grid
     phi_ = [phi_1,phi_2]
     #Figure
     fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(30,10))
@@ -534,13 +554,24 @@ def extend(phi,nn):
     return L
 
 def reshape_Phi(phi,xp,yp):
-    linx = np.linspace(0,1,phi.shape[0])
-    liny = np.linspace(0,1,phi.shape[1])
-    fun = RBS(linx,liny,phi)
-    linx = np.linspace(0,1,xp)
-    liny = np.linspace(0,1,yp)
-    #X,Y = np.meshgrid(linx,liny)
-    return fun(linx,liny)
+    try:
+        linx = np.linspace(0,1,phi.shape[0])
+        liny = np.linspace(0,1,phi.shape[1])
+        fun = RBS(linx,liny,phi)
+        linx = np.linspace(0,1,xp)
+        liny = np.linspace(0,1,yp)
+        #X,Y = np.meshgrid(linx,liny)
+        return fun(linx,liny)
+    except: #Uniaxial ni=0 case
+        linx = np.linspace(0,1,phi.shape[0])
+        from scipy.interpolate import interp1d
+        fun = interp1d(linx,phi)
+        linx = np.linspace(0,1,xp)
+        new_x = fun(linx)
+        new_Phi = np.zeros((xp,yp))
+        for i in range(yp):
+            new_Phi[:,i] = new_x
+        return new_Phi
 
 def get_gridsize(max_grid,a1_m,a2_m):
     l_g = np.zeros(2,dtype=int)
@@ -769,7 +800,6 @@ def Moire(moire_pars,machine,rescaled):
     disp = (machine=='loc')
     Phi_fn = get_Phi_fn(moire_pars,machine,rescaled)
     AM_fn = get_AM_fn(moire_pars,machine)
-    xpts = ypts = 200 #if machine == 'loc' else 400
     I = get_dft_data(machine,rescaled)
     #Interpolate interlayer DFT data
     pts = I.shape[0]
@@ -798,6 +828,13 @@ def Moire(moire_pars,machine,rescaled):
         #Biaxial is actially the same as original interlayer coupling, with different moire vectors
         np.save(Phi_fn,I)
         return 0
+    if moire_pars['type']=='uniaxial':
+        if moire_pars['ni']==0:
+            uni_I = I[:,int(moire_pars['tr']*I.shape[1])]
+            np.save(Phi_fn,uni_I)
+        else:
+            np.save(Phi_fn,I)
+        return 0
     if disp:   #Plot Moirè pattern
         fig,ax = plt.subplots(figsize=(20,20))
         ax.set_aspect('equal')
@@ -813,6 +850,7 @@ def Moire(moire_pars,machine,rescaled):
         ax.axis('off')
         plt.show()
     #Compute interlayer energy by evaluating the local stacking of the two layers
+    xpts = ypts = 200 #if machine == 'loc' else 400
     J = np.zeros((xpts,ypts))
     X = np.linspace(0,1,xpts,endpoint=False)
     Y = np.linspace(0,1,ypts,endpoint=False)
@@ -929,18 +967,21 @@ def compute_lattices(moire_pars):
         inv_T = np.linalg.inv(T)
         a1_m = np.matmul(np.linalg.inv(T).T,a1)  #Moire real space lattice vector 1
         a2_m = np.matmul(np.linalg.inv(T).T,a2)
-    except:
+        translation_2 = 0
+    except: #ni=0 -> strain on lattice direction 1
         a1_m = a1/T[0,0]
         a2_m = a2
+        translation_2 = moire_pars['tr']
     n1_m = np.linalg.norm(a1_m)
     n2_m = np.linalg.norm(a2_m)
     Np = np.linalg.norm(a1_m+a2_m)
     Nm = np.linalg.norm(a1_m-a2_m)
     nnm = min(Np,Nm)
-    if nnm < max(n1_m,n2_m):
-        new_a = a1_m+a2_m if Np<Nm else a1_m-a2_m
-        a1_m = new_a if n1_m>n2_m else a1_m
-        a2_m = new_a if n2_m>n1_m else a2_m
+    if 0:   #change a_1/a_2 to the sum if the norm is lower than original vector
+        if nnm < max(n1_m,n2_m):
+            new_a = a1_m+a2_m if Np<Nm else a1_m-a2_m
+            a1_m = new_a if n1_m>n2_m else a1_m
+            a2_m = new_a if n2_m>n1_m else a2_m
     n1_m = np.linalg.norm(a1_m)
     n2_m = np.linalg.norm(a2_m)
     #
@@ -962,6 +1003,8 @@ def compute_lattices(moire_pars):
             l1[i,j,1] = l1[i,j,0] + offset_sublattice_1
             l2[i,j,0] = (i-n_x//2*A_M)*a1_2+(j-n_y//2*A_M)*a2_2
             l2[i,j,1] = l2[i,j,0] + offset_sublattice_2
+    l2[:,:,:,0] += a2_m[0]*translation_2
+    l2[:,:,:,1] += a2_m[1]*translation_2
     print("Moire lengths: ",n1_m,' ',n2_m)
     print("Angle (deg): ",180/np.pi*np.arccos(np.dot(a1_m/n1_m,a2_m/n2_m)))
     return l1,l2,a1_m,a2_m
@@ -1087,6 +1130,7 @@ def compute_compare_MPs(list_pars,figname,machine,ind=0):
     colors = ['r','r','b','b','g','g','y','y','c','c','r','b','g','y','c']
     s_ = 20
     for iii in range(len(list_pars)):
+        #plt.subplot(4,4,iii+1)
         rho_str,ani_str,grid_pts,moire_pars,txt_name = list_pars[iii]
         hdf5_par_fn = get_hdf5_par_fn(moire_pars,grid_pts,machine)
         #Open and read h5py File
@@ -1108,11 +1152,10 @@ def compute_compare_MPs(list_pars,figname,machine,ind=0):
             continue
         M = np.array(data)
         plt.plot(M[:,0],M[:,1],'-',marker='*',label=txt_name)
+        #plt.legend()
     plt.xlabel(r'$h_\bot(T)$',size=s_)
-    if ind == 0:
-        plt.ylabel(r'$E$',size=s_)
-    else:
-        plt.ylabel(r'$M$',size=s_)
+    list_yax = [r'$E$',r'$M_z$',r'$M_x$']
+    plt.ylabel(list_yax[ind],size=s_)
     plt.legend(fontsize=s_)
     if machine == 'loc':
         plt.show()
@@ -1133,6 +1176,8 @@ def load_Moire(Phi_fn,moire_pars,machine):
         except:
             print(i," let's try again")
     exit()
+
+offset_solution = -0.1
 
 def ts1_12(Phi,gx,gy):
     phi_1 = (np.sign(Phi+offset_solution)-1)*np.pi/4

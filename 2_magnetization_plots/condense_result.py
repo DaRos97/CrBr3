@@ -1,60 +1,59 @@
 import numpy as np
 import functions as fs
-import os,sys
-import h5py
+import sys, os, h5py
 from pathlib import Path
+import getopt
 
-"""
-Remember to adjust max_gridsze.
-For each moire dir create a new hdf5, which will contain gamma as dir and (rho,ani) as dataset.
-"""
-
+##############################################################################
 machine = fs.get_machine(os.getcwd())
-
-type_computation = 'PDb' if len(sys.argv)<3 else sys.argv[2]
-
-ind = int(sys.argv[1])      #one index every 225 for 15x15 PD -> like this sys.argv[1] from 0 to 11
-if type_computation == 'PDb':
-    max_grid = 100
-    moire_pars = {
-        'type':'biaxial',
-        'eps':fs.epss[ind],       
-        'theta':fs.thetas,
-        }
-if type_computation == 'PDu':
+rescaled = True
+##############################################################################
+argv = sys.argv[1:]
+try:
+    opts, args = getopt.getopt(argv, "i:",["type=","i_m=","i_tr=","max_grid="])
+    type_computation = 'PDb'
+    ind_moire = 0
+    ind_tr = 0
     max_grid = 300
-    moire_pars = {
-        'type':'uniaxial',
-        'eps':fs.epss[ind],
-        'ni':0,
-        'phi':0,
-        'theta':fs.thetas,
-        }
-elif type_computation == 'CO':
-    max_grid = 100
-    rho = 0
-    #Two cases: AA and M
-    list_interlayer = ['AA','M']
-    place_interlayer = list_interlayer[ind]
-    moire_pars = {
-        'type':'const',
-        'place':place_interlayer,
-        'theta':fs.thetas,
-        }
-elif type_computation == 'DB':
-    ggg = [100,200,300,400,500]
-    avav = [0,1,2,3,4]
-    max_grid = ggg[ind // (5)]
-    AV = avav[ind % (5)]
-    rho = 1.4
-    anisotropy = 0.0709
+except:
+    print("Error in inputs")
+    exit()
+for opt, arg in opts:
+    if opt == '--type':
+        type_computation = arg
+    if opt == '--i_m':
+        ind_moire = int(arg)
+    if opt == '--i_tr':
+        ind_tr = int(arg)
+    if opt == '--max_grid':
+        max_grid = int(arg)
+
+if type_computation == 'PDb':
     moire_pars = {
         'type':'biaxial',
         'eps':fs.epss[ind_moire],       
         'theta':fs.thetas,
         }
+if type_computation == 'PDu':
+    moire_pars = {
+        'type':'uniaxial',
+        'eps':fs.epss[ind_moire],
+        'ni':0,
+        'phi':0,
+        'tr':fs.translations[ind_tr],
+        'theta':fs.thetas,
+        }
+elif type_computation == 'CO':
+    rho = 0
+    list_interlayer = ['AA','M']
+    place_interlayer = list_interlayer[ind_moire]
+    moire_pars = {
+        'type':'const',
+        'place':place_interlayer,
+        'theta':fs.thetas,
+        }
 
-Phi_fn = fs.get_Phi_fn(moire_pars,machine,rescaled=True)
+Phi_fn = fs.get_Phi_fn(moire_pars,machine,rescaled)
 Phi,a1_m,a2_m = fs.load_Moire(Phi_fn,moire_pars,machine)
 A_M = (a1_m,a2_m)
 gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
@@ -64,6 +63,9 @@ print("Condensing PD for Moire with ",moire_pars)
 print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.norm(a2_m))
 print("Relative angle (deg): ","{:.2f}".format(180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m)))))
 print("Grid size: ",gridx,'x',gridy)
+
+if 1 and machine=='loc':
+    exit()
 #
 hdf5_par_fn = fs.get_hdf5_par_fn(moire_pars,grid_pts,machine)
 hdf5_fn = fs.get_hdf5_fn(moire_pars,grid_pts,machine)
