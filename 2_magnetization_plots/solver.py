@@ -3,6 +3,8 @@ import functions as fs
 import sys, os, h5py
 from pathlib import Path
 import getopt
+from time import time
+t0 = time()
 
 ##############################################################################
 machine = fs.get_machine(os.getcwd())
@@ -93,7 +95,7 @@ if moire_pars['type'] == 'const':
 #Compute Phi over new grid parameters
 Phi = fs.reshape_Phi(Phi,gridx,gridy)
 
-if 1 and machine =='loc':
+if 0 and machine =='loc':
     exit()
 
 #Check directories for the results exist
@@ -119,8 +121,8 @@ if not Path(solution_fn).is_file():
 else:
     print("Already computed")
 
-
-
+tot_time = int(time()-t0)
+print("Total time: ",tot_time//60," mins ",tot_time%60," secs")
 
 
 

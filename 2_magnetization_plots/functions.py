@@ -38,7 +38,7 @@ nn_n = 2
 cutoff = 1e-8
 
 list_ind = {'PDb':
-            np.arange(20),
+            np.arange(30),
             
             'PDu':
             [0,1,2,3,5,
@@ -81,16 +81,6 @@ def const_in_pt(fA,fB,gx,gy):
     phi_B = np.ones((gx,gy))*fB
     return np.array([phi_A, phi_B])
 
-def sm(X):
-    rr = 1
-    sm_X = np.zeros(X.shape)
-    for n in range(X.shape[0]):
-        for i in range(-rr,rr+1):
-            for j in range(-rr,rr+1):
-                sm_X[n] += np.roll(np.roll(X[n],i,axis=0),j,axis=1)
-        sm_X[n] /= (1+2*rr)**2
-    return sm_X        
-
 def compute_solution(args_m):
     """Computes the magnetization pattern by performing a gradient descent from random 
     initial points.
@@ -118,31 +108,21 @@ def compute_solution(args_m):
     M_transf = get_M_transf(a1_m,a2_m)
     gx,gy = args_m['grid']
     disp = args_m['disp']
+    solution_fn = get_sol_fn(args_m['moire_pars'],args_m['grid'],args_m['args_phys'],args_m['machine'])
     #Variables for storing best solution
     min_E = 1e10
     result = np.ones((2,gx,gy))*20
-    initial_index = 1
+    initial_index = 2
     print("gamma: ",args_m['args_phys'])
     for ind_in_pt in range(initial_index,args_m['n_initial_pts']):  #############
         t0 = time()
         if 1 and disp:
             print("Starting minimization step ",str(ind_in_pt))
         #Initial condition
-        if 1:#args_m['args_phys'][0]==0:   #gamma=0
-            if args_m['type_comp']=='CO':
-                fs = np.random.rand()*2*np.pi
-                fa = np.random.rand()*2*np.pi
-            else:
-                inddd = list_ind[args_m['type_comp']][ind_in_pt]
-                fs = ((inddd//10)*36+18)/180*np.pi
-                fa = ((inddd%10)*36+18)/180*np.pi
-            phi = const_in_pt(fs,fa,gx,gy)
-        else:   #Use as initial condition the previous gamma point
-            phys_args = list(args_m['args_phys'])
-            phys_args[0] -= (gammas['MPs'][1]-gammas['MPs'][0])
-            sol_fn = get_sol_fn(args_m['moire_pars'],args_m['grid'],phys_args,args_m['machine'])
-            phi = np.load(sol_fn) 
-            phi += np.random.rand(*phi.shape)*0.1
+        inddd = list_ind[args_m['type_comp']][ind_in_pt]
+        f1 = ((inddd//10)*36+18)/180*np.pi
+        f2 = ((inddd%10)*36+18)/180*np.pi
+        phi = const_in_pt(f1,f2,gx,gy)
         #First energy evaluation
         E = [compute_energy(phi,Phi,args_m['args_phys'],A_M,M_transf), ]
         #Initialize learning rate and minimization loop
@@ -169,24 +149,28 @@ def compute_solution(args_m):
                 E.insert(0,list_E[amin,1])
                 phi = np.copy(list_phi[amin])
                 if 1 and disp:
-                    print("step: ",step," with E:","{:.10f}".format(E[0]))
+                    print("step: ",step," with E:","{:.15f}".format(E[0]))
             else:
                 print(ind_in_pt," none LR was lower in energy")
                 keep_going = False
             #Check if energy converged to a constant value
             if check_energies(E):
-                if 1 and disp:
-                    #plot_phis(dH,A_M,'final grad')
-                    #plot_phis(phi,A_M,'final phi')
-                    plot_phis(dH,A_M,'grad')
-                    plot_phis(phi,A_M,'solution')
-#                    plot_magnetization(phi,Phi,A_M,args_m['args_phys'][0])
                 if E[0]<min_E:
                     min_E = E[0]
                     result = np.copy(phi)
                     print("\tindex ",ind_in_pt," is new solution with energy ","{:.8f}".format(min_E))
+                    if not args_m['machine']=='loc':
+                        np.save(solution_fn,result)
                 else:
                     print(ind_in_pt," at higher energy: ","{:.8f}".format(E[0]))
+                if 1 and disp:
+                    #plot_phis(dH,A_M,'final grad')
+                    #plot_phis(phi,A_M,'final phi')
+                    print("mag: ",compute_magnetization(phi))
+                    input()
+                    #plot_phis(dH,A_M,'grad')
+                    #plot_phis(phi,A_M,'solution')
+#                    plot_magnetization(phi,Phi,A_M,args_m['args_phys'][0])
                 keep_going = False
             if step > args_m['maxiter']:
                 print(ind_in_pt," reached maxiter")
@@ -346,8 +330,8 @@ def plot_magnetization(phi,Phi,A_M,gamma,**kwargs):
     l = np.linalg.norm(a1_m)/40 if np.linalg.norm(a1_m)>np.linalg.norm(a2_m) else np.linalg.norm(a2_m)/40#0.02       #length of arrow
     hw = l/2#0.01       #arrow head width
     hl = l/2#0.01       #arrow head length
-    facx = gx//50     #plot 1 spin every "fac" of grid
-    facy = gy//50 #if gy>=10 else 1     #plot 1 spin every "fac" of grid
+    facx = gx//30     #plot 1 spin every "fac" of grid
+    facy = gy//30 #if gy>=10 else 1     #plot 1 spin every "fac" of grid
     phi_ = [phi_1,phi_2]
     #Figure
     fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(30,10))
