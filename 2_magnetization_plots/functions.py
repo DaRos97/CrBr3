@@ -26,7 +26,8 @@ rhos = [0.1,1.4,5,10,100]
 anis = [0.01,0.03,0.0709,0.11,0.15]
 
 epss = [0.05,0.04,0.03,0.02,0.01,0.005]
-translations = [0,1/3,0.5]
+translations = [0,0.1,0.2,1/3,0.4,0.5]
+
 #
 nis = [1.,0.5,0.3]
 thetas = np.pi/180*0
@@ -41,9 +42,7 @@ list_ind = {'PDb':
             np.arange(50),
             
             'PDu':
-            [0,1,2,3,5,
-            6,7,8,9,12,
-            23,27],
+            np.arange(50),
             
             'CO':   np.arange(100),
             }
@@ -557,7 +556,10 @@ def get_gridsize(max_grid,a1_m,a2_m):
     n_m = np.array([np.linalg.norm(a1_m),np.linalg.norm(a2_m)])
     i_m = np.argmax(n_m)
     l_g[i_m] = max_grid
-    l_g[1-i_m] = int(max_grid/n_m[i_m]*n_m[1-i_m])
+    if abs(n_m[1-i_m]-1)<1e-5:
+        l_g[1-i_m] = 3
+    else:
+        l_g[1-i_m] = int(max_grid/n_m[i_m]*n_m[1-i_m])
     return l_g
 
 def get_fig_dn(machine):

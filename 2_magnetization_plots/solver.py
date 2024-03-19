@@ -82,7 +82,6 @@ if not Path(Phi_fn).is_file():
 #Try a couple of times to load Phi since sometimes it does not work
 Phi,a1_m,a2_m = fs.load_Moire(Phi_fn,moire_pars,machine)
 #######
-
 gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
 grid_pts = (gridx,gridy)
 
