@@ -12,11 +12,10 @@ rescaled = True
 ##############################################################################
 argv = sys.argv[1:]
 try:
-    opts, args = getopt.getopt(argv, "i:",["type=","i_m=","i_tr=","max_grid="])
+    opts, args = getopt.getopt(argv, "i:",["type=","i_m=","max_grid="])
     ind = 0
     type_computation = 'PDb'
     ind_moire = 0
-    ind_tr = 0
     max_grid = 300
 except:
     print("Error in inputs")
@@ -28,8 +27,6 @@ for opt, arg in opts:
         type_computation = arg
     if opt == '--i_m':
         ind_moire = int(arg)
-    if opt == '--i_tr':
-        ind_tr = int(arg)
     if opt == '--max_grid':
         max_grid = int(arg)
 
@@ -41,9 +38,11 @@ if type_computation[:2] == 'PD':
             'theta':fs.thetas,
             }
     if type_computation == 'PDu':            #Phase Diagram uniaxial
+        ind_m = ind_moire//len(fs.translations)
+        ind_tr = ind_moire%len(fs.translations)
         moire_pars = {
             'type':'uniaxial',
-            'eps':fs.epss[ind_moire],
+            'eps':fs.epss[ind_m],
             'ni':0,
             'phi':0,
             'tr':fs.translations[ind_tr],
