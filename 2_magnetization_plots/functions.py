@@ -38,7 +38,7 @@ nn_n = 2
 cutoff = 1e-8
 
 list_ind = {'PDb':
-            np.arange(30),
+            np.arange(50),
             
             'PDu':
             [0,1,2,3,5,
@@ -112,7 +112,7 @@ def compute_solution(args_m):
     #Variables for storing best solution
     min_E = 1e10
     result = np.ones((2,gx,gy))*20
-    initial_index = 2
+    initial_index = 0
     print("gamma: ",args_m['args_phys'])
     for ind_in_pt in range(initial_index,args_m['n_initial_pts']):  #############
         t0 = time()
@@ -120,8 +120,8 @@ def compute_solution(args_m):
             print("Starting minimization step ",str(ind_in_pt))
         #Initial condition
         inddd = list_ind[args_m['type_comp']][ind_in_pt]
-        f1 = ((inddd//10)*36+18)/180*np.pi
-        f2 = ((inddd%10)*36+18)/180*np.pi
+        f1 = ((inddd//10)*36+5)/180*np.pi
+        f2 = ((inddd%10)*36+5)/180*np.pi
         phi = const_in_pt(f1,f2,gx,gy)
         #First energy evaluation
         E = [compute_energy(phi,Phi,args_m['args_phys'],A_M,M_transf), ]
@@ -148,10 +148,10 @@ def compute_solution(args_m):
             if list_E[amin,1] < E[0]:
                 E.insert(0,list_E[amin,1])
                 phi = np.copy(list_phi[amin])
-                if 1 and disp:
+                if 0 and disp:
                     print("step: ",step," with E:","{:.15f}".format(E[0]))
             else:
-                print(ind_in_pt," none LR was lower in energy")
+                print(ind_in_pt," NOT CONVERGED")
                 keep_going = False
             #Check if energy converged to a constant value
             if check_energies(E):
@@ -161,16 +161,11 @@ def compute_solution(args_m):
                     print("\tindex ",ind_in_pt," is new solution with energy ","{:.8f}".format(min_E))
                     if not args_m['machine']=='loc':
                         np.save(solution_fn,result)
+                    if 1 and disp:
+                        print("mag: ",compute_magnetization(phi))
+                   #     input()
                 else:
                     print(ind_in_pt," at higher energy: ","{:.8f}".format(E[0]))
-                if 1 and disp:
-                    #plot_phis(dH,A_M,'final grad')
-                    #plot_phis(phi,A_M,'final phi')
-                    print("mag: ",compute_magnetization(phi))
-                    input()
-                    #plot_phis(dH,A_M,'grad')
-                    #plot_phis(phi,A_M,'solution')
-#                    plot_magnetization(phi,Phi,A_M,args_m['args_phys'][0])
                 keep_going = False
             if step > args_m['maxiter']:
                 print(ind_in_pt," reached maxiter")
