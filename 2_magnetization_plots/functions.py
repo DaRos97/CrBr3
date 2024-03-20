@@ -39,10 +39,10 @@ nn_n = 2
 cutoff = 1e-8
 
 list_ind = {'PDb':
-            np.arange(50),
+            np.arange(49),
             
             'PDu':
-            np.arange(50),
+            np.arange(49),
             
             'CO':   np.arange(100),
             }
@@ -119,8 +119,8 @@ def compute_solution(args_m):
             print("Starting minimization step ",str(ind_in_pt))
         #Initial condition
         inddd = list_ind[args_m['type_comp']][ind_in_pt]
-        f1 = ((inddd//10)*36+5)/180*np.pi
-        f2 = ((inddd%10)*36+5)/180*np.pi
+        f1 = ((inddd//7)*180/7+7)/180*np.pi
+        f2 = ((inddd%7)*180/7+7)/180*np.pi
         phi = const_in_pt(f1,f2,gx,gy)
         #First energy evaluation
         E = [compute_energy(phi,Phi,args_m['args_phys'],A_M,M_transf), ]
