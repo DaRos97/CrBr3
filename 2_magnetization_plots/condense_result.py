@@ -95,6 +95,7 @@ if not (machine=='loc' and Path(hdf5_fn).is_file()):
                     f.create_group(gamma_gn)
                 for file in Path(gamma_dn+'/').iterdir():
                     sol = str(file)
+                    sol_dat = np.load(sol)
                     dataset_name = gamma_gn+'/'+sol[len(sol)-sol[::-1].index('/')+4:-4]
                     if sol[len(sol)-sol[::-1].index('/'):len(sol)-sol[::-1].index('/')+3]=='sol' and dataset_name not in f.keys():
                         gamma_ = float(gamma_gn[6:])
@@ -102,7 +103,13 @@ if not (machine=='loc' and Path(hdf5_fn).is_file()):
                         rho_ = float(sol_fn[sol_fn.index('_')+1:len(sol_fn)-sol_fn[::-1].index('_')-1])
                         ani_ = float(sol_fn[len(sol_fn)-sol_fn[::-1].index('_'):len(sol_fn)-sol_fn[::-1].index('.')-1])
                         phys_args = (gamma_,rho_,ani_)
-                        f.create_dataset(dataset_name,data=np.array([fs.compute_energy(np.load(sol),Phi,phys_args,A_M,fs.get_M_transf(A_M[0],A_M[1])),fs.compute_magnetization(np.load(sol)),fs.compute_magnetization_x(np.load(sol))]))
+                        f.create_dataset(dataset_name,data=np.array([
+                            fs.compute_energy(sol_dat,Phi,phys_args,A_M,fs.get_M_transf(A_M[0],A_M[1])),    #Energy
+                            fs.compute_magnetization(sol_dat),          #Mz
+                            fs.compute_magnetization_x(sol_dat),        #Mx
+                            sol_dat[0,0],                               #phase AA
+                            sol_dat[sol_dat.shape[0]//3,0]              #phase M
+                            ]))
 
 
 
