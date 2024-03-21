@@ -63,7 +63,7 @@ print("Moire lattice vectors: |a_1|=",np.linalg.norm(a1_m),", |a_2|=",np.linalg.
 print("Relative angle (deg): ","{:.2f}".format(180/np.pi*np.arccos(np.dot(a1_m/np.linalg.norm(a1_m),a2_m/np.linalg.norm(a2_m)))))
 print("Grid size: ",gridx,'x',gridy)
 
-if 1 and machine=='loc':
+if 0 and machine=='loc':
     exit()
 #
 hdf5_par_fn = fs.get_hdf5_par_fn(moire_pars,grid_pts,machine)
@@ -103,13 +103,16 @@ if not (machine=='loc' and Path(hdf5_fn).is_file()):
                         rho_ = float(sol_fn[sol_fn.index('_')+1:len(sol_fn)-sol_fn[::-1].index('_')-1])
                         ani_ = float(sol_fn[len(sol_fn)-sol_fn[::-1].index('_'):len(sol_fn)-sol_fn[::-1].index('.')-1])
                         phys_args = (gamma_,rho_,ani_)
-                        f.create_dataset(dataset_name,data=np.array([
+                        data_temp = np.array([
                             fs.compute_energy(sol_dat,Phi,phys_args,A_M,fs.get_M_transf(A_M[0],A_M[1])),    #Energy
                             fs.compute_magnetization(sol_dat),          #Mz
                             fs.compute_magnetization_x(sol_dat),        #Mx
-                            sol_dat[0,0],                               #phase AA
-                            sol_dat[sol_dat.shape[0]//3,0]              #phase M
-                            ]))
+                            np.cos(sol_dat[:,0,0]).sum(),                               #Mz AA
+                            np.sin(sol_dat[:,0,0]).sum(),                               #Mx AA
+                            np.cos(sol_dat[:,sol_dat.shape[0]//3,0]).sum(),             #Mz M
+                            np.sin(sol_dat[:,sol_dat.shape[0]//3,0]).sum(),             #Mx M
+                            ])
+                        f.create_dataset(dataset_name,data=data_temp)
 
 
 
