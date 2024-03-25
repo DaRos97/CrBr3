@@ -9,6 +9,8 @@ import random
 import os
 import h5py
 from time import time
+import matplotlib as mpl
+def_cmap = mpl.colormaps['RdBu']
 
 #Physical parameters
 rho_phys = {'DFT':1.4,'exp':1.7} #     (meV)      
@@ -27,9 +29,9 @@ anis = [0.01,0.03,0.0709,0.11,0.15]
 
 epss = [0.05,0.04,0.03,0.02,0.01,0.005]
 translations = [0,0.1,0.2,1/3,0.4,0.5]
+nis = [0,0.1,1/3,2/3]
 
 #
-nis = [1.,0.5,0.3]
 thetas = np.pi/180*0
 #
 NNNN = 21
@@ -324,25 +326,26 @@ def plot_magnetization(phi,Phi,A_M,gamma,**kwargs):
     l = np.linalg.norm(a1_m)/40 if np.linalg.norm(a1_m)>np.linalg.norm(a2_m) else np.linalg.norm(a2_m)/40#0.02       #length of arrow
     hw = l/2#0.01       #arrow head width
     hl = l/2#0.01       #arrow head length
-    facx = gx//30     #plot 1 spin every "fac" of grid
-    facy = gy//30 #if gy>=10 else 1     #plot 1 spin every "fac" of grid
+    facx = gx//12     #plot 1 spin every "fac" of grid
+    facy = gy//12 #if gy>=10 else 1     #plot 1 spin every "fac" of grid
     phi_ = [phi_1,phi_2]
     #Figure
-    fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(30,10))
+    #fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(10,5))
+    fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(20,10))
     for ind,ax in enumerate([ax1,ax2]):
         ax.axis('off')
         ax.set_aspect(1.)
-        ax.contour(A1,A2,big_Phi.T,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(1,))
-        surf = ax.contourf(A1,A2,big_Phi.T,levels=20)
-        plt.colorbar(surf)
+        ax.contour(A1,A2,big_Phi.T,levels=[0,],colors=('k',),linestyles=('-',),linewidths=(0.5,))
+        surf = ax.contourf(A1,A2,big_Phi.T,levels=100,cmap=def_cmap)
+#        plt.colorbar(surf)
         #Box unit cell
-        if 0:
-            ax.arrow(0,0,a1_m[0],a1_m[1])
-            ax.arrow(0,0,a2_m[0],a2_m[1])
+        if 1:
+            #ax.arrow(0,0,a1_m[0],a1_m[1])
+            #ax.arrow(0,0,a2_m[0],a2_m[1])
             for i in range(3):
                 for s in [-1,1]:
                     li = line(np.linspace(-x_i[i],x_i[i],100),args_i[i],s)
-                    ax.plot(li[:,0],li[:,1],'k',lw=0.7,ls='dashed')
+                    ax.plot(li[:,0],li[:,1],'k',lw=0.7,ls='--',dashes=(7,20))
         #plot small arrows
         for i in range(gx//facx):
             for j in range(gy//facy if facy>0 else 1):
@@ -352,12 +355,23 @@ def plot_magnetization(phi,Phi,A_M,gamma,**kwargs):
                 y = x_c*A_M[0][1] + y_c*A_M[1][1]
                 x,y = inside_UC(x,y,mi,qi,a1_m,a2_m,a12_m)
                 phi_fin = phi_[ind][i*facx,j*facy]
-                ax.arrow(x - l/2*np.sin(phi_fin),y - l/2*np.cos(phi_fin),l*np.sin(phi_fin), l*np.cos(phi_fin),head_width=hw,head_length=hl,color='k')
+                aa = np.copy(phi_fin)
+                if aa < 0:
+                    aa += 2*np.pi
+                if aa > np.pi:
+                    aa = 2*np.pi-aa
+                bb = aa/np.pi
+                color = (bb,bb/10,bb)
+#                if phi_fin>np.pi/2:
+#                    color = (1,0,0)
+#                else:
+#                    color = 'k'
+                ax.arrow(x - l/2*np.sin(phi_fin),y - l/2*np.cos(phi_fin),l*np.sin(phi_fin), l*np.cos(phi_fin),head_width=hw,head_length=hl,color=color,lw=0.5)
         ax.set_xlim(-abs(a1_m[0])/4*3,abs(a1_m[0])/4*3)
         ax.set_ylim(-abs(a1_m[0])/4*3,abs(a1_m[0])/4*3)
 #        ax.set_ylim(-abs(a2_m[1])/4*3,abs(a2_m[1])/4*3)
-    if "title" in kwargs:
-        fig.suptitle(kwargs['title'],size=20)
+#    if "title" in kwargs:
+#        fig.suptitle(kwargs['title'],size=20)
     fig.tight_layout()
     if "save_figname" in kwargs and not kwargs['machine']=='loc':
         plt.savefig('results/figures/'+kwargs['save_figname']+'.png')
@@ -472,42 +486,60 @@ def plot_Phi(Phi,a1_m,a2_m,title=''):
     X,Y = np.meshgrid(lx,ly)
     A1 = X*a1_m[0] + Y*a2_m[0]
     A2 = X*a1_m[1] + Y*a2_m[1]
-    fig, ax = plt.subplots(figsize=(8,10))
+    #
+    fig, ax = plt.subplots(figsize=(13,8))
     ax.axis('off')
     ax.set_aspect(1.)
     #Interlayer
-    ax.contour(A1,A2,Phi_.T,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(0.5))
-    surf = ax.contourf(A1,A2,Phi_.T,levels=100)
-    plt.colorbar(surf)
+    ax.contour(A1,A2,Phi_.T,levels=[0,],colors=('k',),linestyles=('-',),linewidths=(0.5))
+    surf = ax.contourf(A1,A2,Phi_.T,levels=100,cmap=def_cmap)
+#    plt.colorbar(surf)
     #Vectors
-    ax.arrow(0,0,a1_m[0],a1_m[1],head_width=np.linalg.norm(a1_m)/20,fill=True,edgecolor='k',facecolor='k',length_includes_head=True)
-    ax.arrow(0,0,a2_m[0],a2_m[1],head_width=np.linalg.norm(a1_m)/20,fill=True,edgecolor='k',facecolor='k',length_includes_head=True)
-    ax.arrow(a1_m[0],a1_m[1],a2_m[0],a2_m[1],head_width=0,ls='--',edgecolor='r',facecolor='r')
-    ax.arrow(a2_m[0],a2_m[1],a1_m[0],a1_m[1],head_width=0,ls='--',edgecolor='r',facecolor='r')
-    if 0:
-        #Scatter High symmetry points
-        plt.scatter(0,0,color='r',marker='o',s=20)
-        plt.scatter(1/3,0,color='r',marker='o',s=20)
-        plt.scatter(1/3,1/np.sqrt(3),color='r',marker='o',s=20)
-        plt.scatter(-1/6,1/2/np.sqrt(3),color='r',marker='o',s=20)
-    #Limits
-    minx = -abs(min([a1_m[0],a2_m[0]])*2)
-    maxx = abs(max([a1_m[0],a2_m[0]])*2)
-    if minx == 0:
-        minx -= abs(maxx)/2
-    if maxx == 0:
-        maxx += abs(minx)/2
-    ax.set_xlim(minx,maxx)
-    miny = -abs(min([a1_m[1],a2_m[1]])*2)
-    maxy = abs(max([a1_m[1],a2_m[1]])*2)
-    if miny == 0:
-        miny -= abs(maxy)/2
-    if maxy == 0:
-        maxy += abs(miny)/2
-    ax.set_ylim(miny,maxy)
-#    plt.title(title,size=20)
+    if 0:       #Scatter High symmetry points
+        ax.arrow(0,0,a1_m[0],a1_m[1],head_width=np.linalg.norm(a1_m)/20,fill=True,edgecolor='k',facecolor='k',length_includes_head=True)
+        ax.arrow(0,0,a2_m[0],a2_m[1],head_width=np.linalg.norm(a1_m)/20,fill=True,edgecolor='k',facecolor='k',length_includes_head=True)
+        ax.plot(a1_m+a2_m[0],[a2_m[1],a2_m[1]],ls='--',dashes=(7,20),color='k')
+        ax.plot([a1_m[0]+a2_m[0],a1_m[0]],[a2_m[1],0],ls='--',dashes=(7,20),color='k')
+        plt.scatter(0,0,color='k',marker='o',s=30)
+        plt.text(-2,-0.5,'AA',color='k',size=30)
+        plt.scatter(1/3*a1_m[0],0,color='k',marker='o',s=30)
+        plt.text(1/3*a1_m[0]-0.3,-1.2,'M',color='k',size=30)
+        plt.scatter(1/3*a1_m[0],1/np.sqrt(3)*a1_m[0],color='k',marker='o',s=30)
+        plt.scatter(-1/6*a1_m[0],1/2/np.sqrt(3)*a1_m[0],color='k',marker='o',s=30)
+        #Limits
+        cc = 1.2
+        dd = -2
+        minx = -abs(min([a1_m[0],a2_m[0]])*cc)
+        maxx = abs(max([a1_m[0],a2_m[0]])*cc)+dd
+        if minx == 0:
+            minx -= abs(maxx)/2
+        if maxx == 0:
+            maxx += abs(minx)/2
+        ax.set_xlim(minx,maxx)
+        #y
+        ddy = -2
+        miny = -abs(min([a1_m[1],a2_m[1]])*cc)+ddy
+        maxy = abs(max([a1_m[1],a2_m[1]])*cc)+dd
+        if miny == 0:
+            miny -= abs(maxy)/2
+        if maxy == 0:
+            maxy += abs(miny)/2
+        ax.set_ylim(miny,maxy)
+    else:
+        ax.arrow(0,0,a1_m[0],a1_m[1],head_width=np.linalg.norm(a1_m)/50,fill=True,edgecolor='k',facecolor='k',length_includes_head=True)
+        ax.arrow(0,0,a2_m[0],a2_m[1],head_width=np.linalg.norm(a1_m)/50,fill=True,edgecolor='k',facecolor='k',length_includes_head=True)
+        ax.plot(a1_m+a2_m[0],[a2_m[1],a2_m[1]],ls='--',dashes=(7,20),color='k')
+        ax.plot([a1_m[0]+a2_m[0],a1_m[0]],[a2_m[1],0],ls='--',dashes=(7,20),color='k')
+        if 0:
+            plt.scatter(0,0,color='k',marker='o',s=30)
+            plt.text(0,-1.,'AA',color='k',size=30)
+            plt.scatter(1/3*a1_m[0],0,color='k',marker='o',s=30)
+            plt.text(1/3*a1_m[0]+0.3,-1.,'M',color='k',size=30)
+        ax.set_xlim(-a1_m[0]*0.2,a1_m[0]*1.2)
+    #
     fig.tight_layout()
     plt.show()
+    exit()
 
 def extend(phi,nn):
     """Extend the domain of phi from 0,A_M to -A_M,2*A_M by copying it periodically.
@@ -560,6 +592,8 @@ def get_gridsize(max_grid,a1_m,a2_m):
         l_g[1-i_m] = 3
     else:
         l_g[1-i_m] = int(max_grid/n_m[i_m]*n_m[1-i_m])
+    if l_g[1-i_m] < 3:
+        l_g[1-i_m] = 3
     return l_g
 
 def get_fig_dn(machine):
@@ -932,7 +966,7 @@ def compute_lattices(moire_pars):
         eps = moire_pars['eps']
         ni = moire_pars['ni']
         phi = moire_pars['phi']
-        strain_tensor = np.matmul(np.matmul(R_z(-phi).T,np.array([[eps,0],[0,-ni*eps]])),R_z(-phi))
+        strain_tensor = np.matmul(np.matmul(R_z(-phi).T,np.array([[eps,0],[0,ni*eps]])),R_z(-phi))
     elif moire_pars['type']=='biaxial':
         eps = moire_pars['eps']
         strain_tensor = np.identity(2)*eps
@@ -1107,9 +1141,14 @@ def compute_compare_MPs(list_pars,figname,machine,ind=0):
     """Compute the magnetization plots.
 
     """
-    fig = plt.figure(figsize=(20,20))
-    colors = ['r','r','b','b','g','g','y','y','c','c','r','b','g','y','c']
     s_ = 20
+    if ind == 10:
+        ind = 1
+        square = True
+        fig = plt.figure(figsize=(7,20))
+    else:
+        square = False
+        fig = plt.figure(figsize=(20,20))
     for iii in range(len(list_pars)):
         #plt.subplot(4,4,iii+1)
         rho_str,ani_str,grid_pts,moire_pars,txt_name = list_pars[iii]
@@ -1132,12 +1171,19 @@ def compute_compare_MPs(list_pars,figname,machine,ind=0):
             print("No data in ",hdf5_par_fn," for pars ",rho_str," and ",ani_str)
             continue
         M = np.array(data)
-        plt.plot(M[:,0],M[:,1],'-',marker='*',label=txt_name)
-        #plt.legend()
-    plt.xlabel(r'$h_\bot(T)$',size=s_)
-    list_yax = [r'$E$',r'$M_z$',r'$M_x$']
-    plt.ylabel(list_yax[ind],size=s_)
-    plt.legend(fontsize=s_)
+        if square:
+            n_n = 2
+            plt.plot(M[:,0],((M[:,1]-np.min(M[:,1]))/(np.max(M[:,1])-np.min(M[:,1])))**n_n,'-',marker='*',label=txt_name)
+            #plt.plot(((M[:,1]-np.min(M[:,1]))/(np.max(M[:,1])-np.min(M[:,1])))**n_n,M[:,0],'-',marker='*',label=txt_name)
+        else:
+            plt.plot(M[:,0],M[:,1],'-',marker='*',label=txt_name)
+    if square:
+        pass
+    else:
+        plt.xlabel(r'$h_\bot(T)$',size=s_)
+        list_yax = [r'$E$',r'$M_z$',r'$M_x$',r'$M_z^{AA}$',r'$M_x^{AA}$',r'$M_z^{M}$',r'$M_x^{M}$']
+        plt.ylabel(list_yax[ind],size=s_)
+        plt.legend(fontsize=s_)
     if machine == 'loc':
         plt.show()
     else:

@@ -12,11 +12,12 @@ rescaled = True
 ##############################################################################
 argv = sys.argv[1:]
 try:
-    opts, args = getopt.getopt(argv, "i:",["type=","i_m=","max_grid="])
+    opts, args = getopt.getopt(argv, "i:",["type=","i_m=","max_grid=","ni="])
     ind = 0
     type_computation = 'PDb'
     ind_moire = 0
     max_grid = 300
+    ind_ni = 0
 except:
     print("Error in inputs")
     exit()
@@ -29,7 +30,8 @@ for opt, arg in opts:
         ind_moire = int(arg)
     if opt == '--max_grid':
         max_grid = int(arg)
-
+    if opt == '--ni':
+        ind_ni = int(arg)
 if type_computation[:2] == 'PD':
     if type_computation == 'PDb':            #Phase Diagram biaxial
         moire_pars = {
@@ -43,7 +45,7 @@ if type_computation[:2] == 'PD':
         moire_pars = {
             'type':'uniaxial',
             'eps':fs.epss[ind_m],
-            'ni':0,
+            'ni':fs.nis[ind_ni],
             'phi':0,
             'tr':fs.translations[ind_tr],
             'theta':fs.thetas,
@@ -93,7 +95,8 @@ if moire_pars['type'] == 'const':
 #Compute Phi over new grid parameters
 Phi = fs.reshape_Phi(Phi,gridx,gridy)
 
-if 0 and machine =='loc':
+if 1 and machine =='loc':
+    fs.plot_Phi(Phi,a1_m,a2_m)
     exit()
 
 #Check directories for the results exist

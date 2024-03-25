@@ -10,10 +10,11 @@ rescaled = True
 ##############################################################################
 argv = sys.argv[1:]
 try:
-    opts, args = getopt.getopt(argv, "i:",["type=","i_m=","max_grid="])
+    opts, args = getopt.getopt(argv, "i:",["type=","i_m=","max_grid=",'ni='])
     type_computation = 'PDb'
     ind_moire = 0
     max_grid = 300
+    ind_ni = 0
 except:
     print("Error in inputs")
     exit()
@@ -24,6 +25,8 @@ for opt, arg in opts:
         ind_moire = int(arg)
     if opt == '--max_grid':
         max_grid = int(arg)
+    if opt == '--ni':
+        ind_ni = int(arg)
 
 if type_computation == 'PDb':
     moire_pars = {
@@ -37,7 +40,7 @@ if type_computation == 'PDu':
     moire_pars = {
         'type':'uniaxial',
         'eps':fs.epss[ind_m],
-        'ni':0,
+        'ni':fs.nis[ind_ni],
         'phi':0,
         'tr':fs.translations[ind_tr],
         'theta':fs.thetas,
