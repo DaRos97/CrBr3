@@ -11,6 +11,5 @@ Experiments/
 2_magnetization_plots/results/hdf5/
 2_magnetization_plots/results/*meeting*/
 
-2_magnetization_plots/*_plot*
 2_magnetization_plots/bash_scripts/ygg.sh
 2_magnetization_plots/bash_scripts/comp_mp.sh
