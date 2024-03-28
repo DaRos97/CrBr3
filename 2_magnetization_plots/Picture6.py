@@ -1,6 +1,8 @@
 import numpy as np
 from pathlib import Path
 import sys
+import matplotlib.patches as patches
+from matplotlib.lines import Line2D
 
 squared = False if len(sys.argv)<2 else True
 
@@ -86,12 +88,14 @@ excl = [(0,4,0),(0,4,1),
 
 list_par = [
 #            ['b',300,0.05,1.4,0.02],    #   
-            ['b',300,0.01,1.61,0.02],    #   
+            ['b',300,0.01,1.61,0.02,5,38],    #   
 #            ['b',300,0.005,100,0.03],    #
             ]
 list_par += [
 #        ['u',500,0.03,1.4,0.03,0],
-        ['u',500,0.02,1.4,0.03,0],
+#        ['u',500,0.02,1.4,0.03,0,9,46],
+#        ['u',500,0.02,10,0.03,0,7,45],
+        ['u',500,0.02,1.4,0.02,0,8,37],
         ]
 ####################################################################
 mps = []
@@ -101,7 +105,6 @@ for MP1_par in list_par:
         if not i==300 and not i==500:
             MP1_fnn += str(i)+'_'
     MP1_fn = MP1_fnn[:-1]
-    MP1_par.append(MP1_fn)
     if Path(MP1_fn).is_file():
         MP1 = np.load(MP1_fn)
     else:
@@ -146,9 +149,9 @@ for i_ in range(len(mps)):
 ################################################################################################################################
 #PLOT
 import matplotlib.pyplot as plt
-smaller_axs = 0.5
+smaller_axs = 0.4
 fig,axs = plt.subplots(ncols=6,nrows=2,height_ratios=[1,0.1],width_ratios=[1,1,1,smaller_axs,smaller_axs,smaller_axs])
-fig.set_size_inches(14,6)
+fig.set_size_inches(16,6)
 #Big subplot
 gs = axs[0,0].get_gridspec()
 for i in range(6):
@@ -156,7 +159,7 @@ for i in range(6):
         ax.remove()
 ax_big = fig.add_subplot(gs[:2,3:])
 #Plot
-colors_mp = ['orange','maroon','darkorange','orangered','firebrick','maroon']
+colors_mp = ['red','brown','orange','maroon','darkorange','orangered','firebrick','maroon']
 label_dic = {'b':'Biaxial','u':'Uniaxial'}
 list_labels = []
 for i in range(len(normal)):
@@ -165,8 +168,12 @@ for i in range(len(normal)):
     list_labels.append(label_dic[pp[0]]+': '+r'$\epsilon=$'+"{:.0f}".format(pp[2]*100)+'\%, '+r'$\rho=$'+"{:.1f}".format(pp[3])+' meV, '+r'$d=$'+"{:.2f}".format(pp[4])+' meV')
     if squared:
         ax_big.plot(X,modified[i],color=colors_mp[i])
+        ax_big.scatter(X[pp[-2]],modified[i][pp[-2]],marker='*',color=colors_mp[i])
+        ax_big.scatter(X[pp[-1]],modified[i][pp[-1]],marker='*',color=colors_mp[i])
     else:
         ax_big.plot(X,normal[i],color=colors_mp[i])
+        ax_big.scatter(X[pp[-2]],normal[i][pp[-2]],marker='*',color=colors_mp[i])
+        ax_big.scatter(X[pp[-1]],normal[i][pp[-1]],marker='*',color=colors_mp[i])
 lis = np.arange(4)
 colors_gr = ['paleturquoise','turquoise','c','darkcyan']
 for i in lis:
@@ -175,31 +182,37 @@ for i in lis:
             color=colors_gr[i],
             zorder=-1)
 #Legend
-from matplotlib.lines import Line2D
 legend_elements = []
 for i in range(len(normal)):
     legend_elements.append(Line2D([0],[0],ls='-',color=colors_mp[i],label=list_labels[i],linewidth=1))
 legend_elements.append(Line2D([0],[0],ls='--',color=colors_gr[0],
     label='devices',linewidth=1))
-ax_big.legend(handles=legend_elements)
+ax_big.legend(handles=legend_elements,loc='lower right')
 if 0:   #FGT injection
     for i in lis:  #FGT graphs
         plt.plot(data2[i][:,0],data2[i][:,1]/np.max(data2[i][:,1]),ls='--',label='FGT dev '+str(i+2))
 #Shaded areas
-shadeAA = 'khaki'
+shadeAA = 'goldenrod'
 shadeM = 'chartreuse'
 ax_big.fill_betweenx(np.linspace(0,1,100),0.1,0.3,facecolor=shadeAA, alpha = 0.3)
-ax_big.fill_betweenx(np.linspace(0,1,100),0.6,0.95,facecolor=shadeM, alpha = 0.3)
+ax_big.fill_betweenx(np.linspace(0,1,100),0.6,0.8,facecolor=shadeM, alpha = 0.3)
 #Axis
 ax_big.set_xlabel(r'$B[T]$',size=20)
-#ax_big.set_ylabel(r'$MR(B)/MR(B=2T)$',size=20)
+ax_big.set_ylabel(r'$dG$',size=20,labelpad=-10,rotation=90)
 ax_big2 = ax_big.twinx()
 if squared:
-    ax_big2.set_ylabel(r'$k\left(\frac{M_z(B)-M_z(B=0)}{M_z(B=2T)-M_z(B=0)}\right)^2$',size=20,rotation=90)
+    #ax_big2.set_ylabel(r'$k\left(\frac{M_z(B)-M_z(B=0)}{M_z(B=2T)-M_z(B=0)}\right)^2$',size=20,rotation=90)
+    ax_big2.set_ylabel(r'$(dM_z)^2$',size=20,rotation=90)
 else:
-    ax_big2.set_ylabel(r'$\frac{M_z(B)-M_z(B=0)}{M_z(B=2T)-M_z(B=0)}$',size=20)
-ax_big.set_yticks([])
-#Limits and fot size
+    #ax_big2.set_ylabel(r'$\frac{M_z(B)-M_z(B=0)}{M_z(B=2T)-M_z(B=0)}$',size=20)
+    ax_big2.set_ylabel(r'$dM_z$',size=20,rotation=90)
+ax_big.spines['left'].set_visible(False)
+ax_big2.spines['left'].set_linestyle((0,(5,5)))
+ax_big2.spines['left'].set_color('cornflowerblue')
+ax_big.spines['right'].set_visible(False)
+ax_big2.spines['right'].set_color('firebrick')
+#ax_big.set_yticks([])
+#Limits and font size
 ax_big.set_xlim(0,1.2)
 ax_big.set_ylim(0,1)
 ax_big2.set_ylim(0,1)
@@ -209,13 +222,35 @@ ax_big2.tick_params(axis='both',which='major',labelsize=20)
 ax_big.text(0.01,0.7,r'$(I)$',size=20)
 ax_big.text(0.35,0.7,r'$(II)$',size=20)
 ax_big.text(1.0,0.7,r'$(III)$',size=20)
+if 0:   #Arrows to axis
+    arrow1 = patches.FancyArrow(0.3,0.4,-0.3,0.1,
+            ls='dashed',
+            width=0.0005,
+            length_includes_head=True,
+            head_width=0.02,
+            head_length=0.03,
+            edgecolor='aqua',
+            facecolor='aqua',
+            )
+    ax_big.add_patch(arrow1)
+    arrow2 = patches.FancyArrow(0.8,0.6,0.4,-0.1,
+    #        ls='dashed',
+            width=0.0005,
+            length_includes_head=True,
+            head_width=0.02,
+            head_length=0.03,
+            edgecolor='firebrick',
+            facecolor='firebrick',
+            )
+    ax_big.add_patch(arrow2)
+
 
 ########################################################################
 ########################################################################
 if 1:
     #Hexagons
     #Extract a solution to show domain walls
-    sol_par = ['b',300,0.02,5,0.01]
+    sol_par = ['b',300,0.02,5,0.03]
     sol_fnn = 'Data/sols/'
     for i in sol_par:
         if not i==300 and not i==500:
@@ -248,35 +283,33 @@ if 1:
         sol = np.array(sol)
         np.save(sol_fn,sol)
 
-    import matplotlib.patches as patches
     #Colored patches to indicate shaded area
     arr_style = patches.ArrowStyle("Fancy", head_length=7, head_width=7, tail_width=0.1)
     XX = 0.25
     lll = 0.1+(0.275-XX)*2
-    YY = 0.92
+    YY = 0.94
     ax = fig.add_subplot(gs[0,:3])
     ax.set_axis_off()
-    rectangle = patches.Rectangle((0.275,YY-0.05),0.1,0.1,edgecolor='k',facecolor=shadeAA,alpha=0.3)
+    rectangle = patches.Rectangle((0.275,YY+0.03),0.1,-0.95,edgecolor='none',facecolor=shadeAA,alpha=0.3)
     ax.add_patch(rectangle)
-    rectangle = patches.Rectangle((0.275+0.35,YY-0.05),0.1,0.1,edgecolor='k',facecolor=shadeM,alpha=0.3)
+    rectangle = patches.Rectangle((0.275+0.35,YY+0.03),0.1,-0.95,edgecolor='none',facecolor=shadeM,alpha=0.3)
+#    rectangle = patches.Rectangle((0.275+0.35,YY-0.05),0.1,0.1,edgecolor='none',facecolor=shadeM,alpha=0.3)
     ax.add_patch(rectangle)
     arrow = patches.FancyArrowPatch((XX,YY),(XX+lll,YY),arrowstyle=arr_style, color='k')
     ax.add_patch(arrow)
-    ax.text(0.32,YY+0.055,r'$B$',size=20)
+    ax.text(0.32,YY+0.055,r'$h_\bot^{AA}$',size=20)
     arrow = patches.FancyArrowPatch((XX+0.35,YY),(XX+0.35+lll,YY),arrowstyle=arr_style, color='k')
     ax.add_patch(arrow)
-    ax.text(0.67,YY+0.055,r'$B$',size=20)
+    ax.text(0.67,YY+0.055,r'$h_\bot^M$',size=20)
 
-    ax.text(0.128,0.05,r'$(I)$',size=20)
-    ax.text(0.472,0.05,r'$(II)$',size=20)
-    ax.text(0.818,0.05,r'$(III)$',size=20)
+    ax.text(0.132,YY-0.02,r'$(I)$',size=20)
+    ax.text(0.477,YY-0.02,r'$(II)$',size=20)
+    ax.text(0.823,YY-0.02,r'$(III)$',size=20)
+#    ax.text(0.128,0.05,r'$(I)$',size=20)
+#    ax.text(0.472,0.05,r'$(II)$',size=20)
+#    ax.text(0.818,0.05,r'$(III)$',size=20)
 
     #Single Hexagons
-    all_t = [
-            [(0,1),(0,0),(0,1),(0,1)],
-            [(0,1),(0,0),(0,0),(0,2)],
-            [(2,3),(0,0),(0,0),(4,5)],
-            ]
     for i in range(3):
         ax = fig.add_subplot(gs[0,i])
         ax.set_axis_off()
@@ -313,7 +346,7 @@ if 1:
             X,Y = np.meshgrid(np.linspace(-1,1,600),np.linspace(-1,1,600))
             A1 = X*a1[0] + Y*a2[0]
             A2 = X*a1[1] + Y*a2[1]
-            list_M = [0,20,99]
+            list_M = [0,13,60]
             big_sol = np.zeros((600,600))
             for i_ in range(2):
                 for j_ in range(2):
@@ -338,18 +371,25 @@ if 1:
         ax.set_ylim(-2/np.sqrt(3)-0.05,2/np.sqrt(3)+0.05)
 
         if 1:
+            all_t = [
+                [(1,0),(0,0),(1,0),(1,0)],
+                [(1,0),(0,0),(0,0),(2,0)],
+                [(3,2),(0,0),(0,0),(5,4)],
+                ]
             #Spins
-            width = 0.3
-            height = 0.6
-            xs = [-0.7,0.3,-0.15,-0.15]
+            width = 0.33
+            height = 0.68
+            xs = [-0.6,0.3,-0.15,-0.15]
             ys = [-0.3,-0.3,0.2,-0.8]
             rect_edgecolor = 'k'
             rect_facecolor = 'none'
             ddd = height/20
-            arr_len = height/2-height/10
-            ang = np.pi/6
+            arr_len = height/2-height/5
+            ang = np.pi/5
             ang2 = np.pi/3
-            i_arr = [(width/2,ddd),(width/2,ddd+arr_len),
+            i_arr = [       #initial position of arrows
+                    (width/2,ddd),
+                    (width/2,ddd+arr_len+0.1),
                     (width/2+arr_len/2*np.cos(ang),height/4-arr_len/2*np.sin(ang)),
                     (width/2-arr_len/2*np.cos(ang),height/4-arr_len/2*np.sin(ang)),
                     (width/2+arr_len/2*np.cos(ang2),height/4-arr_len/2*np.sin(ang2)),
@@ -360,8 +400,8 @@ if 1:
                     (-arr_len*np.cos(ang2),arr_len*np.sin(ang2)),(arr_len*np.cos(ang2),arr_len*np.sin(ang2)),
                     ]
             tts = all_t[i]
-            arr_color = ['orangered','b','g','g','lime','lime']
-            curved_arrow = patches.FancyArrowPatch((xs[0]+width/2,ys[0]+0.02),(xs[0]+0.3,ys[0]-0.45),
+            arr_color = ['orangered','b','g','g','limegreen','limegreen']
+            curved_arrow = patches.FancyArrowPatch((xs[0]+width/2,ys[0]+0.02),(xs[0]+0.2,ys[0]-0.45),
                     connectionstyle='arc3,rad=.2',
                     color='k',
                     arrowstyle='Simple, tail_width=0.5, head_width=4,head_length=8',
@@ -382,7 +422,7 @@ if 1:
                     zorder=5,
                     )
             ax.add_patch(curved_arrow)
-            curved_arrow = patches.FancyArrowPatch((xs[3]+width-0.01,ys[3]+height/2),(0.5,-0.7),
+            curved_arrow = patches.FancyArrowPatch((xs[3]+width-0.01,ys[3]+height/2),(0.5,-0.65),
                     connectionstyle='arc3,rad=-.3',
                     color='k',
                     arrowstyle='Simple, tail_width=0.5, head_width=4,head_length=8',
@@ -399,31 +439,41 @@ if 1:
                     xa = X1+din[0]
                     ya = Y1+din[1]+height/2*ik
                     disp = disps[tts[sss][ik]]
+#                    dot = Line2D([(2*xa+disp[0])/2],[(2*ya+disp[1])/2],marker='o',color=arr_color[tts[sss][ik]],markerfacecolor=arr_color[tts[sss][ik]],markersize=8,linewidth=0,zorder=5)
+                    dot = patches.Circle(((2*xa+disp[0])/2,(2*ya+disp[1])/2),radius=0.035,
+                            linewidth=0.1,
+                            edgecolor='k',#arr_color[tts[sss][ik]],
+                            facecolor=arr_color[tts[sss][ik]],
+                            alpha=1,
+                            zorder=5,
+                            )
                     arrow = patches.FancyArrow(xa,ya,disp[0],disp[1],
-                            linewidth=1.5,
-                            width=0.05,
-                            length_includes_head=True,
-                            head_width=0.15,
-                            head_length=0.12,
-                            edgecolor='k',
+                            linewidth=0.1,
+                            width=0.022,
+                            length_includes_head=False,
+                            head_width=0.11,
+                            head_length=0.09,
+                            edgecolor='k',#arr_color[tts[sss][ik]],
                             facecolor=arr_color[tts[sss][ik]],
                             zorder=4,
-                            alpha=0.8
+                            alpha=1
                             )
                     ax.add_patch(arrow)
+                    ax.add_patch(dot)
     #Colorbar
     ax = fig.add_subplot(gs[:2,0:3])
     ax.set_axis_off()
     ax.set_xlim(0,1)
     ax.set_ylim(0,1)
-    cbar = fig.colorbar(cof,ax=ax,orientation='horizontal',location='bottom',ticks=[min_Phi,max_Phi/2,max_Phi],
+    cbar = fig.colorbar(cof,ax=ax,orientation='horizontal',location='bottom',ticks=[min_Phi,max_Phi],
             anchor = (0.5,.5),
             aspect = 30,
             )
-    cbar.ax.set_xticklabels(['$FM$','$tw$-$s$','$tw$-$a$'],size=20)
+    cbar.ax.set_xticklabels(['$1$','$-1$'],size=20)
+    ax.text(0.5,-0.5,r'$M_z$',fontsize=30,zorder=5)
 
 fig.tight_layout()
-plt.subplots_adjust(wspace=0.1)
+plt.subplots_adjust(wspace=0.3)
 
 if 0:
     plt.savefig('/home/dario/Desktop/figs_crbr/picture6.pdf')
