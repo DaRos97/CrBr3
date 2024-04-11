@@ -2,6 +2,11 @@ import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import matplotlib
+# Say, "the default sans-serif font is COMIC SANS"
+matplotlib.rcParams['font.sans-serif'] = "Arial"
+# Then, "ALWAYS use sans-serif fonts"
+matplotlib.rcParams['font.family'] = "sans-serif"
 
 def find_color(x):
     """
@@ -27,7 +32,8 @@ def inside_UC(a,b,a1_m,a2_m,a12_m):
     else:
         return a,b
 
-sol_par = ['b',300,0.02,5,0.01]
+sol_par = ['b',300,0.02,5,0.03]
+#sol_par = ['b',400,0.01,1.4,0.02]
 
 #Extract a solution to show domain walls
 sol_fnn = 'Data/sols/'
@@ -78,31 +84,50 @@ a1,a2 = (np.array([1,0])*2,np.array([-1/2,np.sqrt(3)/2])*2)
 X,Y = np.meshgrid(np.linspace(-1,1,400),np.linspace(-1,1,400))
 A1 = X*a1[0] + Y*a2[0]
 A2 = X*a1[1] + Y*a2[1]
+conditions = [
+        A1 >= 1,
+        A1 <= -1,
+        A2 >= 2/np.sqrt(3)-A1/np.sqrt(3),
+        A2 >= 2/np.sqrt(3)+A1/np.sqrt(3),
+        A2 <= -2/np.sqrt(3)-A1/np.sqrt(3),
+        A2 <= -2/np.sqrt(3)+A1/np.sqrt(3),
+]
+hexagon_mask = np.any(conditions, axis=0)
 Phi = np.load('Data/CrBr3_interlayer_rescaled.npy')
 big_Phi = np.zeros((400,400))
 for i_ in range(2):
     for j_ in range(2):
         big_Phi[i_*200:(i_+1)*200,j_*200:(j_+1)*200] = Phi
-ind_M = [1,20,99]
+empty = np.where(hexagon_mask, np.zeros(big_Phi.shape), np.nan)
+ind_M = [0,13,60]
+#ind_M = [0,26,120]
 #Plotting
+txt_label = ['(a)','(b)','(c)',]
 for step in range(3):
     for layer in range(2):
         ax = fig.add_subplot(gs[step//2,step*2-(step//2)*3+layer])
         ax.set_aspect(1.)
         ax.set_axis_off()
+        if layer == 0:
+            ax.text(-0.9,1,txt_label[step],fontsize=20,zorder=11)
         #Interlayer background
         cof = ax.contourf(A1,A2,big_Phi.T,levels=100,cmap='RdBu')
         con = ax.contour(A1,A2,big_Phi.T,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(0.5,))
+        ax.contourf(A1,A2,empty,
+                levels=np.linspace(0,1,2),vmin=0,vmax=1e-3,
+                cmap='Greys',
+                extend='both',
+                zorder=10)
         #UC corners
         y1 = np.linspace(-1/np.sqrt(3),1/np.sqrt(3),100)
-        ax.plot(y1*0+1,y1,c='k')
-        ax.plot(y1*0-1,y1,c='k')
+        ax.plot(y1*0+1,y1,c='k',zorder=11)
+        ax.plot(y1*0-1,y1,c='k',zorder=11)
         x1 = np.linspace(0,1,100)
-        ax.plot(x1,1/np.sqrt(3)*2-x1/np.sqrt(3),c='k')
-        ax.plot(x1,-1/np.sqrt(3)*2+x1/np.sqrt(3),c='k')
+        ax.plot(x1,1/np.sqrt(3)*2-x1/np.sqrt(3),c='k',zorder=11)
+        ax.plot(x1,-1/np.sqrt(3)*2+x1/np.sqrt(3),c='k',zorder=11)
         x1 = np.linspace(-1,0,100)
-        ax.plot(x1,1/np.sqrt(3)*2+x1/np.sqrt(3),c='k')
-        ax.plot(x1,-1/np.sqrt(3)*2-x1/np.sqrt(3),c='k')
+        ax.plot(x1,1/np.sqrt(3)*2+x1/np.sqrt(3),c='k',zorder=11)
+        ax.plot(x1,-1/np.sqrt(3)*2-x1/np.sqrt(3),c='k',zorder=11)
         #Limits
         ax.set_xlim(-1.05,1.05)
         ax.set_ylim(-2/np.sqrt(3)-0.05,2/np.sqrt(3)+0.05)
@@ -142,7 +167,8 @@ if 1:
     ax = fig.add_subplot(gs[1,0])
     ax.set_axis_off()
     cbar = fig.colorbar(cof,ax=ax,shrink=0.9,location='right',ticks=[np.min(Phi),np.max(Phi)])
-    cbar.ax.set_yticklabels(['$FM$','$AFM$'],size=20)
+    cbar.ax.set_yticklabels(['$AFM$','$FM$'],size=20)
+    ax.text(0.8,0.5,r'$J_{int}$',size=30)
 
 fig.tight_layout()
 plt.subplots_adjust(bottom=0.05,top=0.955)

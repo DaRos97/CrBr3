@@ -31,7 +31,7 @@ for opt, arg in opts:
     if opt == '--max_grid':
         max_grid = int(arg)
     if opt == '--ni':
-        ind_ni = int(arg)
+        ind_ni = float(arg)
 if type_computation[:2] == 'PD':
     if type_computation == 'PDb':            #Phase Diagram biaxial
         moire_pars = {
@@ -44,10 +44,10 @@ if type_computation[:2] == 'PD':
         ind_tr = ind_moire%len(fs.translations)
         moire_pars = {
             'type':'uniaxial',
-            'eps':fs.epss[ind_m],
-            'ni':fs.nis[ind_ni],
-            'phi':0,
-            'tr':fs.translations[ind_tr],
+            'eps':0.04,#fs.epss[ind_m],
+            'ni':0.1,#ind_ni,#fs.nis[ind_ni],
+            'phi':0*np.pi,
+            'tr':0,#fs.translations[ind_tr],
             'theta':fs.thetas,
             }
     #Extract gamma,rho and anisotropy from ind
@@ -77,11 +77,13 @@ print("Physical parameters are gamma: ","{:.4f}".format(gamma),", rho: ","{:.4f}
 
 #Check if Phi already computed
 Phi_fn = fs.get_Phi_fn(moire_pars,machine,rescaled)
-if not Path(Phi_fn).is_file():
+if 1:#not Path(Phi_fn).is_file():
     print("Computing interlayer coupling...")
     fs.Moire(moire_pars,machine,rescaled)
 #Try a couple of times to load Phi since sometimes it does not work
 Phi,a1_m,a2_m = fs.load_Moire(Phi_fn,moire_pars,machine)
+fs.plot_Phi(Phi,a1_m,a2_m)
+exit()
 #######
 gridx,gridy = fs.get_gridsize(max_grid,a1_m,a2_m)
 grid_pts = (gridx,gridy)

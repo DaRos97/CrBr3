@@ -326,8 +326,8 @@ def plot_magnetization(phi,Phi,A_M,gamma,**kwargs):
     l = np.linalg.norm(a1_m)/40 if np.linalg.norm(a1_m)>np.linalg.norm(a2_m) else np.linalg.norm(a2_m)/40#0.02       #length of arrow
     hw = l/2#0.01       #arrow head width
     hl = l/2#0.01       #arrow head length
-    facx = gx//12     #plot 1 spin every "fac" of grid
-    facy = gy//12 #if gy>=10 else 1     #plot 1 spin every "fac" of grid
+    facx = gx//30#12     #plot 1 spin every "fac" of grid
+    facy = gy//30#12 #if gy>=10 else 1     #plot 1 spin every "fac" of grid
     phi_ = [phi_1,phi_2]
     #Figure
     #fig, (ax1,ax2) = plt.subplots(1,2,sharey=True,figsize=(10,5))
@@ -478,65 +478,33 @@ def plot_Phi(Phi,a1_m,a2_m,title=''):
     title : string, optional (default = '').
         Plot title.
     """
-    gx,gy = Phi.shape
-    nn = 5  #odd
-    lx = np.linspace(-nn//2+1,nn//2+1,gx*nn,endpoint=False)
-    ly = np.linspace(-nn//2+1,nn//2+1,gy*nn,endpoint=False)
-    Phi_ = extend(Phi,nn)
-    X,Y = np.meshgrid(lx,ly)
+    gg = Phi.shape[0]
+    X,Y = np.meshgrid(np.linspace(-1,2,3*gg),np.linspace(-1,2,3*gg))
     A1 = X*a1_m[0] + Y*a2_m[0]
     A2 = X*a1_m[1] + Y*a2_m[1]
+    big_Phi = np.zeros((3*gg,3*gg))
+    for i_ in range(3):
+        for j_ in range(3):
+            big_Phi[i_*gg:(i_+1)*gg,j_*gg:(j_+1)*gg] = Phi
     #
     fig, ax = plt.subplots(figsize=(13,8))
     ax.axis('off')
     ax.set_aspect(1.)
+    con = ax.contour(A1,A2,big_Phi.T,
+            levels=[0,],
+            colors=('r',),
+            linestyles=('-',),
+            linewidths=(0.5,),
+            ) 
     #Interlayer
-    ax.contour(A1,A2,Phi_.T,levels=[0,],colors=('k',),linestyles=('-',),linewidths=(0.5))
-    surf = ax.contourf(A1,A2,Phi_.T,levels=100,cmap=def_cmap)
-#    plt.colorbar(surf)
+    surf = ax.contourf(A1,A2,big_Phi.T,levels=100,cmap='RdBu')
+    plt.colorbar(surf)
+    ax.arrow(0,0,a1_m[0],a1_m[1])
+    ax.arrow(0,0,a2_m[0],a2_m[1])
+    ax.set_xlim(min([a1_m[0],a2_m[0],0])*2,max([a1_m[0],a2_m[0],0])*2)
+    ax.set_ylim(min([a1_m[1],a2_m[1],0])*2,max([a1_m[1],a2_m[1],0])*2)
+    ax.scatter(0,0)
     #Vectors
-    if 0:       #Scatter High symmetry points
-        ax.arrow(0,0,a1_m[0],a1_m[1],head_width=np.linalg.norm(a1_m)/20,fill=True,edgecolor='k',facecolor='k',length_includes_head=True)
-        ax.arrow(0,0,a2_m[0],a2_m[1],head_width=np.linalg.norm(a1_m)/20,fill=True,edgecolor='k',facecolor='k',length_includes_head=True)
-        ax.plot(a1_m+a2_m[0],[a2_m[1],a2_m[1]],ls='--',dashes=(7,20),color='k')
-        ax.plot([a1_m[0]+a2_m[0],a1_m[0]],[a2_m[1],0],ls='--',dashes=(7,20),color='k')
-        plt.scatter(0,0,color='k',marker='o',s=30)
-        plt.text(-2,-0.5,'AA',color='k',size=30)
-        plt.scatter(1/3*a1_m[0],0,color='k',marker='o',s=30)
-        plt.text(1/3*a1_m[0]-0.3,-1.2,'M',color='k',size=30)
-        plt.scatter(1/3*a1_m[0],1/np.sqrt(3)*a1_m[0],color='k',marker='o',s=30)
-        plt.scatter(-1/6*a1_m[0],1/2/np.sqrt(3)*a1_m[0],color='k',marker='o',s=30)
-        #Limits
-        cc = 1.2
-        dd = -2
-        minx = -abs(min([a1_m[0],a2_m[0]])*cc)
-        maxx = abs(max([a1_m[0],a2_m[0]])*cc)+dd
-        if minx == 0:
-            minx -= abs(maxx)/2
-        if maxx == 0:
-            maxx += abs(minx)/2
-        ax.set_xlim(minx,maxx)
-        #y
-        ddy = -2
-        miny = -abs(min([a1_m[1],a2_m[1]])*cc)+ddy
-        maxy = abs(max([a1_m[1],a2_m[1]])*cc)+dd
-        if miny == 0:
-            miny -= abs(maxy)/2
-        if maxy == 0:
-            maxy += abs(miny)/2
-        ax.set_ylim(miny,maxy)
-    else:
-        ax.arrow(0,0,a1_m[0],a1_m[1],head_width=np.linalg.norm(a1_m)/50,fill=True,edgecolor='k',facecolor='k',length_includes_head=True)
-        ax.arrow(0,0,a2_m[0],a2_m[1],head_width=np.linalg.norm(a1_m)/50,fill=True,edgecolor='k',facecolor='k',length_includes_head=True)
-        ax.plot(a1_m+a2_m[0],[a2_m[1],a2_m[1]],ls='--',dashes=(7,20),color='k')
-        ax.plot([a1_m[0]+a2_m[0],a1_m[0]],[a2_m[1],0],ls='--',dashes=(7,20),color='k')
-        if 0:
-            plt.scatter(0,0,color='k',marker='o',s=30)
-            plt.text(0,-1.,'AA',color='k',size=30)
-            plt.scatter(1/3*a1_m[0],0,color='k',marker='o',s=30)
-            plt.text(1/3*a1_m[0]+0.3,-1.,'M',color='k',size=30)
-        ax.set_xlim(-a1_m[0]*0.2,a1_m[0]*1.2)
-    #
     fig.tight_layout()
     plt.show()
     exit()
@@ -815,6 +783,7 @@ def Moire(moire_pars,machine,rescaled):
     disp = (machine=='loc')
     Phi_fn = get_Phi_fn(moire_pars,machine,rescaled)
     AM_fn = get_AM_fn(moire_pars,machine)
+    #Impoert DFT data -> rescaled or not
     I = get_dft_data(machine,rescaled)
     #Interpolate interlayer DFT data
     pts = I.shape[0]
@@ -838,19 +807,9 @@ def Moire(moire_pars,machine,rescaled):
         a2_m = a1_t
         l1 = l2_t
         l2 = l1_t
+    #Save moire vectors
     np.save(AM_fn,np.array([a1_m,a2_m]))
-    if moire_pars['type']=='biaxial':
-        #Biaxial is actially the same as original interlayer coupling, with different moire vectors
-        np.save(Phi_fn,I)
-        return 0
-    if moire_pars['type']=='uniaxial':
-        if moire_pars['ni']==0:
-            uni_I = I[:,int(moire_pars['tr']*I.shape[1])]
-            np.save(Phi_fn,uni_I)
-        else:
-            np.save(Phi_fn,I)
-        return 0
-    if disp:   #Plot Moirè pattern
+    if 0 and disp:   #Plot Moirè pattern
         fig,ax = plt.subplots(figsize=(20,20))
         ax.set_aspect('equal')
         #
@@ -864,6 +823,18 @@ def Moire(moire_pars,machine,rescaled):
         ax.arrow(0,0,a2_m[0],a2_m[1],color='k',lw=2,head_width=0.5)
         ax.axis('off')
         plt.show()
+    if moire_pars['type']=='biaxial':
+        #Biaxial is actially the same as original interlayer coupling, with different moire vectors
+        np.save(Phi_fn,I)
+        return 0
+    if moire_pars['type']=='uniaxial':
+        if moire_pars['ni']==0 and 0:
+            uni_I = I[:,int(moire_pars['tr']*I.shape[1])]
+            np.save(Phi_fn,uni_I)
+            return 0
+        else:
+            np.save(Phi_fn,I)
+            return 0
     #Compute interlayer energy by evaluating the local stacking of the two layers
     xpts = ypts = 200 #if machine == 'loc' else 400
     J = np.zeros((xpts,ypts))
@@ -966,7 +937,7 @@ def compute_lattices(moire_pars):
         eps = moire_pars['eps']
         ni = moire_pars['ni']
         phi = moire_pars['phi']
-        strain_tensor = np.matmul(np.matmul(R_z(-phi).T,np.array([[eps,0],[0,ni*eps]])),R_z(-phi))
+        strain_tensor = np.matmul(np.matmul(R_z(-phi).T,np.array([[eps,0],[0,-ni*eps]])),R_z(-phi))
     elif moire_pars['type']=='biaxial':
         eps = moire_pars['eps']
         strain_tensor = np.identity(2)*eps
@@ -979,13 +950,16 @@ def compute_lattices(moire_pars):
     #Moire lattice vectors
     T = np.matmul(np.identity(2)+strain_tensor/2,R_z(-theta/2)) - np.matmul(np.identity(2)-strain_tensor/2,R_z(theta/2))
     try:
-        inv_T = np.linalg.inv(T)
+        #inv_T = np.linalg.inv(T)
         a1_m = np.matmul(np.linalg.inv(T).T,a1)  #Moire real space lattice vector 1
         a2_m = np.matmul(np.linalg.inv(T).T,a2)
         translation_2 = 0
     except: #ni=0 -> strain on lattice direction 1
-        a1_m = a1/T[0,0]
-        a2_m = a2
+        st_vec = np.copy(a1+0.1*a2)
+        norm = np.linalg.norm(st_vec)
+        st_vec = st_vec/norm
+        a1_m = st_vec/T[0,0]
+        a2_m = np.matmul(np.array([[0,-1],[1,0]]),st_vec)
         translation_2 = moire_pars['tr']
     n1_m = np.linalg.norm(a1_m)
     n2_m = np.linalg.norm(a2_m)

@@ -91,18 +91,38 @@ for steps in range(2):
             axs[steps].plot(X,normal[i],label=label,color=colors[i])
             axs[steps].plot(X,modified[i],color=colors[i],linestyle='--')
     #Shaded areas
-    shadeAA = 'khaki'
-    shadeM = 'chartreuse'
-    axs[steps].fill_betweenx(np.linspace(0,1,100),0.1,0.3,facecolor=shadeAA, alpha = 0.3)
-    axs[steps].fill_betweenx(np.linspace(0,1,100),0.6,0.95,facecolor=shadeM, alpha = 0.3)
+    shadeAA = 'red'
+    shadeM = 'blue'
+    N = 30
+    cAA = 0.25
+    spreadAA = 0.15
+    iAA = np.linspace(cAA,cAA-spreadAA,N)
+    fAA = np.linspace(cAA,cAA+spreadAA,N)
+    cM = 0.65
+    spreadM = 0.2
+    iM = np.linspace(cM,cM-spreadM,N)
+    fM = np.linspace(cM,cM+spreadM,N)
+    for x in range(N):
+        axs[steps].fill_betweenx(np.linspace(0,1,100),
+                iAA[x],
+                fAA[x],
+                facecolor=shadeAA, 
+                alpha = 0.005
+                )
+        axs[steps].fill_betweenx(np.linspace(0,1,100),
+                iM[x],
+                fM[x],
+                facecolor=shadeM, 
+                alpha = 0.005
+                )
     #Axis
     labelsize = 20
-    axs[steps].set_xlabel(r'$B[T]$',size=labelsize)
+    axs[steps].set_xlabel(r'$H_\bot[T]$',size=labelsize)
     if steps == 0:
         if squared:
-            axs[steps].set_ylabel(r'$\left(\frac{M_z(B)-M_z(B=0)}{M_z(B=2T)-M_z(B=0)}\right)^2$',size=labelsize)
+            axs[steps].set_ylabel(r'$\left(\frac{M_z(H_\bot)-M_z(H_\bot=0)}{M_z(H_\bot=2T)-M_z(H_\bot=0)}\right)^2$',size=labelsize)
         else:
-            axs[steps].set_ylabel(r'$\frac{M_z(B)-M_z(B=0)}{M_z(B=2T)-M_z(B=0)}$',size=labelsize)
+            axs[steps].set_ylabel(r'$\frac{M_z(H_\bot)-M_z(H_\bot=0)}{M_z(H_\bot=2T)-M_z(H_\bot=0)}$',size=labelsize)
     else:
         axs[steps].set_yticklabels([])
     #Limits and fot size

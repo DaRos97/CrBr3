@@ -9,28 +9,31 @@ machine = fs.get_machine(os.getcwd())
 rescaled = True
 ###########################
 
-type_computation = 'PDu' #if len(sys.argv)<3 else sys.argv[2]
+type_computation = sys.argv[1] #if len(sys.argv)<3 else sys.argv[2]
 
 pd_size = len(fs.rhos)*len(fs.anis)
 
-i_m = int(sys.argv[1])
-ind = int(sys.argv[2])
+i_m = int(sys.argv[2])
+ind = int(sys.argv[3])
 
 if type_computation[:2]=='PD':
     if type_computation == 'PDb':            #Phase Diagram type of physical parameters
-        max_grid = 100
+        max_grid = 300
         moire_pars = {
             'type':'biaxial',
             'eps':fs.epss[i_m],       
             'theta':fs.thetas,
             }
     elif type_computation == 'PDu':            #Phase Diagram type of physical parameters
-        max_grid = 300
+        max_grid = 500
+        ind_m = i_m//len(fs.translations)
+        ind_tr = i_m%len(fs.translations)
         moire_pars = {
             'type':'uniaxial',
-            'eps':fs.epss[i_m],
+            'eps':fs.epss[ind_m],
             'ni':0,
             'phi':0,
+            'tr':fs.translations[ind_tr],
             'theta':fs.thetas,
             }
     l_a = len(fs.anis)
@@ -109,6 +112,6 @@ tt = r'$\gamma$:'+gamma_str+', '+r'$\rho$:'+rho_str+', '+r'$d$:'+ani_str+', $\ep
 fn = 'g:'+gamma_str+'_'+'r:'+rho_str+'_'+'d:'+ani_str+'_e:'+"{:.4f}".format(moire_pars['eps'])
 
 fs.plot_magnetization(solution,Phi,(a1_m,a2_m),gamma,title=tt,save_figname=fn,machine=machine)
-#fs.plot_phis(solution,(a1_m,a2_m))
+#fs.plot_phis(solution,(a1_m,a2_m),tt)
 
 

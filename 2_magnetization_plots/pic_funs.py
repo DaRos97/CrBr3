@@ -23,35 +23,90 @@ def plot_hexagon(ax,i,sol,**kwargs):
     else:
         plot_panels = False
     ax.set_axis_off()
+    ax.set_aspect(1.)
     a1 = np.array([1,0])*2
     a2 = np.array([-1/2,np.sqrt(3)/2])*2
-    #Interlayer interaction contour at 0
-    X,Y = np.meshgrid(np.linspace(-1,1,400),np.linspace(-1,1,400))
-    A1 = X*a1[0] + Y*a2[0]
-    A2 = X*a1[1] + Y*a2[1]
-    Phi = np.load('Data/CrBr3_interlayer_rescaled.npy')
-    big_Phi = np.zeros((400,400))
-    for i_ in range(2):
-        for j_ in range(2):
-            big_Phi[i_*200:(i_+1)*200,j_*200:(j_+1)*200] = Phi
-    con = ax.contour(A1,A2,big_Phi.T,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(0.5,))
-    #UC corners
-    ax.set_aspect(1.)
-    y1 = np.linspace(-1/np.sqrt(3),1/np.sqrt(3),100)
-    ax.plot(y1*0+1,y1,c='k')
-    ax.plot(y1*0-1,y1,c='k')
-    x1 = np.linspace(0,1,100)
-    ax.plot(x1,1/np.sqrt(3)*2-x1/np.sqrt(3),c='k')
-    ax.plot(x1,-1/np.sqrt(3)*2+x1/np.sqrt(3),c='k')
-    x1 = np.linspace(-1,0,100)
-    ax.plot(x1,1/np.sqrt(3)*2+x1/np.sqrt(3),c='k')
-    ax.plot(x1,-1/np.sqrt(3)*2-x1/np.sqrt(3),c='k')
+    if 0:
+        #Interlayer interaction contour at 0
+        X,Y = np.meshgrid(np.linspace(-1,1,400),np.linspace(-1,1,400))
+        A1 = X*a1[0] + Y*a2[0]
+        A2 = X*a1[1] + Y*a2[1]
+        Phi = np.load('Data/CrBr3_interlayer_rescaled.npy')
+        big_Phi = np.zeros((400,400))
+        for i_ in range(2):
+            for j_ in range(2):
+                big_Phi[i_*200:(i_+1)*200,j_*200:(j_+1)*200] = Phi
+        con = ax.contour(A1,A2,big_Phi.T,levels=[0,],colors=('r',),linestyles=('-',),linewidths=(0.5,),
+                zorder=23)
+    if 1:    #UC corners
+        y1 = np.linspace(-1/np.sqrt(3),1/np.sqrt(3),100)
+        ax.plot(y1*0+1,y1,c='k',zorder=30)
+        ax.plot(y1*0-1,y1,c='k',zorder=30)
+        x1 = np.linspace(0,1,100)
+        ax.plot(x1,1/np.sqrt(3)*2-x1/np.sqrt(3),c='k',zorder=30)
+        ax.plot(x1,-1/np.sqrt(3)*2+x1/np.sqrt(3),c='k',zorder=30)
+        x1 = np.linspace(-1,0,100)
+        ax.plot(x1,1/np.sqrt(3)*2+x1/np.sqrt(3),c='k',zorder=30)
+        ax.plot(x1,-1/np.sqrt(3)*2-x1/np.sqrt(3),c='k',zorder=30)
     #Limits
     ax.set_xlim(-1.05,1.05)
     ax.set_ylim(-2/np.sqrt(3)-0.05,2/np.sqrt(3)+0.05)
+    if plot_background:     #Phase values
+        X,Y = np.meshgrid(np.linspace(-1,1,600),np.linspace(-1,1,600))
+        A1 = X*a1[0] + Y*a2[0]
+        A2 = X*a1[1] + Y*a2[1]
+        #Mask
+        conditions1 = [
+                A1 <= 1,
+                A1 >= -1,
+                A2 <= 2/np.sqrt(3)-A1/np.sqrt(3),
+                A2 <= 2/np.sqrt(3)+A1/np.sqrt(3),
+                A2 >= -2/np.sqrt(3)-A1/np.sqrt(3),
+                A2 >= -2/np.sqrt(3)+A1/np.sqrt(3),
+        ]
+        conditions2 = [
+                A1 >= 1,
+                A1 <= -1,
+                A2 >= 2/np.sqrt(3)-A1/np.sqrt(3),
+                A2 >= 2/np.sqrt(3)+A1/np.sqrt(3),
+                A2 <= -2/np.sqrt(3)-A1/np.sqrt(3),
+                A2 <= -2/np.sqrt(3)+A1/np.sqrt(3),
+        ]
+        # Create hexagon mask
+        hexagon_mask1 = np.all(conditions1, axis=0)
+        hexagon_mask2 = np.any(conditions2, axis=0)
+        #phases
+        list_M = [40,40,60]
+        which_l = [0,1,1]
+        big_sol = np.zeros((600,600))
+        for i_ in range(2):
+            for j_ in range(2):
+                big_sol[i_*300:(i_+1)*300,j_*300:(j_+1)*300] = sol[list_M[i]][which_l[i]]
+        max_Phi = np.max(big_sol)
+        min_Phi = np.min(big_sol)
+        #Masked data
+        big_sol1 = np.where(hexagon_mask1, big_sol, np.nan)
+        emp = np.where(hexagon_mask2, np.zeros(big_sol.shape), np.nan)
+        #My colormap
+        import matplotlib.colors as mcolors
+        blu = 0#0.13
+        red = 0#0.07
+        tr_RdBu = mcolors.ListedColormap(plt.get_cmap('RdBu_r')(np.linspace(blu, 1-red, 256)))
+        cof = ax.contourf(A1,A2,big_sol1,
+                levels=np.linspace(0,np.pi,100),vmin=0,vmax=np.pi,
+                cmap=tr_RdBu,
+                extend='both',
+                alpha=1,
+                zorder = 18
+                )
+        ax.contourf(A1,A2,emp,
+                levels=np.linspace(0,1,2),vmin=0,vmax=1e-3,
+                cmap='Greys',
+                extend='both',
+                zorder=20)
     if plot_moire:       #Moire lattice
-        rows = 20
-        cols = 20
+        rows = 10
+        cols = 10
         radius1 = 0.08      #lattice constant
         radius2 = radius1*(radius1+1)
         linewidth = 0.05
@@ -59,25 +114,12 @@ def plot_hexagon(ax,i,sol,**kwargs):
             for j_ in range(-cols,cols):
                 x = j_ * radius1 * np.sqrt(3) - i_ * radius1 / 2 * np.sqrt(3)
                 y = i_ * radius1 * 1.5
-                hexagon = patches.RegularPolygon((x, y), numVertices=6, radius=radius1, orientation=0, edgecolor='k', facecolor='none', zorder=3, linewidth=linewidth)
+                hexagon = patches.RegularPolygon((x, y), numVertices=6, radius=radius1, orientation=0, edgecolor='k', facecolor='none', zorder=19, linewidth=linewidth)
                 ax.add_patch(hexagon)
                 x = j_ * radius2 * np.sqrt(3) - i_ * radius2 / 2 * np.sqrt(3)
                 y = i_ * radius2 * 1.5
-                hexagon = patches.RegularPolygon((x, y), numVertices=6, radius=radius2, orientation=0, edgecolor='k', facecolor='none', zorder=3, linewidth=linewidth)
+                hexagon = patches.RegularPolygon((x, y), numVertices=6, radius=radius2, orientation=0, edgecolor='k', facecolor='none', zorder=19, linewidth=linewidth)
                 ax.add_patch(hexagon)
-    if plot_background:
-        #Phase values
-        X,Y = np.meshgrid(np.linspace(-1,1,600),np.linspace(-1,1,600))
-        A1 = X*a1[0] + Y*a2[0]
-        A2 = X*a1[1] + Y*a2[1]
-        list_M = [0,13,60]
-        big_sol = np.zeros((600,600))
-        for i_ in range(2):
-            for j_ in range(2):
-                big_sol[i_*300:(i_+1)*300,j_*300:(j_+1)*300] = sol[list_M[i]][1]
-        max_Phi = np.max(big_sol)
-        min_Phi = np.min(big_sol)
-        cof = ax.contourf(A1,A2,big_sol,levels=np.linspace(0,np.pi,100),vmin=0,vmax=np.pi,cmap='viridis_r',extend='both',alpha=1)
     if plot_panels:
         all_t = [
             [(1,0),(0,0),(1,0),(1,0)],
@@ -108,39 +150,44 @@ def plot_hexagon(ax,i,sol,**kwargs):
                 (-arr_len*np.cos(ang2),arr_len*np.sin(ang2)),(arr_len*np.cos(ang2),arr_len*np.sin(ang2)),
                 ]
         tts = all_t[i]
-        arr_color = ['orangered','b','g','g','limegreen','limegreen']
+        RdBu = plt.get_cmap('RdBu_r')
+        ccc = RdBu(0)
+        ddd = RdBu(255)
+        eee = RdBu(120)
+        fff = RdBu(80)
+        arr_color = [ccc,ddd,eee,eee,fff,fff]
         curved_arrow = patches.FancyArrowPatch((xs[0]+width/2,ys[0]+0.02),(xs[0]+0.2,ys[0]-0.45),
                 connectionstyle='arc3,rad=.2',
                 color='k',
                 arrowstyle='Simple, tail_width=0.5, head_width=4,head_length=8',
-                zorder=5,
+                zorder=19,
                 )
         ax.add_patch(curved_arrow)
         curved_arrow = patches.FancyArrowPatch((xs[1]+width/2,ys[1]+height-0.02),(xs[1],ys[1]+height+0.2),
                 connectionstyle='arc3,rad=.5',
                 color='k',
                 arrowstyle='Simple, tail_width=0.5, head_width=4,head_length=8',
-                zorder=5,
+                zorder=19,
                 )
         ax.add_patch(curved_arrow)
         curved_arrow = patches.FancyArrowPatch((xs[2]+0.01,ys[2]+0.02),(0,0),
                 connectionstyle='arc3,rad=.3',
                 color='k',
                 arrowstyle='Simple, tail_width=0.5, head_width=4,head_length=8',
-                zorder=5,
+                zorder=19,
                 )
         ax.add_patch(curved_arrow)
         curved_arrow = patches.FancyArrowPatch((xs[3]+width-0.01,ys[3]+height/2),(0.5,-0.65),
                 connectionstyle='arc3,rad=-.3',
                 color='k',
                 arrowstyle='Simple, tail_width=0.5, head_width=4,head_length=8',
-                zorder=5,
+                zorder=19,
                 )
         ax.add_patch(curved_arrow)
         for sss in range(4):
             X1 = xs[sss]
             Y1 = ys[sss]
-            rectangle = patches.Rectangle((X1,Y1),width,height,edgecolor=rect_edgecolor,facecolor=rect_facecolor,linewidth=1.5)
+            rectangle = patches.Rectangle((X1,Y1),width,height,edgecolor=rect_edgecolor,facecolor=rect_facecolor,linewidth=1.5,zorder=10)
             ax.add_patch(rectangle)
             for ik in range(2):
                 din = i_arr[tts[sss][ik]]
@@ -150,10 +197,10 @@ def plot_hexagon(ax,i,sol,**kwargs):
 #                    dot = Line2D([(2*xa+disp[0])/2],[(2*ya+disp[1])/2],marker='o',color=arr_color[tts[sss][ik]],markerfacecolor=arr_color[tts[sss][ik]],markersize=8,linewidth=0,zorder=5)
                 dot = patches.Circle(((2*xa+disp[0])/2,(2*ya+disp[1])/2),radius=0.035,
                         linewidth=0.1,
-                        edgecolor='k',#arr_color[tts[sss][ik]],
+                        edgecolor='k',
                         facecolor=arr_color[tts[sss][ik]],
                         alpha=1,
-                        zorder=5,
+                        zorder=19,
                         )
                 arrow = patches.FancyArrow(xa,ya,disp[0],disp[1],
                         linewidth=0.1,
@@ -161,9 +208,9 @@ def plot_hexagon(ax,i,sol,**kwargs):
                         length_includes_head=False,
                         head_width=0.11,
                         head_length=0.09,
-                        edgecolor='k',#arr_color[tts[sss][ik]],
+                        edgecolor='k',
                         facecolor=arr_color[tts[sss][ik]],
-                        zorder=4,
+                        zorder=19,
                         alpha=1
                         )
                 ax.add_patch(arrow)
@@ -181,22 +228,42 @@ def colorbar(fig,ax,cof,min_Phi,max_Phi):
     cbar.ax.set_xticklabels(['$1$','$-1$'],size=20)
     ax.text(0.5,-0.5,r'$M_z$',fontsize=30,zorder=5)
 
+def colorbar_v(fig,ax,cof,min_Phi,max_Phi):
+    ax.set_axis_off()
+    ax.set_xlim(0,1)
+    ax.set_ylim(0,1)
+    cbar = fig.colorbar(cof,ax=ax,
+            orientation='vertical',
+            #location='bottom',
+            ticks=[min_Phi,max_Phi],
+            anchor = (1,.5),
+            #aspect = 30,
+            )
+#    cbar.set_ticks(cbar.get_ticks()[::-1])
+#    cbar.set_ticklabels(cbar.get_ticklabels()[::-1])
+    cbar.ax.set_yticklabels(['$1$','$-1$'],size=20)
+    cbar.ax.invert_yaxis()
+    ax.text(1.27,0.5,r'$M_z$',fontsize=25,zorder=5)
+
 def theory_exp_plot(ax_big,data_theory,mps,list_par,data_exp,ylabel):
-    colors_mp = ['red','brown','orange','maroon','darkorange','orangered','firebrick','maroon']
+    colors_mp = ['red','orange','firebrick','maroon','darkorange','orangered','firebrick','maroon','b','g','r','y','k']
     label_dic = {'b':'Biaxial','u':'Uniaxial'}
     list_labels = []
     for i in range(len(data_theory)):
         X = mps[i][:,0]
         pp = list_par[i]
-        list_labels.append(label_dic[pp[0]]+': '+r'$\epsilon=$'+"{:.0f}".format(pp[2]*100)+'\%, '+r'$\rho=$'+"{:.1f}".format(pp[3])+' meV, '+r'$d=$'+"{:.2f}".format(pp[4])+' meV')
+#        list_labels.append(label_dic[pp[0]]+': '+r'$\epsilon=$'+"{:.0f}".format(pp[2]*100)+'\%, '+r'$\rho=$'+"{:.1f}".format(pp[3])+' meV, '+r'$d=$'+"{:.2f}".format(pp[4])+' meV')
+        list_labels.append(label_dic[pp[0]]+' strain')
         ax_big.plot(X,data_theory[i],color=colors_mp[i])
-        ax_big.scatter(X[pp[-2]],data_theory[i][pp[-2]],marker='*',color=colors_mp[i])
-        ax_big.scatter(X[pp[-1]],data_theory[i][pp[-1]],marker='*',color=colors_mp[i])
+#        ax_big.scatter(X[pp[-2]],data_theory[i][pp[-2]],marker='^',color=colors_mp[i])
+#        ax_big.scatter(X[pp[-1]],data_theory[i][pp[-1]],marker='^',color=colors_mp[i])
     lis = np.arange(4)
     colors_gr = ['paleturquoise','turquoise','c','darkcyan']
     for i in lis:
         x = data_exp[i][:,0]
-        ax_big.plot(x,data_exp[i][:,1]/data_exp[i][-1,1],ls='--',
+        y = data_exp[i][:,1]
+        ax_big.plot(x,y/data_exp[i][data_exp[i].shape[0]//4*3,1],
+                ls='--',
                 color=colors_gr[i],
                 zorder=-1)
     #Legend
@@ -204,16 +271,18 @@ def theory_exp_plot(ax_big,data_theory,mps,list_par,data_exp,ylabel):
     for i in range(len(data_theory)):
         legend_elements.append(Line2D([0],[0],ls='-',color=colors_mp[i],label=list_labels[i],linewidth=1))
     legend_elements.append(Line2D([0],[0],ls='--',color=colors_gr[0],
-        label='devices',linewidth=1))
-    ax_big.legend(handles=legend_elements,loc='lower right')
+        label='Devices',linewidth=1))
+    ax_big.legend(handles=legend_elements,loc='lower right',fontsize=20)
     #Shaded areas
     ax_big.fill_betweenx(np.linspace(0,1,100),0.1,0.3,facecolor=shadeAA, alpha = 0.3)
     ax_big.fill_betweenx(np.linspace(0,1,100),0.6,0.8,facecolor=shadeM, alpha = 0.3)
     #Axis
-    ax_big.set_xlabel(r'$B[T]$',size=20)
-    ax_big.set_ylabel(r'$\delta G$',size=20,labelpad=-10,rotation=90)
+    ax_big.set_xlabel(r'$B[T]$',size=25)
+    ax_big.set_ylabel(r'$\delta G$',size=25,
+            labelpad=-2,
+            rotation=90)
     ax_big2 = ax_big.twinx()
-    ax_big2.set_ylabel(ylabel,size=20,rotation=90)
+    ax_big2.set_ylabel(ylabel,size=25,rotation=90)
     ax_big.spines['left'].set_visible(False)
     ax_big2.spines['left'].set_linestyle((0,(5,5)))
     ax_big2.spines['left'].set_color('cornflowerblue')
@@ -221,15 +290,11 @@ def theory_exp_plot(ax_big,data_theory,mps,list_par,data_exp,ylabel):
     ax_big2.spines['right'].set_color('firebrick')
     #ax_big.set_yticks([])
     #Limits and font size
-    ax_big.set_xlim(0,1.2)
+    ax_big.set_xlim(0,1)
     ax_big.set_ylim(0,1)
     ax_big2.set_ylim(0,1)
     ax_big.tick_params(axis='both',which='major',labelsize=20)
     ax_big2.tick_params(axis='both',which='major',labelsize=20)
-    #Text
-    ax_big.text(0.01,0.7,r'$(I)$',size=20)
-    ax_big.text(0.35,0.7,r'$(II)$',size=20)
-    ax_big.text(1.0,0.7,r'$(III)$',size=20)
     if 0:   #Arrows to axis
         arrow1 = patches.FancyArrow(0.3,0.4,-0.3,0.1,
                 ls='dashed',
@@ -336,16 +401,21 @@ def extract_exp_data(save1,save2):
 
 
 def import_theory_data(MP1_par,MP1_fn):
-    translations = fs.translations
+    nis = fs.nis
     eps_str = "{:.4f}".format(MP1_par[2])
     rho_str = "{:.4f}".format(MP1_par[3])
     ani_str = "{:.4f}".format(MP1_par[4])
     if MP1_par[0] == 'u':
-        tr_str = "{:.4f}".format(translations[MP1_par[5]]) if not MP1_par[5]==0 else '0'
+        ni_str = "{:.4f}".format(nis[MP1_par[5]]) if not MP1_par[5]==0 else '0'
+        tr_str = '0'
+        if ni_str == '0':
+            grid_str = str(MP1_par[1])+'x3'
+        else:
+            grid_str = '46x400'
     if MP1_par[0] == 'b':
         hdf5_par_fn = 'results/hdf5/par_type:biaxial_eps:'+eps_str+'_theta:0.0000_'+str(MP1_par[1])+'x'+str(MP1_par[1])+'.hdf5'
     else:
-        hdf5_par_fn = 'results/hdf5/par_type:uniaxial_eps:'+eps_str+'_ni:0_phi:0_tr:'+tr_str+'_theta:0.0000_'+str(MP1_par[1])+'x3.hdf5'
+        hdf5_par_fn = 'results/hdf5/par_type:uniaxial_eps:'+eps_str+'_ni:'+ni_str+'_phi:0_tr:'+tr_str+'_theta:0.0000_'+grid_str+'.hdf5'
     MP1 = []
     rho_str = "{:.5f}".format(MP1_par[3])
     ani_str = "{:.5f}".format(MP1_par[4])

@@ -3,6 +3,13 @@ from pathlib import Path
 import sys
 import matplotlib.patches as patches
 from matplotlib.lines import Line2D
+import matplotlib.pyplot as plt
+import matplotlib
+# Say, "the default sans-serif font is COMIC SANS"
+matplotlib.rcParams['font.sans-serif'] = "Arial"
+# Then, "ALWAYS use sans-serif fonts"
+matplotlib.rcParams['font.family'] = "sans-serif"
+
 
 squared = False if len(sys.argv)<2 else True
 
@@ -148,7 +155,6 @@ for i_ in range(len(mps)):
 ################################################################################################################################
 ################################################################################################################################
 #PLOT
-import matplotlib.pyplot as plt
 smaller_axs = 0.4
 fig,axs = plt.subplots(ncols=6,nrows=2,height_ratios=[1,0.1],width_ratios=[1,1,1,smaller_axs,smaller_axs,smaller_axs])
 fig.set_size_inches(16,6)
@@ -198,14 +204,14 @@ ax_big.fill_betweenx(np.linspace(0,1,100),0.1,0.3,facecolor=shadeAA, alpha = 0.3
 ax_big.fill_betweenx(np.linspace(0,1,100),0.6,0.8,facecolor=shadeM, alpha = 0.3)
 #Axis
 ax_big.set_xlabel(r'$B[T]$',size=20)
-ax_big.set_ylabel(r'$dG$',size=20,labelpad=-10,rotation=90)
+ax_big.set_ylabel(r'$\delta G$',size=20,labelpad=-10,rotation=90)
 ax_big2 = ax_big.twinx()
 if squared:
     #ax_big2.set_ylabel(r'$k\left(\frac{M_z(B)-M_z(B=0)}{M_z(B=2T)-M_z(B=0)}\right)^2$',size=20,rotation=90)
-    ax_big2.set_ylabel(r'$(dM_z)^2$',size=20,rotation=90)
+    ax_big2.set_ylabel(r'$(\Delta M_z)^2$',size=20,rotation=90)
 else:
     #ax_big2.set_ylabel(r'$\frac{M_z(B)-M_z(B=0)}{M_z(B=2T)-M_z(B=0)}$',size=20)
-    ax_big2.set_ylabel(r'$dM_z$',size=20,rotation=90)
+    ax_big2.set_ylabel(r'$\Delta M_z$',size=20,rotation=90)
 ax_big.spines['left'].set_visible(False)
 ax_big2.spines['left'].set_linestyle((0,(5,5)))
 ax_big2.spines['left'].set_color('cornflowerblue')

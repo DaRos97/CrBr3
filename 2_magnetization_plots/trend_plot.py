@@ -66,9 +66,7 @@ ylims[0] -= (ylims[1]-ylims[0])/10
 ylims[1] += (ylims[1]-ylims[0])/10
 if TT=='AA':
     ylims[1]=0.35
-shade = 'chartreuse' if TT=='M' else 'khaki'
-shadelim = (0.6,0.95) if TT=='M' else (0.1,0.3)
-mark = {'M':'o','AA':''}
+mark = {'M':'o','AA':'o'}
 mark2 = ['.','*']
 mark3 = [['.','*'],['^','X']]
 
@@ -101,11 +99,11 @@ for i1 in range(len(a1)):
                 ax.plot(a2,datas[TT][step][i1,i3,:],marker=mark2[step],ls='--',label=l3+'='+v3[i3],color=colors[i3],linewidth=0.5)
         if TT == 'AA':
             if sys.argv[1] == 'b':
-                ax.scatter(a2,datas_flip[0][i1,i3,:],marker='*',ls='--',color=colors[i3],linewidth=0.5,s=markersize)
-                ax.scatter(a2,datas_flop[0][i1,i3,:],marker='^',ls='--',color=colors[i3],linewidth=0.5,s=markersize)
+                ax.scatter(a2,datas_flip[0][i1,i3,:],marker='o',ls='--',color=colors[i3],linewidth=0.5,s=markersize)
+                ax.scatter(a2,datas_flop[0][i1,i3,:],marker='o',ls='--',color=colors[i3],linewidth=0.5,s=markersize)
             elif sys.argv[1] == 'u':
-                ax.scatter(a2,datas_flip[1][i1,i3,:],marker='*',ls='--',color=colors[i3],linewidth=0.5,s=markersize)
-                ax.scatter(a2,datas_flop[1][i1,i3,:],marker='^',ls='--',color=colors[i3],linewidth=0.5,s=markersize)
+                ax.scatter(a2,datas_flip[1][i1,i3,:],marker='o',ls='--',color=colors[i3],linewidth=0.5,s=markersize)
+                ax.scatter(a2,datas_flop[1][i1,i3,:],marker='o',ls='--',color=colors[i3],linewidth=0.5,s=markersize)
             elif sys.argv[1] == 'B':
                 for step in range(2):
                     ax.scatter(a2,datas_flip[step][i1,i3,:],marker=mark3[step][0],ls='--',color=colors[i3],linewidth=0.5,s=markersize)
@@ -116,14 +114,29 @@ for i1 in range(len(a1)):
     else:
         ax.set_xticklabels([])
     if i1 in [0,3]:
-        ax.set_ylabel(r'$h_\bot^M[T]$',size=20)
+        ylab = r'$H_\bot^M[T]$' if TT=='M' else r'$H_\bot^{AA}[T]$'
+        ax.set_ylabel(ylab,size=20)
     else:
         ax.set_yticklabels([])
     ax.tick_params(axis='both',which='major',labelsize=20)
     ax.set_ylim(*ylims)
     pos = ax.get_xlim()
     ax.set_xlim(pos)
-    ax.fill_between(np.linspace(pos[0],pos[1],100),shadelim[0],shadelim[1],facecolor=shade, alpha = 0.3)
+    #Shaded area
+    N = 30
+    cAA = 0.25 if TT == 'AA' else 0.65
+    spreadAA = 0.15 if TT == 'AA' else 0.2
+    iAA = np.linspace(cAA,cAA-spreadAA,N)
+    fAA = np.linspace(cAA,cAA+spreadAA,N)
+    shadecolor = 'red' if TT=='AA' else 'blue'
+    for x in range(N):
+        ax.fill_between(np.linspace(0,1,100),
+                iAA[x],
+                fAA[x],
+                facecolor=shadecolor, 
+                alpha = 0.005
+                )
+#    ax.fill_between(np.linspace(pos[0],pos[1],100),shadelim[0],shadelim[1],facecolor=shade, alpha = 0.3)
 
 if not s1=='e':
     from matplotlib.lines import Line2D
@@ -131,23 +144,26 @@ if not s1=='e':
     legend_elements = []
     for i in range(6):
         legend_elements.append(Line2D([0],[0],ls='--',color=colors[i],label=r'$\epsilon=$'+v3[i]+'\%',linewidth=1))
-    if TT == 'AA':
-        legend_elements += [ Line2D([0],[0],marker='.',color='k',label='biaxial flip',markerfacecolor='k',markersize=8,linewidth=0),
-                            Line2D([0],[0],marker='*',color='k',label='biaxial flop',markerfacecolor='k',markersize=8,linewidth=0),
-                            Line2D([0],[0],marker='^',color='k',label='uniaxial flip',markerfacecolor='k',markersize=8,linewidth=0),
-                            Line2D([0],[0],marker='X',color='k',label='uniaxial flop',markerfacecolor='k',markersize=8,linewidth=0),
+    if 0 and TT == 'AA':
+        legend_elements += [ 
+#                            Line2D([0],[0],marker='.',color='k',label='biaxial flip',markerfacecolor='k',markersize=8,linewidth=0),
+#                            Line2D([0],[0],marker='*',color='k',label='biaxial flop',markerfacecolor='k',markersize=8,linewidth=0),
+                            Line2D([0],[0],marker='*',color='k',label='flip',markerfacecolor='k',markersize=8,linewidth=0),
+                            Line2D([0],[0],marker='^',color='k',label='flop',markerfacecolor='k',markersize=8,linewidth=0),
                         ]
     if TT == 'M':
-        legend_elements += [ Line2D([0],[0],marker='.',color='k',label='biaxial',markerfacecolor='k',markersize=8,linewidth=0),
-                            Line2D([0],[0],marker='*',color='k',label='uniaxial',markerfacecolor='k',markersize=8,linewidth=0),
-                        ]
+        pass
+#        legend_elements += [ 
+#                Line2D([0],[0],marker='.',color='k',label='biaxial',markerfacecolor='k',markersize=8,linewidth=0),
+#                Line2D([0],[0],marker='*',color='k',label='uniaxial',markerfacecolor='k',markersize=8,linewidth=0),
+#                        ]
     ax = fig.add_subplot(gs[1,5])
     ax.set_axis_off()
     ax.legend(handles=legend_elements,fontsize=20)
 
 
 fig.tight_layout()
-if 0:
+if 1:
     plt.savefig('/home/dario/Desktop/figs_crbr/trend_'+sys.argv[1]+'_'+TT+'_'+sys.argv[2]+'.pdf')
     print("Saved")
     exit()
